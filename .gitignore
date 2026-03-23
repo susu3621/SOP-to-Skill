@@ -1,5 +1,67 @@
-.worktrees/
+# Dependencies
 node_modules/
-docs/.vitepress/dist/
+.pnpm-store/
+
+# Build outputs
 dist/
+docs/.vitepress/dist/
 src-tauri/target/
+
+# Tauri
+src-tauri/Cargo.lock
+src-tauri/WixTools/
+src-tauri/NSIS/
+
+# Python (skills may contain Python scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.tox/
+.nox/
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage/
+
+# Git worktrees
+.worktrees/
+
+# OS generated
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

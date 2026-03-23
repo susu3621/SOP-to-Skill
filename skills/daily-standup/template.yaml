@@ -1,0 +1,65 @@
+id: "daily-standup"
+name:
+  zh-CN: "每日站会助手"
+  en-US: "Daily Standup Assistant"
+description:
+  zh-CN: "帮助团队进行高效的每日站会，自动生成会议总结和行动项"
+  en-US: "Help teams conduct efficient daily standups with automatic summaries and action items"
+version: "1.0.0"
+author: "Skills Team"
+source:
+  type: github
+  url: https://github.com/skills-for-no-engineer/skills
+  path: skills/daily-standup
+
+targets:
+  - appId: claude-code
+    outputPath: "~/.claude/skills/{{skillId}}.md"
+    fileFormat: markdown
+    templateFile: claude-code.md.hbs
+  - appId: codex
+    outputPath: "~/.codex/instructions/{{skillId}}.md"
+    fileFormat: markdown
+    templateFile: codex.md.hbs
+  - appId: workbuddy
+    outputPath: "~/Library/Application Support/WorkBuddy/skills/{{skillId}}.json"
+    fileFormat: json
+    templateFile: workbuddy.json.hbs
+
+variables:
+  - id: workspacePath
+    label:
+      zh-CN: "工作目录"
+      en-US: "Workspace Path"
+    placeholder:
+      zh-CN: "项目根目录路径"
+      en-US: "Project root directory path"
+    type: path
+    required: true
+  - id: teamSize
+    label:
+      zh-CN: "团队人数"
+      en-US: "Team Size"
+    type: number
+    required: true
+    default: "5"
+  - id: meetingStyle
+    label:
+      zh-CN: "会议风格"
+      en-US: "Meeting Style"
+    type: select
+    required: true
+    default: "quick"
+    options:
+      - value: "quick"
+        label:
+          zh-CN: "快速 (15分钟)"
+          en-US: "Quick (15 min)"
+      - value: "detailed"
+        label:
+          zh-CN: "详细 (30分钟)"
+          en-US: "Detailed (30 min)"
+      - value: "async"
+        label:
+          zh-CN: "异步 (文字)"
+          en-US: "Async (text)"
