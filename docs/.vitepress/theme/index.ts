@@ -32,6 +32,22 @@ const theme: Theme = {
       mermaidBootstrapped = true
     }
 
+    document.querySelectorAll('div.language-mermaid').forEach((block) => {
+      if (block.querySelector('.mermaid')) {
+        return
+      }
+
+      const code = block.querySelector('code')
+      if (!code) {
+        return
+      }
+
+      const diagram = document.createElement('div')
+      diagram.className = 'mermaid'
+      diagram.textContent = code.textContent ?? ''
+      block.replaceChildren(diagram)
+    })
+
     queueMicrotask(() => {
       if (window.mermaid) {
         window.mermaid.init(undefined, document.querySelectorAll('.mermaid'))
