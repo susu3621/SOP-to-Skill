@@ -233,10 +233,22 @@
 
 .vp-doc .role-card {
   display: grid;
-  place-items: center;
+  align-content: start;
+  justify-items: start;
+  gap: 8px;
   min-height: 92px;
   padding: 1rem;
-  font-weight: 600;
+}
+
+.vp-doc .role-card strong {
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.vp-doc .role-card span {
+  color: var(--page-muted);
+  font-size: 0.96rem;
+  line-height: 1.55;
 }
 
 .vp-doc .closing-quote {
