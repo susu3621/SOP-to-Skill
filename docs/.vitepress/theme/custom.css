@@ -1,0 +1,18 @@
+:root {
+  --vp-c-brand-1: #c96a27;
+  --vp-c-brand-2: #9f531f;
+  --vp-c-brand-3: #7d4218;
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #c96a27, #1c7d67);
+}
+
+.VPDoc {
+  background:
+    radial-gradient(circle at top left, rgba(201, 106, 39, 0.16), transparent 24%),
+    linear-gradient(180deg, #f7f1e7 0%, #f1e4d0 100%);
+}
+
+.vp-doc pre.mermaid {
+  border-radius: 20px;
+  background: rgba(255, 251, 245, 0.92);
+}
