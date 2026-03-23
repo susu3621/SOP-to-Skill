@@ -1,6 +1,9 @@
 ---
 layout: doc
 title: 给普通员工的 AI 工作方式邀请
+aside: false
+outline: false
+lastUpdated: false
 ---
 
 <div class="hero-panel">
@@ -170,14 +173,45 @@ flowchart LR
 
 <div class="role-grid">
 
-<div class="role-card">销售</div>
-<div class="role-card">运营</div>
-<div class="role-card">HR</div>
-<div class="role-card">项目经理</div>
-<div class="role-card">交付 / 实施</div>
-<div class="role-card">财务</div>
-<div class="role-card">行政</div>
-<div class="role-card">客服 / 支持</div>
+<div class="role-card">
+<strong>销售</strong>
+<span>整理客户背景、组织跟进话术、生成会后总结，减少大量机械重复。</span>
+</div>
+
+<div class="role-card">
+<strong>运营</strong>
+<span>从分散信息里提炼重点，把日报、活动复盘、跨团队同步做得更快。</span>
+</div>
+
+<div class="role-card">
+<strong>HR</strong>
+<span>整理岗位说明、培训材料、面试反馈和制度答疑，让沟通更标准。</span>
+</div>
+
+<div class="role-card">
+<strong>项目经理</strong>
+<span>快速汇总进度、风险、待办和会议结论，让项目状态更容易讲清楚。</span>
+</div>
+
+<div class="role-card">
+<strong>交付 / 实施</strong>
+<span>查找历史方案、整理客户问题、生成交付说明，减少反复找资料。</span>
+</div>
+
+<div class="role-card">
+<strong>财务</strong>
+<span>汇总报销说明、审批材料、预算说明，让规则解释和文本整理更省力。</span>
+</div>
+
+<div class="role-card">
+<strong>行政</strong>
+<span>把通知、会议安排、制度整理、跨部门确认变成更轻的例行工作。</span>
+</div>
+
+<div class="role-card">
+<strong>客服 / 支持</strong>
+<span>快速整合问题背景、标准答案和跟进记录，让回复既快又稳。</span>
+</div>
 
 </div>
 

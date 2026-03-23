@@ -11,7 +11,14 @@ grep -q "这对你自己的好处，比公司宣传里写得更具体" docs/inde
 grep -q "这不是程序员专属，而是绝大多数岗位都能开始用" docs/index.md
 grep -q "你不需要先变成专家，先从最烦的环节开始就够了" docs/index.md
 grep -q "未来拉开差距的，往往不是最忙的人" docs/index.md
+grep -q "aside: false" docs/index.md
+grep -q "outline: false" docs/index.md
+grep -q "lastUpdated: false" docs/index.md
+grep -q "销售" docs/index.md
+grep -q "整理客户背景、组织跟进话术、生成会后总结" docs/index.md
 grep -Fq '```mermaid' docs/index.md
+grep -q "scheduleMermaidBootstrap" docs/.vitepress/theme/index.ts
+grep -q "setTimeout(() => tick(attempt + 1), 50)" docs/.vitepress/theme/index.ts
 
 npm run docs:build >/dev/null
 grep -q "AI 时代先受益的，是每天被重复工作困住的人。" docs/.vitepress/dist/index.html
