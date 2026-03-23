@@ -1,0 +1,1041 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>给普通员工的 AI 工作方式邀请</title>
+    <meta
+      name="description"
+      content="一张写给传统公司普通员工的公开页面，重点说明 AI 时代对个人工作的直接好处。"
+    >
+    <script defer src="https://cdn.jsdelivr.net/npm/mermaid@8.8.0/dist/mermaid.min.js"></script>
+    <style>
+      :root {
+        --bg: #f5efe3;
+        --bg-strong: #f0e3cf;
+        --paper: rgba(255, 251, 245, 0.88);
+        --paper-strong: #fffaf2;
+        --ink: #18252d;
+        --muted: #5f6d76;
+        --line: rgba(24, 37, 45, 0.1);
+        --amber: #d9752e;
+        --amber-soft: rgba(217, 117, 46, 0.14);
+        --green: #1c7d67;
+        --green-soft: rgba(28, 125, 103, 0.12);
+        --rose: #b85a58;
+        --shadow: 0 24px 70px rgba(62, 40, 19, 0.09);
+        --radius-xl: 34px;
+        --radius-lg: 22px;
+        --radius-md: 16px;
+        --radius-sm: 12px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html {
+        scroll-behavior: smooth;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top left, rgba(217, 117, 46, 0.22), transparent 26%),
+          radial-gradient(circle at 85% 12%, rgba(28, 125, 103, 0.16), transparent 22%),
+          linear-gradient(180deg, #f7f1e7 0%, #f1e4d0 100%);
+        font-family: "Avenir Next", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", sans-serif;
+        line-height: 1.6;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      h1,
+      h2,
+      h3 {
+        margin: 0;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", serif;
+        line-height: 1.06;
+        font-weight: 700;
+      }
+
+      h1 {
+        font-size: clamp(3rem, 6vw, 5.9rem);
+        max-width: 8.5ch;
+      }
+
+      h2 {
+        font-size: clamp(2rem, 3.4vw, 3rem);
+      }
+
+      h3 {
+        font-size: 1.26rem;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      .page {
+        width: min(1380px, calc(100% - 28px));
+        margin: 0 auto;
+        padding: 22px 0 84px;
+      }
+
+      .hero,
+      section {
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.62);
+        border-radius: var(--radius-xl);
+        background:
+          linear-gradient(140deg, rgba(255, 250, 243, 0.96), rgba(246, 236, 221, 0.92)),
+          var(--paper);
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        padding: 34px;
+      }
+
+      section {
+        padding: 30px;
+      }
+
+      .hero::before,
+      section::after {
+        content: "";
+        position: absolute;
+        border-radius: 999px;
+        pointer-events: none;
+      }
+
+      .hero::before {
+        inset: auto auto -120px -80px;
+        width: 280px;
+        height: 280px;
+        background: radial-gradient(circle, rgba(217, 117, 46, 0.18), transparent 68%);
+      }
+
+      section::after {
+        inset: auto -90px -110px auto;
+        width: 220px;
+        height: 220px;
+        background: radial-gradient(circle, rgba(28, 125, 103, 0.14), transparent 70%);
+      }
+
+      .eyebrow,
+      .chip,
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+      }
+
+      .eyebrow {
+        padding: 8px 14px;
+        background: rgba(24, 37, 45, 0.06);
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .eyebrow::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--amber), var(--green));
+      }
+
+      .chip,
+      .tag {
+        padding: 6px 10px;
+        font-size: 0.82rem;
+        line-height: 1;
+      }
+
+      .chip {
+        background: rgba(24, 37, 45, 0.06);
+        color: var(--muted);
+      }
+
+      .tag {
+        background: var(--amber-soft);
+        color: #8b451a;
+      }
+
+      .tag.green {
+        background: var(--green-soft);
+        color: #135b4b;
+      }
+
+      .nav,
+      .hero-grid,
+      .hero-aside,
+      .strip-grid,
+      .section-head,
+      .pain-grid,
+      .contrast-grid,
+      .timeline,
+      .benefit-grid,
+      .role-grid,
+      .proof-grid,
+      .closing-grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      .hero-grid {
+        grid-template-columns: 1.18fr 0.82fr;
+        align-items: start;
+        margin-top: 26px;
+      }
+
+      .hero-copy {
+        display: grid;
+        gap: 22px;
+      }
+
+      .hero-intro {
+        max-width: 62ch;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .nav {
+        grid-template-columns: repeat(5, max-content);
+        align-items: center;
+        gap: 10px;
+      }
+
+      .nav a {
+        padding: 10px 14px;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.66);
+        font-size: 0.92rem;
+        transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+      }
+
+      .nav a:hover {
+        transform: translateY(-2px);
+        border-color: rgba(24, 37, 45, 0.22);
+        background: #fff;
+      }
+
+      .hero-aside {
+        align-content: start;
+      }
+
+      .panel,
+      .card,
+      .timeline-card,
+      .quote-card,
+      .closing-card {
+        border: 1px solid rgba(24, 37, 45, 0.08);
+        border-radius: var(--radius-lg);
+        background: var(--paper-strong);
+        box-shadow: 0 12px 32px rgba(36, 26, 16, 0.06);
+      }
+
+      .panel,
+      .card,
+      .timeline-card,
+      .quote-card,
+      .closing-card {
+        padding: 22px;
+      }
+
+      .hero-card-top,
+      .section-head {
+        align-items: start;
+        justify-content: space-between;
+      }
+
+      .section-head {
+        grid-template-columns: 1fr auto;
+      }
+
+      .section-lead,
+      .subtle {
+        color: var(--muted);
+      }
+
+      .section-lead {
+        margin-top: 12px;
+        max-width: 70ch;
+      }
+
+      .strip-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .strip-item {
+        padding: 16px;
+        border: 1px solid rgba(24, 37, 45, 0.08);
+        border-radius: var(--radius-md);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 243, 232, 0.96));
+      }
+
+      .strip-item strong {
+        display: block;
+        font-size: 1.05rem;
+      }
+
+      .strip-item span {
+        display: block;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      main {
+        display: grid;
+        gap: 22px;
+        margin-top: 24px;
+      }
+
+      .pain-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .pain-card {
+        display: grid;
+        gap: 10px;
+      }
+
+      .pain-card strong {
+        font-size: 1rem;
+      }
+
+      .comparison-shell {
+        display: grid;
+        grid-template-columns: 0.95fr 1.05fr;
+        gap: 20px;
+        margin-top: 24px;
+      }
+
+      .mermaid-shell {
+        padding: 14px;
+        overflow: auto;
+        border: 1px solid rgba(24, 37, 45, 0.08);
+        border-radius: var(--radius-lg);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 240, 229, 0.94));
+      }
+
+      .quote-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .quote-card strong {
+        font-size: 1.16rem;
+      }
+
+      .contrast-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .timeline-card {
+        display: grid;
+        gap: 16px;
+      }
+
+      .timeline {
+        gap: 12px;
+      }
+
+      .timeline-item {
+        padding: 14px 16px;
+        border-radius: var(--radius-md);
+        background: rgba(255, 255, 255, 0.74);
+      }
+
+      .timeline-item strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .timeline-card.low {
+        background:
+          linear-gradient(180deg, rgba(255, 248, 244, 0.96), rgba(255, 242, 234, 0.94)),
+          var(--paper-strong);
+      }
+
+      .timeline-card.high {
+        background:
+          linear-gradient(180deg, rgba(242, 251, 248, 0.96), rgba(236, 247, 242, 0.94)),
+          var(--paper-strong);
+      }
+
+      .timeline-card.low .tag {
+        background: rgba(184, 90, 88, 0.14);
+        color: #8f4645;
+      }
+
+      .timeline-card.high .tag {
+        background: var(--green-soft);
+        color: #135b4b;
+      }
+
+      .benefit-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .benefit-card {
+        display: grid;
+        gap: 12px;
+        min-height: 220px;
+      }
+
+      .benefit-card .index {
+        font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", serif;
+        font-size: 2.4rem;
+        line-height: 1;
+        color: rgba(24, 37, 45, 0.2);
+      }
+
+      .role-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .role-card {
+        display: grid;
+        gap: 10px;
+      }
+
+      .proof-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin-top: 24px;
+      }
+
+      .proof-card {
+        display: grid;
+        gap: 12px;
+      }
+
+      .closing-grid {
+        grid-template-columns: 1.08fr 0.92fr;
+        margin-top: 24px;
+      }
+
+      .closing-card {
+        display: grid;
+        gap: 14px;
+      }
+
+      .closing-card strong {
+        font-size: clamp(1.5rem, 2.6vw, 2.2rem);
+        max-width: 15ch;
+      }
+
+      .closing-list {
+        display: grid;
+        gap: 10px;
+        color: var(--muted);
+      }
+
+      .closing-list span {
+        padding: 12px 14px;
+        border-left: 3px solid var(--amber);
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        background: rgba(255, 255, 255, 0.66);
+      }
+
+      footer {
+        padding: 28px 4px 0;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      [data-animate] {
+        animation: rise 700ms ease both;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+
+        [data-animate] {
+          animation: none;
+        }
+      }
+
+      @media (max-width: 980px) {
+        .page {
+          width: min(100% - 24px, 980px);
+          padding-top: 18px;
+        }
+
+        .hero,
+        section {
+          padding: 24px;
+        }
+
+        .hero-grid,
+        .comparison-shell,
+        .contrast-grid,
+        .benefit-grid,
+        .role-grid,
+        .proof-grid,
+        .closing-grid,
+        .pain-grid,
+        .strip-grid,
+        .section-head {
+          grid-template-columns: 1fr;
+        }
+
+        .nav {
+          grid-template-columns: repeat(2, minmax(0, max-content));
+        }
+
+        h1 {
+          max-width: 10ch;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero" id="top">
+        <div class="eyebrow">AI Workstyle Invitation</div>
+        <div class="hero-grid">
+          <div class="hero-copy" data-animate>
+            <div>
+              <h1>AI 时代先受益的，是每天被重复工作困住的人。</h1>
+              <p class="hero-intro" id="hero-intro"></p>
+            </div>
+
+            <nav class="nav" aria-label="页面导航">
+              <a href="#pain-points">你的烦恼</a>
+              <a href="#day-contrast">一天对比</a>
+              <a href="#benefits">你会得到什么</a>
+              <a href="#roles">谁都能用</a>
+              <a href="#closing">最后一句话</a>
+            </nav>
+          </div>
+
+          <aside class="hero-aside" data-animate>
+            <div class="panel">
+              <div class="hero-card-top">
+                <div>
+                  <div class="chip">公开页面</div>
+                  <div class="chip" style="margin-top:8px;">面向普通员工</div>
+                </div>
+                <div class="tag green">弱品牌叙事</div>
+              </div>
+              <p class="section-lead" style="margin-top:16px;">
+                这不是一页写给高管的 AI 口号，也不是一张产品参数表。它只回答一件事：如果你在传统公司工作，AI 会怎样先让你的工作轻一点、快一点、清楚一点。
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        <div class="strip-grid" id="benefit-strip"></div>
+      </header>
+
+      <main>
+        <section id="pain-points">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Pain Recognition</div>
+              <h2>这些麻烦，你大概每天都在碰</h2>
+              <p class="section-lead">
+                传统公司的低效，不一定来自你不努力，更多时候是因为大量时间被消耗在重复表达、信息搬运和跨人沟通上。
+              </p>
+            </div>
+            <div class="tag">普通员工视角</div>
+          </div>
+
+          <div class="pain-grid" id="pain-grid"></div>
+        </section>
+
+        <section id="workstyle-shift">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Shift</div>
+              <h2>AI 帮你的，不只是写几句话</h2>
+              <p class="section-lead">
+                真正的变化不是多一个聊天窗口，而是你可以先把任务说清楚，再让 AI 帮你整理信息、组织表达、补全上下文、生成第一稿。
+              </p>
+            </div>
+            <div class="tag green">工作方式变化</div>
+          </div>
+
+          <div class="comparison-shell">
+            <div class="mermaid-shell">
+              <div class="mermaid" id="workstyle-shift-diagram"></div>
+            </div>
+
+            <div class="quote-card">
+              <strong>很多人不是不会做事，而是把大量精力浪费在“开始之前的准备”和“做完之后的复述”上。</strong>
+              <p class="subtle">
+                当 AI 变成工作搭档，变化最先发生在这些地方：你不用再反复找资料拼上下文，不用每次从空白页重新组织语言，也不用在多个群和文档之间来回切换，才能勉强把事情说清楚。
+              </p>
+              <div class="closing-list" id="shift-points"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="day-contrast">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">One Day</div>
+              <h2>没有 AI 的一天，和有 AI 协作的一天</h2>
+              <p class="section-lead">
+                抽象地说“效率提升”很难让人代入。把一天拆开看，你就能更直观地看到差别。
+              </p>
+            </div>
+            <div class="tag">一天对比</div>
+          </div>
+
+          <div class="contrast-grid">
+            <article class="timeline-card low">
+              <div class="section-head" style="grid-template-columns:1fr auto;">
+                <div>
+                  <h3>没有 AI 的一天</h3>
+                  <p class="subtle">信息散、表达慢、上下文全靠人脑拼。</p>
+                </div>
+                <div class="tag">旧工作日</div>
+              </div>
+              <div class="timeline" id="timeline-without-ai"></div>
+            </article>
+
+            <article class="timeline-card high">
+              <div class="section-head" style="grid-template-columns:1fr auto;">
+                <div>
+                  <h3>有 AI 协作的一天</h3>
+                  <p class="subtle">先把任务说出来，再把重复和整理交给 AI。</p>
+                </div>
+                <div class="tag">新工作日</div>
+              </div>
+              <div class="timeline" id="timeline-with-ai"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="benefits">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Personal Benefits</div>
+              <h2>这对你自己的好处，比公司宣传里写得更具体</h2>
+              <p class="section-lead">
+                如果你只是把 AI 理解成“帮公司提效”，那很难真正开始。真正能推动一个人行动的，往往是那些他每天马上就能感受到的变化。
+              </p>
+            </div>
+            <div class="tag green">个人受益</div>
+          </div>
+
+          <div class="benefit-grid" id="benefit-grid"></div>
+        </section>
+
+        <section id="roles">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Who This Is For</div>
+              <h2>这不是程序员专属，而是绝大多数岗位都能开始用</h2>
+              <p class="section-lead">
+                只要你的工作包含搜索信息、整理材料、沟通协作、汇报总结、标准化输出，AI 就能先帮你减掉一部分重复劳动。
+              </p>
+            </div>
+            <div class="tag">岗位覆盖</div>
+          </div>
+
+          <div class="role-grid" id="role-grid"></div>
+        </section>
+
+        <section id="proof-points">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">What Changes First</div>
+              <h2>你不需要先变成专家，先从最烦的环节开始就够了</h2>
+              <p class="section-lead">
+                公开页面最重要的不是许诺一个遥远的新世界，而是让人看到自己下周就可以开始改变什么。
+              </p>
+            </div>
+            <div class="tag green">先做小改变</div>
+          </div>
+
+          <div class="proof-grid" id="proof-grid"></div>
+        </section>
+
+        <section id="closing">
+          <div class="section-head">
+            <div>
+              <div class="eyebrow">Closing Thought</div>
+              <h2>未来拉开差距的，往往不是最忙的人</h2>
+              <p class="section-lead">
+                很多人已经很努力了，只是还在用旧时代的方法承担新时代的工作密度。AI 的意义，不是替你变成别人，而是让你把自己的时间和能力用在更值得的地方。
+              </p>
+            </div>
+            <div class="tag">最后一句话</div>
+          </div>
+
+          <div class="closing-grid">
+            <div class="closing-card">
+              <strong id="closing-quote"></strong>
+              <p class="subtle" id="closing-copy"></p>
+            </div>
+
+            <div class="closing-card">
+              <h3>你会先感受到的变化</h3>
+              <div class="closing-list" id="closing-list"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>
+          本页是一个可直接打开、可继续改写的公开宣传页模板。后续只需要更新底部 `PAGE_DATA`，就可以继续调整语气、岗位案例和一天对比内容。
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      const PAGE_DATA = {
+        hero: {
+          intro:
+            "如果你是传统公司里的普通员工，AI 最先带来的不是遥远的组织战略，而是更少的重复劳动、更轻的沟通压力、和更快把事情做成的能力。",
+          strip: [
+            {
+              title: "少写重复内容",
+              text: "周报、会议纪要、项目更新、邮件回复，不必每次都从空白开始。"
+            },
+            {
+              title: "少花时间找资料",
+              text: "把分散在聊天、文档、表格里的上下文先聚起来，再决定下一步。"
+            },
+            {
+              title: "少为汇报焦虑",
+              text: "做过的事更容易被整理成清楚的表达，而不是最后临时拼凑。"
+            },
+            {
+              title: "更快把事情说清楚",
+              text: "面对同事、客户、领导时，你更容易给出结构化、可执行的回答。"
+            }
+          ]
+        },
+        painPoints: [
+          {
+            title: "会前 10 分钟疯狂找资料",
+            text: "临时翻聊天记录、找旧文档、补项目上下文，真正讨论开始前人已经先累了。"
+          },
+          {
+            title: "同一件事写三遍",
+            text: "给同事一版，给领导一版，给客户一版，内容差不多，表达却要反复重写。"
+          },
+          {
+            title: "时间花在追人，不花在做事",
+            text: "很多工作并不难，难的是把分散在不同人手里的信息拼起来。"
+          },
+          {
+            title: "明明做了很多，周报还是难写",
+            text: "不是你没有产出，而是整理、抽象、表达本身又成了一份额外工作。"
+          },
+          {
+            title: "事情一多，脑子先被切碎",
+            text: "刚处理完一个群消息，就去改文档；刚整理完文档，又被拉进另一个会议。"
+          },
+          {
+            title: "越忙越难体现价值",
+            text: "重复劳动会吞掉你的注意力，让你难以把精力用在真正有判断力的部分。"
+          }
+        ],
+        shiftPoints: [
+          "先说出任务，而不是先自己把所有材料凑齐。",
+          "先拿到一个结构化草稿，再花精力修正和判断。",
+          "让 AI 接管重复整理，你把时间留给沟通和决策。"
+        ],
+        dayComparison: {
+          withoutAi: [
+            {
+              time: "09:10",
+              title: "刚到工位先补上下文",
+              text: "翻昨天群聊、找会议纪要、看表格最新版本，半小时过去还没进入真正工作。"
+            },
+            {
+              time: "11:20",
+              title: "回应别人前先切四个窗口",
+              text: "问你进度的人很多，但答案散在不同地方，每次回复都像临时拼图。"
+            },
+            {
+              time: "15:00",
+              title: "开始写材料时从空白页发呆",
+              text: "项目更新、客户说明、方案摘要都知道大概要写什么，但很难快速落成。"
+            },
+            {
+              time: "18:40",
+              title: "下班前还在补一份能发出去的总结",
+              text: "真正让人疲惫的不是工作本身，而是做完以后还要再解释一遍。"
+            }
+          ],
+          withAi: [
+            {
+              time: "09:10",
+              title: "先让 AI 汇总上下文",
+              text: "把任务目标说清楚，先拿到关键背景、待办重点和缺失信息，再开始行动。"
+            },
+            {
+              time: "11:20",
+              title: "先出结构化回复，再补你的判断",
+              text: "进度说明、风险同步、会议回答先有框架，你只需要校正最关键的部分。"
+            },
+            {
+              time: "15:00",
+              title: "从第一稿开始，而不是从空白开始",
+              text: "AI 先把素材整理成提纲、摘要或草稿，你把精力留给修正、取舍和定调。"
+            },
+            {
+              time: "18:40",
+              title: "让收尾工作不再拖垮你",
+              text: "日报、周报、纪要、待办汇总先自动成形，下班前更多是在确认，而不是硬撑。"
+            }
+          ]
+        },
+        benefits: [
+          {
+            number: "01",
+            title: "节省时间",
+            text: "把搜索、整理、改写、汇总这些重复动作压缩掉，让真正需要判断的部分占据你的工作日。"
+          },
+          {
+            number: "02",
+            title: "降低精神消耗",
+            text: "很多疲惫感来自频繁切换和无休止复述。AI 先接住这些碎片劳动，人会轻很多。"
+          },
+          {
+            number: "03",
+            title: "提升表达质量",
+            text: "不是每个人天生擅长结构化表达，但大多数岗位都需要它。AI 能先把表达门槛拉低。"
+          },
+          {
+            number: "04",
+            title: "增加职业价值",
+            text: "未来更稀缺的不是最会埋头重复的人，而是能更快整合信息、组织行动、推动结果的人。"
+          }
+        ],
+        roles: [
+          {
+            name: "销售",
+            copy: "整理客户背景、组织跟进话术、生成会后总结，减少大量机械重复。"
+          },
+          {
+            name: "运营",
+            copy: "从分散信息里提炼重点，把日报、活动复盘、跨团队同步做得更快。"
+          },
+          {
+            name: "HR",
+            copy: "整理岗位说明、培训材料、面试反馈和制度答疑，让沟通更标准。"
+          },
+          {
+            name: "项目经理",
+            copy: "快速汇总进度、风险、待办和会议结论，让项目状态更容易讲清楚。"
+          },
+          {
+            name: "交付 / 实施",
+            copy: "查找历史方案、整理客户问题、生成交付说明，减少反复找资料。"
+          },
+          {
+            name: "财务",
+            copy: "汇总报销说明、审批材料、预算说明，让规则解释和文本整理更省力。"
+          },
+          {
+            name: "行政",
+            copy: "把通知、会议安排、制度整理、跨部门确认变成更轻的例行工作。"
+          },
+          {
+            name: "客服 / 支持",
+            copy: "快速整合问题背景、标准答案和跟进记录，让回复既快又稳。"
+          }
+        ],
+        proofPoints: [
+          {
+            title: "先从写作最痛的地方开始",
+            text: "让 AI 帮你先起草邮件、总结、会议纪要和汇报提纲，不再每次都从零开始。"
+          },
+          {
+            title: "再从找资料最慢的地方开始",
+            text: "把你常用的文档、说明、问题记录喂给 AI，让它先帮你聚合，再由你判断。"
+          },
+          {
+            title: "最后把协作最耗神的地方交出去",
+            text: "对于状态同步、进度说明、答疑回复这类高频动作，先让 AI 生成第一版。"
+          }
+        ],
+        closing: {
+          quote: "AI 时代真正先拉开差距的，往往不是最忙的人，而是最先学会与 AI 协作的人。",
+          copy:
+            "你不需要一下子把全部工作都交给 AI，也不需要先变成技术专家。你只需要比昨天更早一步，把那些最消耗你、最重复、最容易被标准化的部分，交给 AI 做你的搭档。",
+          bullets: [
+            "你会更快进入真正重要的工作，而不是一直卡在准备阶段。",
+            "你会更容易把做过的事说清楚，而不是总在收尾时焦虑。",
+            "你会逐渐把价值放回判断、沟通和推动结果，而不是反复搬运信息。"
+          ]
+        }
+      };
+
+      function renderCards(items, renderItem) {
+        return items.map(renderItem).join("");
+      }
+
+      function renderHero() {
+        document.getElementById("hero-intro").textContent = PAGE_DATA.hero.intro;
+        document.getElementById("benefit-strip").innerHTML = renderCards(
+          PAGE_DATA.hero.strip,
+          (item) => `
+            <div class="strip-item" data-animate>
+              <strong>${item.title}</strong>
+              <span>${item.text}</span>
+            </div>
+          `
+        );
+      }
+
+      function renderPainPoints() {
+        document.getElementById("pain-grid").innerHTML = renderCards(
+          PAGE_DATA.painPoints,
+          (item) => `
+            <article class="card pain-card" data-animate>
+              <div class="tag">${item.title}</div>
+              <p>${item.text}</p>
+            </article>
+          `
+        );
+      }
+
+      function renderShiftPoints() {
+        document.getElementById("shift-points").innerHTML = renderCards(
+          PAGE_DATA.shiftPoints,
+          (item) => `<span>${item}</span>`
+        );
+      }
+
+      function renderTimeline(targetId, items) {
+        document.getElementById(targetId).innerHTML = renderCards(
+          items,
+          (item) => `
+            <div class="timeline-item" data-animate>
+              <div class="chip">${item.time}</div>
+              <strong>${item.title}</strong>
+              <p>${item.text}</p>
+            </div>
+          `
+        );
+      }
+
+      function renderBenefits() {
+        document.getElementById("benefit-grid").innerHTML = renderCards(
+          PAGE_DATA.benefits,
+          (item) => `
+            <article class="card benefit-card" data-animate>
+              <span class="index">${item.number}</span>
+              <h3>${item.title}</h3>
+              <p>${item.text}</p>
+            </article>
+          `
+        );
+      }
+
+      function renderRoles() {
+        document.getElementById("role-grid").innerHTML = renderCards(
+          PAGE_DATA.roles,
+          (item) => `
+            <article class="card role-card" data-animate>
+              <div class="tag green">${item.name}</div>
+              <p>${item.copy}</p>
+            </article>
+          `
+        );
+      }
+
+      function renderProofPoints() {
+        document.getElementById("proof-grid").innerHTML = renderCards(
+          PAGE_DATA.proofPoints,
+          (item) => `
+            <article class="card proof-card" data-animate>
+              <h3>${item.title}</h3>
+              <p>${item.text}</p>
+            </article>
+          `
+        );
+      }
+
+      function renderClosing() {
+        document.getElementById("closing-quote").textContent = PAGE_DATA.closing.quote;
+        document.getElementById("closing-copy").textContent = PAGE_DATA.closing.copy;
+        document.getElementById("closing-list").innerHTML = renderCards(
+          PAGE_DATA.closing.bullets,
+          (item) => `<span>${item}</span>`
+        );
+      }
+
+      function buildWorkstyleShiftDiagram() {
+        return `
+          graph TD
+            a[重复劳动和碎片信息] --> b[普通员工被来回切换拖住]
+            b --> c[先把任务说给 AI]
+            c --> d[AI 汇总资料与上下文]
+            d --> e[AI 生成提纲或第一稿]
+            e --> f[人来判断、修正、推进结果]
+        `;
+      }
+
+      function bootMermaid() {
+        if (!window.mermaid) {
+          return;
+        }
+
+        window.mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "loose",
+          theme: "neutral"
+        });
+
+        window.mermaid.init(undefined, document.querySelectorAll(".mermaid"));
+      }
+
+      function renderPage() {
+        renderHero();
+        renderPainPoints();
+        renderShiftPoints();
+        renderTimeline("timeline-without-ai", PAGE_DATA.dayComparison.withoutAi);
+        renderTimeline("timeline-with-ai", PAGE_DATA.dayComparison.withAi);
+        renderBenefits();
+        renderRoles();
+        renderProofPoints();
+        renderClosing();
+        document.getElementById("workstyle-shift-diagram").textContent =
+          buildWorkstyleShiftDiagram();
+        bootMermaid();
+      }
+
+      renderPage();
+    </script>
+  </body>
+</html>
