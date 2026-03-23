@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Skill Configurator",
+  "version": "0.1.0",
+  "identifier": "com.skillsfornoengineer.configurator",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Skill Configurator",
+        "width": 1200,
+        "height": 820,
+        "minWidth": 960,
+        "minHeight": 720,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "nsis"],
+    "category": "DeveloperTool",
+    "shortDescription": "Guided desktop shell for configuring skills.",
+    "longDescription": "A desktop configurator scaffold that guides non-technical users through step-by-step skill setup flows.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

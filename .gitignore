@@ -1,3 +1,5 @@
 .worktrees/
 node_modules/
 docs/.vitepress/dist/
+dist/
+src-tauri/target/

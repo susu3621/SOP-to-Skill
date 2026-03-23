@@ -1,25 +1,46 @@
 # skills-for-no-engineer
 
-面向普通员工的 AI 工作方式公开文档项目。
+面向普通用户的 AI skill 配置与公开文档项目。
 
-这个仓库把一页独立的公开 HTML 内容，整理成可以在 GitHub 上维护、并发布到 GitHub Pages 的单页文档。
+这个仓库当前包含两条产线：
 
-## 在线阅读
+- 面向外部阅读的 GitHub Pages 单页文档
+- 面向普通用户的桌面配置器骨架，首版聚焦 `WorkBuddy`
 
-- GitHub Pages 预期地址: <https://susu3621.github.io/skills-for-no-engineer/>
-- 仓库正文: [docs/index.md](docs/index.md)
-- 原始归档: [references/ai-workstyle-transformation-for-workers.html](references/ai-workstyle-transformation-for-workers.html)
+## 当前内容
 
-## 适合谁
+- 公开文档入口: [docs/index.md](docs/index.md)
+- 原始页面归档: [references/ai-workstyle-transformation-for-workers.html](references/ai-workstyle-transformation-for-workers.html)
+- 桌面配置器前端入口: [index.html](index.html)
+- Tauri 桌面工程: [src-tauri/tauri.conf.json](src-tauri/tauri.conf.json)
 
-如果你的工作里包含重复写作、找资料、整理上下文、跨人沟通、汇报总结，这个项目就是给你看的。
+## 桌面配置器目标
 
-## 这个项目解决什么问题
+桌面程序通过一组问答步骤，帮助普通用户完成 skill 配置。当前首版只搭建：
 
-它不是给高管看的 AI 口号，也不是产品参数表。它想表达的是，AI 最先让普通人的工作变轻、变快、变清楚。
+- 桌面 UI 外壳
+- WorkBuddy 向导骨架
+- 模拟结果页
+- macOS / Windows 打包框架
+
+本轮不实现真实配置写入、环境探测和自动安装。
+
+## 常用命令
+
+- 本地前置:
+  - Node.js 20+
+  - 当前可用的 Rust stable toolchain
+  - macOS 或 Windows 桌面构建环境
+- `npm run dev`: 启动桌面前端开发服务器
+- `npm run test`: 运行桌面界面测试
+- `npm run build`: 构建桌面前端静态资源
+- `npm run tauri:dev`: 启动 Tauri 桌面开发模式
+- `npm run tauri:build`: 构建 Tauri 桌面产物
+- `npm run docs:dev`: 启动文档站开发模式
+- `npm run docs:build`: 构建 GitHub Pages 文档
 
 ## 维护方式
 
-- `docs/index.md` 是仓库里的单一正式内容源。
-- `references/ai-workstyle-transformation-for-workers.html` 保存原始页面，方便对照和追溯。
-- GitHub Pages 用同一套内容对外发布，避免 README、HTML、文档三份内容长期分叉。
+- `docs/index.md` 仍然是公开文档的正式内容源。
+- 桌面配置器代码位于顶层 `src/` 和 `src-tauri/`。
+- `Codex` 与 `Claude Code` 当前只保留为可见入口，后续再接入真实向导流程。
