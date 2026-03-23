@@ -6,6 +6,7 @@ export default defineConfig({
   lang: 'zh-CN',
   title: 'AI 工作方式转型',
   description: '面向普通员工的 AI 工作方式公开文档',
+  base: '/skills-for-no-engineer/',
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {
