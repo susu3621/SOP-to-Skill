@@ -6,7 +6,7 @@
 
 ## 在线阅读
 
-- GitHub Pages: <https://susu3621.github.io/skills-for-no-engineer/>
+- GitHub Pages 预期地址: <https://susu3621.github.io/skills-for-no-engineer/>
 - 仓库正文: [docs/index.md](docs/index.md)
 - 原始归档: [references/ai-workstyle-transformation-for-workers.html](references/ai-workstyle-transformation-for-workers.html)
 
