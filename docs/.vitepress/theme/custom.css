@@ -4,6 +4,17 @@
   --vp-c-brand-3: #7d4218;
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(120deg, #c96a27, #1c7d67);
+  --page-ink: #18252d;
+  --page-muted: #5f6d76;
+  --page-paper: rgba(255, 251, 245, 0.9);
+  --page-border: rgba(24, 37, 45, 0.1);
+  --page-shadow: 0 24px 70px rgba(62, 40, 19, 0.09);
+}
+
+.VPNavBar,
+.VPLocalNav,
+.VPDocAside {
+  backdrop-filter: blur(16px);
 }
 
 .VPDoc {
@@ -12,7 +23,246 @@
     linear-gradient(180deg, #f7f1e7 0%, #f1e4d0 100%);
 }
 
+.vp-doc {
+  color: var(--page-ink);
+}
+
+.vp-doc h1 {
+  max-width: 10ch;
+  margin-top: 0.5rem;
+  font-size: clamp(2.6rem, 6vw, 5.4rem);
+  line-height: 1.04;
+}
+
+.vp-doc h2 {
+  margin-top: 3rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid rgba(24, 37, 45, 0.12);
+}
+
+.vp-doc p,
+.vp-doc li {
+  color: var(--page-ink);
+}
+
+.vp-doc .subtle,
+.vp-doc .hero-copy + .subtle,
+.vp-doc .timeline-head p {
+  color: var(--page-muted);
+}
+
+.vp-doc .hero-panel,
+.vp-doc .info-card,
+.vp-doc .timeline-card,
+.vp-doc .role-card {
+  border: 1px solid var(--page-border);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 250, 243, 0.97), rgba(246, 236, 221, 0.94));
+  box-shadow: var(--page-shadow);
+}
+
+.vp-doc .hero-panel {
+  position: relative;
+  overflow: hidden;
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.vp-doc .hero-panel::before {
+  content: "";
+  position: absolute;
+  inset: auto auto -120px -80px;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(201, 106, 39, 0.18), transparent 68%);
+  pointer-events: none;
+}
+
+.vp-doc .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(24, 37, 45, 0.06);
+  color: var(--page-muted);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.vp-doc .hero-copy {
+  max-width: 68ch;
+  margin-top: 1rem;
+  font-size: 1.05rem;
+}
+
+.vp-doc .hero-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 1.25rem;
+}
+
+.vp-doc .hero-nav a {
+  padding: 10px 14px;
+  border: 1px solid var(--page-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--page-ink);
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.vp-doc .hero-nav a:hover {
+  transform: translateY(-2px);
+  border-color: rgba(24, 37, 45, 0.24);
+  background: #fff;
+}
+
+.vp-doc .card-grid,
+.vp-doc .contrast-grid,
+.vp-doc .role-grid {
+  display: grid;
+  gap: 18px;
+  margin-top: 1.25rem;
+}
+
+.vp-doc .card-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.vp-doc .card-grid.four-up {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.vp-doc .info-card {
+  display: grid;
+  gap: 10px;
+  min-height: 180px;
+  padding: 1.15rem;
+}
+
+.vp-doc .info-card strong {
+  font-size: 1rem;
+}
+
+.vp-doc .info-card span {
+  color: var(--page-muted);
+}
+
+.vp-doc .info-card.numbered .index {
+  font-family: "Iowan Old Style", "Palatino Linotype", "Songti SC", serif;
+  font-size: 2.2rem;
+  line-height: 1;
+  color: rgba(24, 37, 45, 0.2);
+}
+
+.vp-doc .bullet-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 1rem;
+  color: var(--page-ink);
+}
+
+.vp-doc .bullet-stack > * {
+  padding: 12px 14px;
+  border-left: 3px solid #d9752e;
+  border-radius: 0 14px 14px 0;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.vp-doc .diagram-shell {
+  margin: 1rem 0 0.5rem;
+  padding: 14px;
+  border: 1px solid var(--page-border);
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 240, 229, 0.94));
+  overflow: auto;
+}
+
+.vp-doc .diagram-shell .mermaid {
+  min-width: 0;
+}
+
+.vp-doc .contrast-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vp-doc .timeline-card {
+  padding: 1.25rem;
+}
+
+.vp-doc .timeline-card.low {
+  background: linear-gradient(180deg, rgba(255, 248, 244, 0.96), rgba(255, 242, 234, 0.94));
+}
+
+.vp-doc .timeline-card.high {
+  background: linear-gradient(180deg, rgba(242, 251, 248, 0.96), rgba(236, 247, 242, 0.94));
+}
+
+.vp-doc .timeline-head h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.vp-doc .timeline-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vp-doc .timeline-list li {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.vp-doc .timeline-list strong {
+  display: inline-block;
+  min-width: 4.2rem;
+  color: #18252d;
+}
+
+.vp-doc .role-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.vp-doc .role-card {
+  display: grid;
+  place-items: center;
+  min-height: 92px;
+  padding: 1rem;
+  font-weight: 600;
+}
+
+.vp-doc .closing-quote {
+  margin: 1rem 0 0;
+  padding: 1rem 1.1rem;
+  border-left: 3px solid #c96a27;
+  border-radius: 0 16px 16px 0;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
 .vp-doc pre.mermaid {
   border-radius: 20px;
   background: rgba(255, 251, 245, 0.92);
+}
+
+@media (max-width: 980px) {
+  .vp-doc .card-grid,
+  .vp-doc .card-grid.four-up,
+  .vp-doc .contrast-grid,
+  .vp-doc .role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vp-doc .hero-panel {
+    padding: 1.25rem;
+  }
 }

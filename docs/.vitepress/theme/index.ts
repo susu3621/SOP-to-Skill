@@ -34,7 +34,7 @@ const theme: Theme = {
 
     queueMicrotask(() => {
       if (window.mermaid) {
-        window.mermaid.init(undefined, document.querySelectorAll('pre.mermaid'))
+        window.mermaid.init(undefined, document.querySelectorAll('.mermaid'))
       }
     })
   }
