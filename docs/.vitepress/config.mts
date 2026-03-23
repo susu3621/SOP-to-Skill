@@ -1,5 +1,7 @@
 import { defineConfig } from 'vitepress'
 
+const repoUrl = 'https://github.com/susu3621/skills-for-no-engineer'
+
 export default defineConfig({
   lang: 'zh-CN',
   title: 'AI 工作方式转型',
@@ -9,10 +11,10 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
-      { text: '仓库', link: 'https://github.com/<owner>/<repo>' }
+      { text: '仓库', link: repoUrl }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/<owner>/<repo>' }
+      { icon: 'github', link: repoUrl }
     ],
     outline: [2, 3],
     search: {
