@@ -40,7 +40,77 @@ export const workbuddyRoles: WizardOption[] = [
   },
 ]
 
+export const workbuddyAgentApps: WizardOption[] = [
+  {
+    value: 'antigravity',
+    label: text('Antigravity'),
+    hint: text('适合承接企业工作流与 AI 协作场景。'),
+  },
+  {
+    value: 'workbuddy',
+    label: text('WorkBuddy'),
+    hint: text('当前这套周报引导的主承载应用。'),
+  },
+  {
+    value: 'claude-code',
+    label: text('Claude Code'),
+    hint: text('适合在命令行里通过对话驱动任务执行。'),
+  },
+  {
+    value: 'codex',
+    label: text('Codex'),
+    hint: text('适合工程协作、脚本调用和自动化操作。'),
+  },
+  {
+    value: 'gemini-cli',
+    label: text('Gemini CLI'),
+    hint: text('适合接入另一套命令行 Agent 工作方式。'),
+  },
+]
+
+export const workbuddyBaseSkills: WizardOption[] = [
+  {
+    value: 'jira',
+    label: text('Jira'),
+    hint: text('同步项目任务、缺陷、负责人和状态变化。'),
+  },
+  {
+    value: 'confluence',
+    label: text('Confluence'),
+    hint: text('读取周报模板、项目文档和会议纪要。'),
+  },
+  {
+    value: 'saleseasy',
+    label: text('销售易'),
+    hint: text('同步客户机会、商务推进和关键客户动态。'),
+  },
+  {
+    value: 'notion',
+    label: text('Notion'),
+    hint: text('读取团队知识库、项目页面和协作文档。'),
+  },
+  {
+    value: 'zentao',
+    label: text('禅道'),
+    hint: text('同步需求、Bug、任务和测试执行状态。'),
+  },
+]
+
 export const workbuddySteps: WizardStep[] = [
+  {
+    id: 'role',
+    title: text('选择你的岗位'),
+    description: text('先确认你在团队里的角色，再决定这套引导后面要收集哪些上下文。'),
+    fields: [
+      {
+        id: 'role',
+        type: 'single-select',
+        label: text('选择你的岗位'),
+        required: true,
+        options: workbuddyRoles,
+      },
+    ],
+  },
   {
     id: 'base-skills',
     title: text('连接你已经在用的基础工具'),
@@ -51,45 +121,19 @@ export const workbuddySteps: WizardStep[] = [
         type: 'multi-select',
         label: text('基础工具（可多选）'),
         required: true,
-        options: [
-          {
-            value: 'jira',
-            label: text('Jira'),
-            hint: text('同步项目任务、缺陷、负责人和状态变化。'),
-          },
-          {
-            value: 'confluence',
-            label: text('Confluence'),
-            hint: text('读取周报模板、项目文档和会议纪要。'),
-          },
-          {
-            value: 'saleseasy',
-            label: text('销售易'),
-            hint: text('同步客户机会、商务推进和关键客户动态。'),
-          },
-          {
-            value: 'notion',
-            label: text('Notion'),
-            hint: text('读取团队知识库、项目页面和协作文档。'),
-          },
-          {
-            value: 'zentao',
-            label: text('禅道'),
-            hint: text('同步需求、Bug、任务和测试执行状态。'),
-          },
-        ],
+        options: workbuddyBaseSkills,
       },
     ],
   },
   {
     id: 'use-case',
-    title: text('选择用例'),
-    description: text('先从当前已支持的用例中选择一个，确认这次要完成的目标。'),
+    title: text('岗位用例'),
+    description: text('先从当前已支持的岗位用例中选择一个，确认这次要完成的目标。'),
     fields: [
       {
         id: 'useCase',
         type: 'single-select',
-        label: text('选择用例'),
+        label: text('岗位用例'),
         required: true,
         options: [
           {
@@ -224,15 +268,18 @@ export function getCredentialFields(baseSkills: string[]): WizardField[] {
   return baseSkills.flatMap((skill) => credentialFieldMap[skill] ?? [])
 }
 
+export function getAgentLabels(agentApps: string[]): string[] {
+  return agentApps.map(
+    (value) => workbuddyAgentApps.find((option) => option.value === value)?.label['zh-CN'] ?? value
+  )
+}
+
 export function getRoleLabel(value?: string): string {
   return workbuddyRoles.find((role) => role.value === value)?.value ?? '未选择'
 }
 
 export function getBaseSkillLabels(baseSkills: string[]): string[] {
-  const field = workbuddySteps[0]?.fields[0]
-  const options = field?.options ?? []
-
   return baseSkills.map(
-    (value) => options.find((option) => option.value === value)?.label['zh-CN'] ?? value
+    (value) => workbuddyBaseSkills.find((option) => option.value === value)?.label['zh-CN'] ?? value
   )
 }

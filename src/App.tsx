@@ -5,10 +5,11 @@ import { useSkills } from './hooks/useSkills'
 import { useUpdates } from './hooks/useUpdates'
 import { pageCopy, getCopy } from './content/copy'
 import {
+  getAgentLabels,
   getBaseSkillLabels,
   getCredentialFields,
   getRoleLabel,
-  workbuddyRoles,
+  workbuddyAgentApps,
   workbuddySteps,
 } from './content/workbuddy'
 import { getText, isStepComplete, splitAnswerValues, toggleAnswerValue } from './lib/wizard'
@@ -38,9 +39,10 @@ const allCredentialFieldIds = [
 ]
 
 const onboardingMilestones = [
+  'Agent 应用',
   '选择岗位',
   '基础工具',
-  '选择用例',
+  '岗位用例',
   '基础信息来源',
   '用例规则',
   '账号凭证',
@@ -93,6 +95,14 @@ function App() {
   const { hasUpdates, checkUpdates } = useUpdates()
 
   const currentStep = workbuddySteps[currentStepIndex] ?? workbuddySteps[0]
+  const selectedAgentApps = useMemo(
+    () => splitAnswerValues(answers.agentApps),
+    [answers.agentApps]
+  )
+  const selectedAgentLabels = useMemo(
+    () => getAgentLabels(selectedAgentApps),
+    [selectedAgentApps]
+  )
   const selectedBaseSkills = useMemo(
     () => splitAnswerValues(answers.baseSkills),
     [answers.baseSkills]
@@ -277,24 +287,28 @@ function App() {
 
   const canMoveForward =
     view === 'welcome'
-      ? (answers.role ?? '').trim().length > 0
+      ? selectedAgentApps.length > 0
       : view === 'wizard'
         ? wizardStepComplete
         : true
 
   const progressIndex =
-    view === 'welcome' ? 0 : view === 'wizard' ? currentStepIndex + 1 : view === 'result' ? 6 : -1
+    view === 'welcome' ? 0 : view === 'wizard' ? currentStepIndex + 1 : view === 'result' ? 7 : -1
 
   const progressLabel =
     view === 'welcome'
-      ? '1 / 7'
+      ? '1 / 8'
       : view === 'wizard'
-        ? `${currentStepIndex + 2} / 7`
+        ? `${currentStepIndex + 2} / 8`
         : view === 'result'
-          ? '7 / 7'
+          ? '8 / 8'
           : 'Skills'
 
   const demoSummary = [
+    {
+      label: 'Agent 应用',
+      value: joinLabels(selectedAgentLabels),
+    },
     {
       label: '岗位',
       value: getRoleLabel(answers.role),
@@ -304,7 +318,7 @@ function App() {
       value: joinLabels(selectedBaseSkillLabels),
     },
     {
-      label: '选择用例',
+      label: '岗位用例',
       value: answers.useCase || '未选择',
     },
     {
@@ -422,34 +436,34 @@ function App() {
           <article className="panel">
             {view === 'welcome' && (
               <>
-                <span className="panel__eyebrow">Step 1 / 7</span>
-                <h2 className="panel__title">先确认你在团队里的岗位</h2>
+                <span className="panel__eyebrow">Step 1 / 8</span>
+                <h2 className="panel__title">先选择你要使用的 Agent 应用</h2>
                 <p className="panel__body">
-                  这个最小 demo 面向多个岗位，不只项目经理。先选择你的岗位，再逐页收集发送周报所需的基础工具、基础信息来源、用例规则和账号信息。
+                  先勾选你希望接入这套周报引导的 Agent 应用。后面的岗位、基础工具、岗位用例和凭证信息都会基于这套选择继续配置。
                 </p>
 
                 <div className="field-stack">
                   <div className="field">
-                    <label>选择你的岗位</label>
+                    <label>选择 Agent 应用（可多选）</label>
                     <div className="options options--cards">
-                      {workbuddyRoles.map((role) => {
-                        const roleLabel = getText(locale, role.label)
+                      {workbuddyAgentApps.map((agent) => {
+                        const agentLabel = getText(locale, agent.label)
 
                         return (
-                          <label className="field-option" key={role.value}>
+                          <label className="field-option" key={agent.value}>
                             <input
-                              aria-label={roleLabel}
-                              checked={answers.role === role.value}
-                              name="role"
-                              type="radio"
-                              value={role.value}
-                              onChange={(event) => updateDemoAnswer('role', event.target.value)}
+                              aria-label={agentLabel}
+                              checked={selectedAgentApps.includes(agent.value)}
+                              name="agentApps"
+                              type="checkbox"
+                              value={agent.value}
+                              onChange={() => toggleDemoAnswer('agentApps', agent.value)}
                             />
                             <span>
-                              <span>{roleLabel}</span>
-                              {role.hint && (
+                              <span>{agentLabel}</span>
+                              {agent.hint && (
                                 <span className="field-option__hint">
-                                  {getText(locale, role.hint)}
+                                  {getText(locale, agent.hint)}
                                 </span>
                               )}
                             </span>
@@ -482,7 +496,7 @@ function App() {
 
             {view === 'wizard' && (
               <>
-                <span className="panel__eyebrow">{`Step ${currentStepIndex + 2} / 7`}</span>
+                <span className="panel__eyebrow">{`Step ${currentStepIndex + 2} / 8`}</span>
                 <h2 className="panel__title">{getText(locale, currentStep.title)}</h2>
                 <p className="panel__body">{getText(locale, currentStep.description)}</p>
 
@@ -527,10 +541,10 @@ function App() {
 
             {view === 'result' && (
               <>
-                <span className="panel__eyebrow">Step 7 / 7</span>
+                <span className="panel__eyebrow">Step 8 / 8</span>
                 <h2 className="panel__title">设置完成</h2>
                 <p className="panel__body">
-                  现在可以打开 WorkBuddy 来使用发送周报能力。后续接入真实能力时，会按照你刚才确认的基础信息来源、用例规则和账号信息继续完善。
+                  现在可以在你选中的 Agent 应用里继续使用发送周报能力。后续接入真实能力时，会按照你刚才确认的岗位、基础信息来源、用例规则和账号信息继续完善。
                 </p>
 
                 <div className="summary-grid">

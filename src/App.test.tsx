@@ -26,12 +26,20 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 describe('workbuddy weekly report onboarding demo', () => {
-  it('guides a project manager through the 7-page flow and finishes with a completion screen', async () => {
+  it('guides a project manager through the 8-page flow and finishes with a completion screen', async () => {
     const user = userEvent.setup()
 
     render(<App />)
 
-    expect(screen.getByRole('heading', { name: /先确认你在团队里的岗位/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: /先选择你要使用的 Agent 应用/i })
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'WorkBuddy' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Claude Code' }))
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+
+    expect(screen.getByRole('heading', { name: /选择你的岗位/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: '项目经理' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
@@ -45,7 +53,7 @@ describe('workbuddy weekly report onboarding demo', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Notion' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
-    expect(screen.getByRole('heading', { name: /选择用例/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /岗位用例/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: '发送周报' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
@@ -82,8 +90,9 @@ describe('workbuddy weekly report onboarding demo', () => {
 
     expect(screen.getByRole('heading', { name: '设置完成' })).toBeInTheDocument()
     expect(
-      screen.getByText(/现在可以打开 WorkBuddy 来使用发送周报能力。/i)
+      screen.getByText(/现在可以在你选中的 Agent 应用里继续使用发送周报能力。/i)
     ).toBeInTheDocument()
+    expect(screen.getAllByText('WorkBuddy、Claude Code').length).toBeGreaterThan(0)
     expect(screen.getAllByText('项目经理').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Jira、销售易、Notion').length).toBeGreaterThan(0)
   })
@@ -93,6 +102,8 @@ describe('workbuddy weekly report onboarding demo', () => {
 
     render(<App />)
 
+    await user.click(screen.getByRole('checkbox', { name: 'Codex' }))
+    await user.click(screen.getByRole('button', { name: '下一步' }))
     await user.click(screen.getByRole('radio', { name: '项目经理' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
     await user.click(screen.getByRole('checkbox', { name: '禅道' }))
