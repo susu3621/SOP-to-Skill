@@ -98,6 +98,18 @@ pub enum FileFormat {
     Json,
 }
 
+/// Installation strategy for a skill
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum InstallStrategy {
+    TemplateFile,
+    DirectoryPackage,
+}
+
+fn default_install_strategy() -> InstallStrategy {
+    InstallStrategy::TemplateFile
+}
+
 /// GitHub source configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitHubSource {
@@ -125,6 +137,8 @@ pub struct SkillTemplate {
     pub author: Option<String>,
     #[serde(default)]
     pub source: Option<TemplateSource>,
+    #[serde(default = "default_install_strategy")]
+    pub install_strategy: InstallStrategy,
     pub targets: Vec<TargetConfig>,
     #[serde(default)]
     pub variables: Vec<TemplateVariable>,

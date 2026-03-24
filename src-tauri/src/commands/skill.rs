@@ -1,14 +1,14 @@
-use crate::models::{InstalledSkill, SkillError, SkillTemplate, TargetAppId};
+use crate::models::{InstallStrategy, InstalledSkill, SkillError, SkillTemplate, TargetAppId};
 use crate::template::{
-    delete_skill_file, ensure_directories, get_default_variables, get_installed_dir,
-    get_output_path, load_all_templates, load_skill_template, load_template_file,
-    render_template, validate_variables, write_skill_file,
+    copy_directory, delete_skill_path, ensure_directories, get_default_variables,
+    get_installed_dir, get_output_dir, get_output_path, get_skills_dir, load_all_templates,
+    load_skill_template, load_template_file, render_template, validate_variables,
+    write_skill_file,
 };
 use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
-use tauri::State;
+use std::path::{Path, PathBuf};
 use tokio::sync::Mutex;
 
 use crate::models::AppConfig;
@@ -157,6 +157,46 @@ fn get_app_name(app_id: &TargetAppId) -> String {
     }
 }
 
+fn parse_target_app_id(app_id: &str) -> Result<TargetAppId, SkillError> {
+    match app_id {
+        "claude-code" => Ok(TargetAppId::ClaudeCode),
+        "codex" => Ok(TargetAppId::Codex),
+        "workbuddy" => Ok(TargetAppId::WorkBuddy),
+        _ => Err(SkillError::TemplateNotFound(format!("Unknown app: {}", app_id))),
+    }
+}
+
+fn path_for_template(path: &Path) -> String {
+    path.to_string_lossy().replace('\\', "/")
+}
+
+fn install_directory_package(
+    source_dir: &Path,
+    output_dir: &Path,
+    variables: &HashMap<String, String>,
+) -> Result<(), SkillError> {
+    if output_dir.exists() {
+        delete_skill_path(output_dir)?;
+    }
+
+    copy_directory(source_dir, output_dir)?;
+
+    let skill_markdown = output_dir.join("SKILL.md");
+    let content = fs::read_to_string(&skill_markdown)?;
+
+    let mut rendered_vars = variables.clone();
+    rendered_vars.insert("skill_dir".to_string(), path_for_template(output_dir));
+    rendered_vars.insert(
+        "script_dir".to_string(),
+        path_for_template(&output_dir.join("scripts")),
+    );
+
+    let rendered = render_template(&content, &rendered_vars)?;
+    write_skill_file(&skill_markdown, &rendered)?;
+
+    Ok(())
+}
+
 /// Load installed skill metadata
 fn load_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Option<InstalledSkill> {
     let installed_dir = get_installed_dir().join(app_id.as_str());
@@ -257,12 +297,7 @@ pub async fn install_skill(
         ensure_directories()?;
 
         // Parse app ID
-        let target_app_id = match app_id.as_str() {
-            "claude-code" => TargetAppId::ClaudeCode,
-            "codex" => TargetAppId::Codex,
-            "workbuddy" => TargetAppId::WorkBuddy,
-            _ => return Err(SkillError::TemplateNotFound(format!("Unknown app: {}", app_id))),
-        };
+        let target_app_id = parse_target_app_id(&app_id)?;
 
         // Load template
         let template = load_skill_template(&skill_id)?;
@@ -288,13 +323,21 @@ pub async fn install_skill(
         final_vars.insert("skillId".to_string(), skill_id.clone());
         final_vars.insert("skillVersion".to_string(), template.version.clone());
 
-        // Load and render template
-        let template_content = load_template_file(&skill_id, &target.template_file)?;
-        let rendered = render_template(&template_content, &final_vars)?;
-
-        // Write output file
-        let output_path = get_output_path(&target_app_id, &skill_id);
-        write_skill_file(&output_path, &rendered)?;
+        let output_path = match template.install_strategy {
+            InstallStrategy::TemplateFile => {
+                let template_content = load_template_file(&skill_id, &target.template_file)?;
+                let rendered = render_template(&template_content, &final_vars)?;
+                let output_path = get_output_path(&target_app_id, &skill_id);
+                write_skill_file(&output_path, &rendered)?;
+                output_path
+            }
+            InstallStrategy::DirectoryPackage => {
+                let source_dir = get_skills_dir().join(&skill_id);
+                let output_dir = get_output_dir(&target_app_id, &skill_id);
+                install_directory_package(&source_dir, &output_dir, &final_vars)?;
+                output_dir
+            }
+        };
 
         // Save installation metadata
         let installed = InstalledSkill {
@@ -328,12 +371,7 @@ pub async fn uninstall_skill(skill_id: String, app_id: String) -> SkillResult<()
         ensure_directories()?;
 
         // Parse app ID
-        let target_app_id = match app_id.as_str() {
-            "claude-code" => TargetAppId::ClaudeCode,
-            "codex" => TargetAppId::Codex,
-            "workbuddy" => TargetAppId::WorkBuddy,
-            _ => return Err(SkillError::TemplateNotFound(format!("Unknown app: {}", app_id))),
-        };
+        let target_app_id = parse_target_app_id(&app_id)?;
 
         // Check if installed
         let installed = load_installed_skill(&skill_id, &target_app_id)
@@ -341,7 +379,7 @@ pub async fn uninstall_skill(skill_id: String, app_id: String) -> SkillResult<()
 
         // Delete output file
         let output_path = PathBuf::from(&installed.output_path);
-        delete_skill_file(&output_path)?;
+        delete_skill_path(&output_path)?;
 
         // Delete metadata
         delete_installed_skill(&skill_id, &target_app_id)?;
@@ -439,4 +477,42 @@ pub struct TargetAppInfo {
     pub name: String,
     pub description: String,
     pub status: String,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("skill-configurator-{prefix}-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
+
+    #[test]
+    fn install_directory_package_copies_scripts_and_renders_paths() {
+        let source_dir = temp_dir("install-package-source");
+        let output_dir = temp_dir("install-package-output");
+
+        fs::create_dir_all(source_dir.join("scripts")).unwrap();
+        fs::write(
+            source_dir.join("SKILL.md"),
+            "Search: {{script_dir}}/search_jira.py\nRoot: {{skill_dir}}\n",
+        )
+        .unwrap();
+        fs::write(source_dir.join("scripts/search_jira.py"), "print('ok')").unwrap();
+
+        let variables = HashMap::new();
+        install_directory_package(&source_dir, &output_dir, &variables).unwrap();
+
+        let rendered = fs::read_to_string(output_dir.join("SKILL.md")).unwrap();
+        assert!(rendered.contains("scripts/search_jira.py"));
+        assert!(rendered.contains(output_dir.to_string_lossy().as_ref()));
+        assert!(output_dir.join("scripts/search_jira.py").exists());
+    }
 }

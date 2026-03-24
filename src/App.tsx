@@ -20,6 +20,11 @@ import './styles.css'
 
 const locale = 'zh-CN' as const
 
+function formatVersionLabel(version?: string) {
+  if (!version) return '-'
+  return version === 'local' ? '本地包' : `v${version}`
+}
+
 function App() {
   // State
   const [view, setView] = useState<ViewType>('welcome')
@@ -307,7 +312,7 @@ function App() {
                       <h3>{skill.name['zh-CN'] || skill.id}</h3>
                       <p>{skill.description?.['zh-CN'] || '暂无描述'}</p>
                       <div className="skill-meta">
-                        <span>v{skill.version}</span>
+                        <span>{formatVersionLabel(skill.version)}</span>
                         <span>{skill.targets.join(', ')}</span>
                       </div>
                     </section>
@@ -316,7 +321,7 @@ function App() {
 
                 {skills.length === 0 && !loading && (
                   <p className="muted">
-                    暂无可用 Skills。请将 Skill 模板添加到数据目录。
+                    暂无可用 Skills。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。
                   </p>
                 )}
 
@@ -342,7 +347,7 @@ function App() {
                 <div className="detail-grid">
                   <div>
                     <strong>版本</strong>
-                    <p>{selectedSkill.version}</p>
+                    <p>{formatVersionLabel(selectedSkill.version)}</p>
                   </div>
                   <div>
                     <strong>作者</strong>
@@ -356,7 +361,7 @@ function App() {
                     <strong>状态</strong>
                     <p>
                       {selectedSkill.is_installed
-                        ? `已安装 (v${selectedSkill.installed_version})`
+                        ? `已安装 (${formatVersionLabel(selectedSkill.installed_version)})`
                         : '未安装'}
                     </p>
                   </div>
@@ -498,7 +503,7 @@ function App() {
                           </section>
                           <section className="summary-card">
                             <h3>版本</h3>
-                            <p>{selectedSkill.version}</p>
+                            <p>{formatVersionLabel(selectedSkill.version)}</p>
                           </section>
                         </div>
 
@@ -583,7 +588,7 @@ function App() {
                         <div>
                           <h3>{skill.skill_id}</h3>
                           <p className="muted">
-                            {skill.app_name} · v{skill.installed_version}
+                            {skill.app_name} · {formatVersionLabel(skill.installed_version)}
                           </p>
                           <p className="muted" style={{ fontSize: '0.8rem' }}>
                             {skill.output_path}

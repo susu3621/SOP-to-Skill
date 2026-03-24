@@ -3,7 +3,7 @@ use handlebars::Handlebars;
 use serde_json::{json, Value as JsonValue};
 use std::collections::HashMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Expand path with ~ and environment variables
 pub fn expand_path(path: &str) -> String {
@@ -83,6 +83,19 @@ pub fn get_output_path(app_id: &TargetAppId, skill_id: &str) -> PathBuf {
     PathBuf::from(expand_path(&path_template))
 }
 
+/// Get the output directory for a packaged skill installation
+pub fn get_output_dir(app_id: &TargetAppId, skill_id: &str) -> PathBuf {
+    let path_template = match app_id {
+        TargetAppId::ClaudeCode => format!("~/.claude/skills/{}", skill_id),
+        TargetAppId::Codex => format!("~/.codex/skills/{}", skill_id),
+        TargetAppId::WorkBuddy => {
+            format!("~/Library/Application Support/WorkBuddy/skills/{}", skill_id)
+        }
+    };
+
+    PathBuf::from(expand_path(&path_template))
+}
+
 /// Write rendered content to the target file
 pub fn write_skill_file(
     output_path: &PathBuf,
@@ -110,17 +123,71 @@ pub fn write_skill_file(
 
 /// Delete a skill file
 pub fn delete_skill_file(output_path: &PathBuf) -> Result<(), SkillError> {
+    delete_skill_path(output_path)
+}
+
+/// Delete a skill path, whether it is a file or a directory
+pub fn delete_skill_path(output_path: &Path) -> Result<(), SkillError> {
     if output_path.exists() {
-        fs::remove_file(output_path).map_err(|e| {
-            SkillError::WriteError(format!("Failed to delete file {:?}: {}", output_path, e))
-        })?;
+        if output_path.is_dir() {
+            fs::remove_dir_all(output_path).map_err(|e| {
+                SkillError::WriteError(format!(
+                    "Failed to delete directory {:?}: {}",
+                    output_path, e
+                ))
+            })?;
+        } else {
+            fs::remove_file(output_path).map_err(|e| {
+                SkillError::WriteError(format!("Failed to delete file {:?}: {}", output_path, e))
+            })?;
+        }
     }
+    Ok(())
+}
+
+/// Recursively copy a skill directory into the installation location
+pub fn copy_directory(source_dir: &Path, output_dir: &Path) -> Result<(), SkillError> {
+    fs::create_dir_all(output_dir).map_err(|e| {
+        SkillError::WriteError(format!(
+            "Failed to create directory {:?}: {}",
+            output_dir, e
+        ))
+    })?;
+
+    for entry in fs::read_dir(source_dir).map_err(SkillError::LoadError)? {
+        let entry = entry.map_err(SkillError::LoadError)?;
+        let source_path = entry.path();
+        let destination_path = output_dir.join(entry.file_name());
+
+        if source_path.is_dir() {
+            copy_directory(&source_path, &destination_path)?;
+        } else {
+            fs::copy(&source_path, &destination_path).map_err(|e| {
+                SkillError::WriteError(format!(
+                    "Failed to copy file {:?} to {:?}: {}",
+                    source_path, destination_path, e
+                ))
+            })?;
+        }
+    }
+
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("skill-configurator-{prefix}-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
 
     #[test]
     fn test_expand_path() {
@@ -146,5 +213,30 @@ mod tests {
 
         let result = render_template(template, &vars);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_copy_directory_copies_nested_files() {
+        let source_dir = temp_dir("renderer-copy-source");
+        let output_dir = temp_dir("renderer-copy-output");
+
+        fs::create_dir_all(source_dir.join("scripts")).unwrap();
+        fs::write(source_dir.join("SKILL.md"), "# Jira").unwrap();
+        fs::write(source_dir.join("scripts/search_jira.py"), "print('ok')").unwrap();
+
+        copy_directory(&source_dir, &output_dir).unwrap();
+
+        assert!(output_dir.join("SKILL.md").exists());
+        assert!(output_dir.join("scripts/search_jira.py").exists());
+    }
+
+    #[test]
+    fn test_delete_skill_path_removes_directory() {
+        let output_dir = temp_dir("renderer-delete-dir");
+        fs::write(output_dir.join("SKILL.md"), "# Jira").unwrap();
+
+        delete_skill_path(&output_dir).unwrap();
+
+        assert!(!output_dir.exists());
     }
 }
