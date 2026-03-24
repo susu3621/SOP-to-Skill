@@ -4,12 +4,12 @@ export const defaultLocale: Locale = 'zh-CN'
 
 export const pageCopy = {
   appTitle: {
-    'zh-CN': 'WorkBuddy',
-    'en-US': 'WorkBuddy'
+    'zh-CN': 'AI 时代先受益的，是每天被重复工作困住的人。',
+    'en-US': 'The first people to benefit from AI are those trapped by repetitive work every day.'
   },
   appSubtitle: {
-    'zh-CN': '项目周报发送引导 Demo',
-    'en-US': 'Weekly report onboarding demo'
+    'zh-CN': '给普通员工的 AI 工作方式邀请',
+    'en-US': 'AI Workstyle Invitation'
   },
   heroTitle: {
     'zh-CN': '把周报准备过程拆成一步一步的问题',
@@ -17,9 +17,9 @@ export const pageCopy = {
   },
   heroBody: {
     'zh-CN':
-      '这版只验证问答界面和页面节奏，先帮项目经理把发送周报前的准备条件梳理清楚。',
+      '如果你是传统公司里的普通员工，AI 最先带来的不是遥远的组织战略，而是更少的重复劳动、更轻的沟通压力、和更快把事情做成的能力。',
     'en-US':
-      'This version focuses on the onboarding flow and helps a project manager prepare the inputs needed for weekly reporting.'
+      'If you work in a traditional company, the first thing AI changes is not abstract strategy. It is less repetitive labor, lighter communication pressure, and faster execution.'
   },
   startButton: {
     'zh-CN': '开始配置',

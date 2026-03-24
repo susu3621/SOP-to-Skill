@@ -14,14 +14,29 @@ export const workbuddyRoles: WizardOption[] = [
     hint: text('需要串联项目状态、风险、进度和跨团队同步。'),
   },
   {
-    value: '交付负责人',
-    label: text('交付负责人'),
-    hint: text('更关注里程碑、客户节奏和交付承诺。'),
+    value: '产品经理',
+    label: text('产品经理'),
+    hint: text('更关注需求变更、版本范围和关键里程碑。'),
   },
   {
-    value: '研发负责人',
-    label: text('研发负责人'),
+    value: '质量经理',
+    label: text('质量经理'),
+    hint: text('更关注质量风险、测试闭环和过程规范。'),
+  },
+  {
+    value: '研发经理',
+    label: text('研发经理'),
     hint: text('更关注研发进展、资源投入和风险暴露。'),
+  },
+  {
+    value: '销售经理',
+    label: text('销售经理'),
+    hint: text('更关注客户机会、商务节奏和项目推进状态。'),
+  },
+  {
+    value: '交付经理',
+    label: text('交付经理'),
+    hint: text('更关注交付节奏、上线问题和跨团队协同闭环。'),
   },
 ]
 
@@ -34,7 +49,7 @@ export const workbuddySteps: WizardStep[] = [
       {
         id: 'baseSkills',
         type: 'multi-select',
-        label: text('基础设施 / Skills'),
+        label: text('基础工具（可多选）'),
         required: true,
         options: [
           {
@@ -47,19 +62,34 @@ export const workbuddySteps: WizardStep[] = [
             label: text('Confluence'),
             hint: text('读取周报模板、项目文档和会议纪要。'),
           },
+          {
+            value: 'saleseasy',
+            label: text('销售易'),
+            hint: text('同步客户机会、商务推进和关键客户动态。'),
+          },
+          {
+            value: 'notion',
+            label: text('Notion'),
+            hint: text('读取团队知识库、项目页面和协作文档。'),
+          },
+          {
+            value: 'zentao',
+            label: text('禅道'),
+            hint: text('同步需求、Bug、任务和测试执行状态。'),
+          },
         ],
       },
     ],
   },
   {
     id: 'use-case',
-    title: text('目前已支持的用例'),
-    description: text('首版只聚焦一个最小闭环，用来确认问答流程是否合理。'),
+    title: text('选择用例'),
+    description: text('先从当前已支持的用例中选择一个，确认这次要完成的目标。'),
     fields: [
       {
         id: 'useCase',
         type: 'single-select',
-        label: text('已支持用例'),
+        label: text('选择用例'),
         required: true,
         options: [
           {
@@ -73,27 +103,27 @@ export const workbuddySteps: WizardStep[] = [
   },
   {
     id: 'project-source',
-    title: text('项目清单从哪里来'),
-    description: text('请提供一个可用链接，后续会作为 WorkBuddy 读取项目范围的入口。'),
+    title: text('基础信息来源'),
+    description: text('请用文本框写下你依赖的基础信息来源，可以是系统名称、页面链接、文档位置或补充说明。'),
     fields: [
       {
-        id: 'projectSourceUrl',
-        type: 'url',
-        label: text('项目清单来源链接'),
-        placeholder: text('https://pm.example.com/projects'),
+        id: 'infoSources',
+        type: 'textarea',
+        label: text('基础信息来源'),
+        placeholder: text('例如：Jira 项目看板、Confluence 项目主页、销售易商机页、例会纪要目录。'),
         required: true,
       },
     ],
   },
   {
     id: 'weekly-rules',
-    title: text('周报有哪些公司规则'),
-    description: text('如果公司对周报格式、语气、章节或汇报对象有要求，可以先写在这里。'),
+    title: text('用例规则'),
+    description: text('如果这个用例在公司内部有模板、规则、语气或输出要求，可以先写在这里。'),
     fields: [
       {
         id: 'reportRules',
         type: 'textarea',
-        label: text('周报规则或模板'),
+        label: text('用例规则或模板'),
         placeholder: text('例如：采用固定模板，先风险后里程碑，没有更新也要写明阻塞项。'),
         required: false,
       },
@@ -137,6 +167,54 @@ const credentialFieldMap: Record<string, WizardField[]> = {
       type: 'password',
       label: text('Confluence 密码 / API Token'),
       placeholder: text('输入 Confluence 密码或 API Token'),
+      required: true,
+    },
+  ],
+  saleseasy: [
+    {
+      id: 'saleseasyUsername',
+      type: 'text',
+      label: text('销售易 用户名'),
+      placeholder: text('your.name@example.com'),
+      required: true,
+    },
+    {
+      id: 'saleseasyPassword',
+      type: 'password',
+      label: text('销售易 密码'),
+      placeholder: text('输入销售易密码'),
+      required: true,
+    },
+  ],
+  notion: [
+    {
+      id: 'notionUsername',
+      type: 'text',
+      label: text('Notion 用户邮箱'),
+      placeholder: text('your.name@example.com'),
+      required: true,
+    },
+    {
+      id: 'notionPassword',
+      type: 'password',
+      label: text('Notion 密码 / Integration Token'),
+      placeholder: text('输入 Notion 密码或集成令牌'),
+      required: true,
+    },
+  ],
+  zentao: [
+    {
+      id: 'zentaoUsername',
+      type: 'text',
+      label: text('禅道 用户名'),
+      placeholder: text('your-account'),
+      required: true,
+    },
+    {
+      id: 'zentaoPassword',
+      type: 'password',
+      label: text('禅道 密码'),
+      placeholder: text('输入禅道密码'),
       required: true,
     },
   ],

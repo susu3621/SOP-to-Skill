@@ -57,9 +57,10 @@ textarea {
 .masthead__title {
   margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  font-size: clamp(2.8rem, 5vw, 4.4rem);
+  font-size: clamp(2.1rem, calc(1.2rem + 1.5vw), 2.6rem);
   line-height: 0.94;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
 }
 
 .masthead__subtitle {
@@ -83,8 +84,8 @@ textarea {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.9fr);
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 20px;
 }
 
 .panel,
@@ -237,7 +238,7 @@ textarea {
   font-weight: 600;
 }
 
-.field input {
+.field > input {
   width: 100%;
   padding: 14px 16px;
   border-radius: 18px;
@@ -246,7 +247,7 @@ textarea {
   color: #163029;
 }
 
-.field textarea {
+.field > textarea {
   width: 100%;
   min-height: 152px;
   padding: 14px 16px;
@@ -262,38 +263,63 @@ textarea {
   gap: 12px;
 }
 
+.options--cards {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
 .field-option {
+  position: relative;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr;
+  gap: 10px;
   align-items: start;
-  padding: 14px 16px;
+  min-height: 124px;
+  padding: 18px 18px 16px;
   border-radius: 20px;
   border: 1px solid rgba(22, 48, 41, 0.12);
   background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  transition: border-color 140ms ease, background 140ms ease;
+  transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
 }
 
 .field-option:hover {
   border-color: rgba(20, 94, 83, 0.28);
   background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(74, 49, 30, 0.08);
 }
 
 .field-option input {
-  margin-top: 3px;
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.field-option > span {
+  display: grid;
+  gap: 8px;
+  padding-right: 28px;
+}
+
+.field-option > span > span:first-child {
+  font-weight: 600;
+  color: #163029;
 }
 
 .sidecard {
-  padding: 24px;
+  padding: 14px;
   display: grid;
-  gap: 16px;
+  gap: 10px;
   align-content: start;
 }
 
 .sidecard h2 {
   margin: 0;
-  font-size: 1.2rem;
+  font-size: 0.92rem;
+  line-height: 1.2;
 }
 
 .sidecard ul {
@@ -431,8 +457,8 @@ textarea {
 }
 
 .progress-label {
-  margin: 6px 0 12px;
-  font-size: 0.9rem;
+  margin: 4px 0 8px;
+  font-size: 0.8rem;
   color: rgba(22, 48, 41, 0.62);
 }
 
@@ -442,10 +468,12 @@ textarea {
 }
 
 .progress-item {
-  padding: 10px 12px;
-  border-radius: 14px;
+  padding: 8px 9px;
+  border-radius: 12px;
   background: rgba(22, 48, 41, 0.05);
   color: rgba(22, 48, 41, 0.62);
+  font-size: 0.8rem;
+  line-height: 1.25;
 }
 
 .progress-item[data-state='done'] {
@@ -461,21 +489,36 @@ textarea {
 
 .mini-summary {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .mini-summary__row {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .mini-summary__row span {
-  font-size: 0.85rem;
+  font-size: 0.76rem;
   color: rgba(22, 48, 41, 0.62);
 }
 
 .mini-summary__row strong {
   color: #163029;
+  font-size: 0.84rem;
+}
+
+.sidecard .summary-card {
+  padding: 12px;
+  border-radius: 16px;
+}
+
+.sidecard .summary-card h3 {
+  font-size: 0.9rem;
+}
+
+.sidecard .muted {
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
 @media (max-width: 900px) {

@@ -29,14 +29,20 @@ const allCredentialFieldIds = [
   'jiraPassword',
   'confluenceUsername',
   'confluencePassword',
+  'saleseasyUsername',
+  'saleseasyPassword',
+  'notionUsername',
+  'notionPassword',
+  'zentaoUsername',
+  'zentaoPassword',
 ]
 
 const onboardingMilestones = [
   '选择岗位',
   '基础工具',
-  '发送周报',
-  '项目来源',
-  '周报规则',
+  '选择用例',
+  '基础信息来源',
+  '用例规则',
   '账号凭证',
   '设置完成',
 ]
@@ -298,15 +304,15 @@ function App() {
       value: joinLabels(selectedBaseSkillLabels),
     },
     {
-      label: '已支持用例',
+      label: '选择用例',
       value: answers.useCase || '未选择',
     },
     {
-      label: '项目清单来源',
-      value: answers.projectSourceUrl || '未提供',
+      label: '基础信息来源',
+      value: answers.infoSources || '未提供',
     },
     {
-      label: '周报规则',
+      label: '用例规则',
       value: answers.reportRules || '未提供',
     },
   ]
@@ -314,24 +320,29 @@ function App() {
   const renderField = (field: WizardField) => {
     if (field.type === 'single-select' && field.options) {
       return (
-        <div className="options">
-          {field.options.map((option) => (
-            <label className="field-option" key={option.value}>
-              <input
-                checked={answers[field.id] === option.value}
-                name={field.id}
-                type="radio"
-                value={option.value}
-                onChange={(event) => updateDemoAnswer(field.id, event.target.value)}
-              />
-              <span>
-                <span>{getText(locale, option.label)}</span>
-                {option.hint && (
-                  <span className="field-option__hint">{getText(locale, option.hint)}</span>
-                )}
-              </span>
-            </label>
-          ))}
+        <div className="options options--cards">
+          {field.options.map((option) => {
+            const optionLabel = getText(locale, option.label)
+
+            return (
+              <label className="field-option" key={option.value}>
+                <input
+                  aria-label={optionLabel}
+                  checked={answers[field.id] === option.value}
+                  name={field.id}
+                  type="radio"
+                  value={option.value}
+                  onChange={(event) => updateDemoAnswer(field.id, event.target.value)}
+                />
+                <span>
+                  <span>{optionLabel}</span>
+                  {option.hint && (
+                    <span className="field-option__hint">{getText(locale, option.hint)}</span>
+                  )}
+                </span>
+              </label>
+            )
+          })}
         </div>
       )
     }
@@ -340,24 +351,29 @@ function App() {
       const selectedValues = splitAnswerValues(answers[field.id])
 
       return (
-        <div className="options">
-          {field.options.map((option) => (
-            <label className="field-option" key={option.value}>
-              <input
-                checked={selectedValues.includes(option.value)}
-                name={field.id}
-                type="checkbox"
-                value={option.value}
-                onChange={() => toggleDemoAnswer(field.id, option.value)}
-              />
-              <span>
-                <span>{getText(locale, option.label)}</span>
-                {option.hint && (
-                  <span className="field-option__hint">{getText(locale, option.hint)}</span>
-                )}
-              </span>
-            </label>
-          ))}
+        <div className="options options--cards">
+          {field.options.map((option) => {
+            const optionLabel = getText(locale, option.label)
+
+            return (
+              <label className="field-option" key={option.value}>
+                <input
+                  aria-label={optionLabel}
+                  checked={selectedValues.includes(option.value)}
+                  name={field.id}
+                  type="checkbox"
+                  value={option.value}
+                  onChange={() => toggleDemoAnswer(field.id, option.value)}
+                />
+                <span>
+                  <span>{optionLabel}</span>
+                  {option.hint && (
+                    <span className="field-option__hint">{getText(locale, option.hint)}</span>
+                  )}
+                </span>
+              </label>
+            )
+          })}
         </div>
       )
     }
@@ -407,34 +423,39 @@ function App() {
             {view === 'welcome' && (
               <>
                 <span className="panel__eyebrow">Step 1 / 7</span>
-                <h2 className="panel__title">给项目经理的周报准备助手</h2>
+                <h2 className="panel__title">先确认你在团队里的岗位</h2>
                 <p className="panel__body">
-                  这个最小 demo 只验证引导页面，不会真实连接系统或保存密码。我们先确认你的岗位，再逐页收集发送周报需要的基础工具、项目清单来源、规则和账号信息。
+                  这个最小 demo 面向多个岗位，不只项目经理。先选择你的岗位，再逐页收集发送周报所需的基础工具、基础信息来源、用例规则和账号信息。
                 </p>
 
                 <div className="field-stack">
                   <div className="field">
-                    <label>你的岗位</label>
-                    <div className="options">
-                      {workbuddyRoles.map((role) => (
-                        <label className="field-option" key={role.value}>
-                          <input
-                            checked={answers.role === role.value}
-                            name="role"
-                            type="radio"
-                            value={role.value}
-                            onChange={(event) => updateDemoAnswer('role', event.target.value)}
-                          />
-                          <span>
-                            <span>{getText(locale, role.label)}</span>
-                            {role.hint && (
-                              <span className="field-option__hint">
-                                {getText(locale, role.hint)}
-                              </span>
-                            )}
-                          </span>
-                        </label>
-                      ))}
+                    <label>选择你的岗位</label>
+                    <div className="options options--cards">
+                      {workbuddyRoles.map((role) => {
+                        const roleLabel = getText(locale, role.label)
+
+                        return (
+                          <label className="field-option" key={role.value}>
+                            <input
+                              aria-label={roleLabel}
+                              checked={answers.role === role.value}
+                              name="role"
+                              type="radio"
+                              value={role.value}
+                              onChange={(event) => updateDemoAnswer('role', event.target.value)}
+                            />
+                            <span>
+                              <span>{roleLabel}</span>
+                              {role.hint && (
+                                <span className="field-option__hint">
+                                  {getText(locale, role.hint)}
+                                </span>
+                              )}
+                            </span>
+                          </label>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
@@ -447,13 +468,6 @@ function App() {
                     disabled={!canMoveForward}
                   >
                     {getCopy(locale, pageCopy.next)}
-                  </button>
-                  <button
-                    className="button--ghost"
-                    type="button"
-                    onClick={() => setView('skills-list')}
-                  >
-                    浏览 Skills 库
                   </button>
                   <button
                     className="button--ghost"
@@ -516,7 +530,7 @@ function App() {
                 <span className="panel__eyebrow">Step 7 / 7</span>
                 <h2 className="panel__title">设置完成</h2>
                 <p className="panel__body">
-                  现在可以打开 WorkBuddy 来使用发送周报能力。后续接入真实能力时，会按照你刚才确认的资料来源、周报规则和账号信息继续完善。
+                  现在可以打开 WorkBuddy 来使用发送周报能力。后续接入真实能力时，会按照你刚才确认的基础信息来源、用例规则和账号信息继续完善。
                 </p>
 
                 <div className="summary-grid">
