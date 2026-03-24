@@ -21,8 +21,7 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, Box<dyn std
 pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
     let menu = build_tray(app)?;
 
-    let _tray = TrayIconBuilder::new()
-        .icon(app.default_window_icon().unwrap().clone())
+    let mut tray = TrayIconBuilder::new()
         .menu(&menu)
         .show_menu_on_left_click(true)
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -54,8 +53,15 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::err
                 app.exit(0);
             }
             _ => {}
-        })
-        .build(app)?;
+        });
+
+    if let Some(icon) = app.default_window_icon() {
+        tray = tray.icon(icon.clone());
+    } else {
+        tracing::warn!("Default window icon not available; building tray without custom icon");
+    }
+
+    let _tray = tray.build(app)?;
 
     Ok(())
 }

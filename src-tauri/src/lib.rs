@@ -33,11 +33,6 @@ pub fn run() {
                 tracing::error!("Failed to create directories: {}", e);
             }
 
-            // Hide window on startup (tray-only mode)
-            if let Some(window) = app.get_webview_window("main") {
-                window.hide().ok();
-            }
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

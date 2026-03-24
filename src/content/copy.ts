@@ -4,22 +4,22 @@ export const defaultLocale: Locale = 'zh-CN'
 
 export const pageCopy = {
   appTitle: {
-    'zh-CN': 'Skill Configurator',
-    'en-US': 'Skill Configurator'
+    'zh-CN': 'WorkBuddy',
+    'en-US': 'WorkBuddy'
   },
   appSubtitle: {
-    'zh-CN': '给普通用户的 skill 配置引导器骨架',
-    'en-US': 'A guided skill setup shell for everyday users'
+    'zh-CN': '项目周报发送引导 Demo',
+    'en-US': 'Weekly report onboarding demo'
   },
   heroTitle: {
-    'zh-CN': '把复杂配置拆成一步一步的问题',
-    'en-US': 'Turn skill setup into a guided conversation'
+    'zh-CN': '把周报准备过程拆成一步一步的问题',
+    'en-US': 'Turn weekly report setup into a guided conversation'
   },
   heroBody: {
     'zh-CN':
-      '首版聚焦 WorkBuddy，先把桌面界面、编译链路和未来多工具扩展骨架搭起来。',
+      '这版只验证问答界面和页面节奏，先帮项目经理把发送周报前的准备条件梳理清楚。',
     'en-US':
-      'Version one focuses on WorkBuddy and establishes the desktop UI, build chain, and extension points for future tools.'
+      'This version focuses on the onboarding flow and helps a project manager prepare the inputs needed for weekly reporting.'
   },
   startButton: {
     'zh-CN': '开始配置',
@@ -35,8 +35,8 @@ export const pageCopy = {
       'This release only opens the WorkBuddy path while the others stay visible as future integrations.'
   },
   wizardTitle: {
-    'zh-CN': 'WorkBuddy 配置向导',
-    'en-US': 'WorkBuddy setup wizard'
+    'zh-CN': 'WorkBuddy 周报发送引导',
+    'en-US': 'WorkBuddy weekly report onboarding'
   },
   summaryTitle: {
     'zh-CN': '配置摘要',
@@ -94,8 +94,8 @@ export const pageCopy = {
     'en-US': 'Planned output locations'
   },
   localeTag: {
-    'zh-CN': '默认中文，已预留双语结构',
-    'en-US': 'Chinese default with bilingual structure ready'
+    'zh-CN': '界面 Demo，暂不接入真实发送能力',
+    'en-US': 'UI demo only, no live send capability yet'
   }
 } satisfies Record<string, LocalizedText>
 

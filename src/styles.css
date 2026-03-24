@@ -29,7 +29,8 @@ body {
 }
 
 button,
-input {
+input,
+textarea {
   font: inherit;
 }
 
@@ -74,6 +75,10 @@ input {
   border-radius: 999px;
   background: rgba(255, 252, 247, 0.85);
   font-size: 0.92rem;
+}
+
+.tag--button {
+  cursor: pointer;
 }
 
 .layout {
@@ -241,6 +246,17 @@ input {
   color: #163029;
 }
 
+.field textarea {
+  width: 100%;
+  min-height: 152px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 48, 41, 0.16);
+  background: rgba(255, 255, 255, 0.8);
+  color: #163029;
+  resize: vertical;
+}
+
 .options {
   display: grid;
   gap: 12px;
@@ -303,6 +319,15 @@ input {
 
 .muted {
   color: rgba(22, 48, 41, 0.62);
+}
+
+.hint-callout {
+  margin: 0;
+  padding: 14px 16px;
+  border-left: 4px solid rgba(20, 94, 83, 0.42);
+  border-radius: 16px;
+  background: rgba(20, 94, 83, 0.08);
+  color: rgba(22, 48, 41, 0.78);
 }
 
 /* New styles for Skill Template System */
@@ -403,6 +428,54 @@ input {
   background: rgba(231, 76, 60, 0.1);
   padding: 12px 16px;
   border-radius: 12px;
+}
+
+.progress-label {
+  margin: 6px 0 12px;
+  font-size: 0.9rem;
+  color: rgba(22, 48, 41, 0.62);
+}
+
+.progress-list {
+  display: grid;
+  gap: 10px;
+}
+
+.progress-item {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(22, 48, 41, 0.05);
+  color: rgba(22, 48, 41, 0.62);
+}
+
+.progress-item[data-state='done'] {
+  background: rgba(20, 94, 83, 0.1);
+  color: #145e53;
+}
+
+.progress-item[data-state='active'] {
+  background: linear-gradient(135deg, rgba(29, 125, 109, 0.16), rgba(204, 109, 41, 0.12));
+  color: #163029;
+  font-weight: 600;
+}
+
+.mini-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.mini-summary__row {
+  display: grid;
+  gap: 6px;
+}
+
+.mini-summary__row span {
+  font-size: 0.85rem;
+  color: rgba(22, 48, 41, 0.62);
+}
+
+.mini-summary__row strong {
+  color: #163029;
 }
 
 @media (max-width: 900px) {

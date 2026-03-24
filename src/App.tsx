@@ -1,32 +1,69 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { useSkills, useLocale } from './hooks/useSkills'
+import { useSkills } from './hooks/useSkills'
 import { useUpdates } from './hooks/useUpdates'
 import { pageCopy, getCopy } from './content/copy'
-import { targetApps } from './content/apps'
-import { workbuddySteps } from './content/workbuddy'
-import { getText, isStepComplete } from './lib/wizard'
+import {
+  getBaseSkillLabels,
+  getCredentialFields,
+  getRoleLabel,
+  workbuddyRoles,
+  workbuddySteps,
+} from './content/workbuddy'
+import { getText, isStepComplete, splitAnswerValues, toggleAnswerValue } from './lib/wizard'
 import type {
-  ViewType,
-  SkillInfo,
   InstalledSkillInfo,
   InstallWizardState,
-  TargetAppId,
+  SkillInfo,
+  ViewType,
   WizardAnswers,
-  VariableInfo,
+  WizardField,
 } from './types'
 import './styles.css'
 
 const locale = 'zh-CN' as const
+
+const allCredentialFieldIds = [
+  'jiraUsername',
+  'jiraPassword',
+  'confluenceUsername',
+  'confluencePassword',
+]
+
+const onboardingMilestones = [
+  '选择岗位',
+  '基础工具',
+  '发送周报',
+  '项目来源',
+  '周报规则',
+  '账号凭证',
+  '设置完成',
+]
 
 function formatVersionLabel(version?: string) {
   if (!version) return '-'
   return version === 'local' ? '本地包' : `v${version}`
 }
 
+function joinLabels(labels: string[]) {
+  return labels.length > 0 ? labels.join('、') : '未选择'
+}
+
+function pruneCredentialAnswers(
+  nextAnswers: WizardAnswers,
+  selectedBaseSkills: string[]
+): WizardAnswers {
+  const allowedIds = new Set(getCredentialFields(selectedBaseSkills).map((field) => field.id))
+
+  return Object.fromEntries(
+    Object.entries(nextAnswers).filter(
+      ([key]) => !allCredentialFieldIds.includes(key) || allowedIds.has(key)
+    )
+  )
+}
+
 function App() {
-  // State
   const [view, setView] = useState<ViewType>('welcome')
   const [selectedSkill, setSelectedSkill] = useState<SkillInfo | null>(null)
   const [wizardState, setWizardState] = useState<InstallWizardState | null>(null)
@@ -38,7 +75,6 @@ function App() {
     message?: string
   } | null>(null)
 
-  // Hooks
   const {
     skills,
     installed,
@@ -47,14 +83,23 @@ function App() {
     error,
     installSkill,
     uninstallSkill,
-    loadSkills,
   } = useSkills()
   const { hasUpdates, checkUpdates } = useUpdates()
 
-  // Legacy wizard state for WorkBuddy flow
-  const currentStep = workbuddySteps[currentStepIndex]
+  const currentStep = workbuddySteps[currentStepIndex] ?? workbuddySteps[0]
+  const selectedBaseSkills = useMemo(
+    () => splitAnswerValues(answers.baseSkills),
+    [answers.baseSkills]
+  )
+  const selectedBaseSkillLabels = useMemo(
+    () => getBaseSkillLabels(selectedBaseSkills),
+    [selectedBaseSkills]
+  )
+  const credentialFields = useMemo(
+    () => getCredentialFields(selectedBaseSkills),
+    [selectedBaseSkills]
+  )
 
-  // Listen for tray navigation events
   useEffect(() => {
     const unlisten = listen<string>('tray-navigate', (event) => {
       const path = event.payload
@@ -70,7 +115,6 @@ function App() {
     }
   }, [])
 
-  // Handlers
   const handleSelectSkill = useCallback((skill: SkillInfo) => {
     setSelectedSkill(skill)
     setView('skill-detail')
@@ -84,7 +128,6 @@ function App() {
       currentStep: 0,
       variables: {},
     })
-    setAnswers({})
     setInstallResult(null)
     setView('install-wizard')
   }, [])
@@ -98,7 +141,6 @@ function App() {
       wizardState.selectedAppId,
       wizardState.variables
     )
-
     setInstalling(false)
 
     if (result.success) {
@@ -106,13 +148,14 @@ function App() {
         success: true,
         message: `成功安装到 ${result.success.app_name}`,
       })
-    } else {
-      setInstallResult({
-        success: false,
-        message: result.error || '安装失败',
-      })
+      return
     }
-  }, [wizardState, installSkill])
+
+    setInstallResult({
+      success: false,
+      message: result.error || '安装失败',
+    })
+  }, [installSkill, wizardState])
 
   const handleUninstall = useCallback(
     async (skill: InstalledSkillInfo) => {
@@ -124,61 +167,86 @@ function App() {
     [uninstallSkill]
   )
 
-  // Legacy handlers for WorkBuddy flow
-  const startFlow = () => {
-    setView('selection')
-    setSelectedSkill(null)
+  const startDemo = useCallback(() => {
+    setView('welcome')
     setCurrentStepIndex(0)
     setAnswers({})
-  }
+  }, [])
 
-  const goBack = () => {
-    if (view === 'wizard' && currentStepIndex > 0) {
-      setCurrentStepIndex((index) => index - 1)
-      return
-    }
+  const updateDemoAnswer = useCallback((fieldId: string, value: string) => {
+    setAnswers((current) => ({
+      ...current,
+      [fieldId]: value,
+    }))
+  }, [])
 
+  const toggleDemoAnswer = useCallback((fieldId: string, value: string) => {
+    setAnswers((current) => {
+      const nextAnswers = {
+        ...current,
+        [fieldId]: toggleAnswerValue(current[fieldId], value),
+      }
+
+      if (fieldId !== 'baseSkills') {
+        return nextAnswers
+      }
+
+      const nextBaseSkills = splitAnswerValues(nextAnswers.baseSkills)
+      return pruneCredentialAnswers(nextAnswers, nextBaseSkills)
+    })
+  }, [])
+
+  const updateInstallVariable = useCallback((fieldId: string, value: string) => {
+    setWizardState((current) =>
+      current
+        ? {
+            ...current,
+            variables: {
+              ...current.variables,
+              [fieldId]: value,
+            },
+          }
+        : null
+    )
+  }, [])
+
+  const goBack = useCallback(() => {
     if (view === 'wizard') {
-      setView('selection')
+      if (currentStepIndex > 0) {
+        setCurrentStepIndex((index) => index - 1)
+      } else {
+        setView('welcome')
+      }
       return
     }
 
-    if (view === 'summary') {
+    if (view === 'result') {
       setView('wizard')
       setCurrentStepIndex(workbuddySteps.length - 1)
       return
     }
 
-    if (view === 'result') {
-      setView('summary')
-    }
-
     if (view === 'skill-detail') {
       setView('skills-list')
+      return
     }
 
     if (view === 'install-wizard') {
+      setView('skill-detail')
       if (installResult) {
-        setView('skill-detail')
-        setWizardState(null)
         setInstallResult(null)
-      } else {
-        setView('skill-detail')
-        setWizardState(null)
       }
+      setWizardState(null)
+      return
     }
 
-    if (view === 'skills-list') {
+    if (view === 'skills-list' || view === 'installed' || view === 'settings') {
       setView('welcome')
     }
+  }, [currentStepIndex, installResult, view])
 
-    if (view === 'installed' || view === 'settings') {
-      setView('welcome')
-    }
-  }
-
-  const goForward = () => {
-    if (view === 'selection') {
+  const goForward = useCallback(() => {
+    if (view === 'welcome') {
       setCurrentStepIndex(0)
       setView('wizard')
       return
@@ -190,57 +258,134 @@ function App() {
     }
 
     if (view === 'wizard') {
-      setView('summary')
+      setView('result')
     }
-  }
+  }, [currentStepIndex, view])
 
-  const updateAnswer = (fieldId: string, value: string) => {
-    setAnswers((current) => ({
-      ...current,
-      [fieldId]: value,
-    }))
+  const wizardStepComplete =
+    currentStep.id === 'credentials'
+      ? credentialFields.every(
+          (field) => !field.required || (answers[field.id] ?? '').trim().length > 0
+        )
+      : isStepComplete(currentStep, answers)
 
-    // Also update wizard state if in install wizard
-    if (wizardState) {
-      setWizardState((current) =>
-        current
-          ? {
-              ...current,
-              variables: {
-                ...current.variables,
-                [fieldId]: value,
-              },
-            }
-          : null
-      )
-    }
-  }
+  const canMoveForward =
+    view === 'welcome'
+      ? (answers.role ?? '').trim().length > 0
+      : view === 'wizard'
+        ? wizardStepComplete
+        : true
 
-  // Computed values
-  const summary = [
+  const progressIndex =
+    view === 'welcome' ? 0 : view === 'wizard' ? currentStepIndex + 1 : view === 'result' ? 6 : -1
+
+  const progressLabel =
+    view === 'welcome'
+      ? '1 / 7'
+      : view === 'wizard'
+        ? `${currentStepIndex + 2} / 7`
+        : view === 'result'
+          ? '7 / 7'
+          : 'Skills'
+
+  const demoSummary = [
     {
-      label: '目标程序',
-      value: selectedSkill?.name['zh-CN'] || '-',
+      label: '岗位',
+      value: getRoleLabel(answers.role),
     },
     {
-      label: '使用场景',
-      value: answers.primaryScenario || '-',
+      label: '基础工具',
+      value: joinLabels(selectedBaseSkillLabels),
     },
     {
-      label: '工作目录',
-      value: answers.workspacePath || '-',
+      label: '已支持用例',
+      value: answers.useCase || '未选择',
+    },
+    {
+      label: '项目清单来源',
+      value: answers.projectSourceUrl || '未提供',
+    },
+    {
+      label: '周报规则',
+      value: answers.reportRules || '未提供',
     },
   ]
 
-  const canMoveForward =
-    view === 'selection'
-      ? true
-      : view === 'wizard'
-        ? isStepComplete(currentStep, answers)
-        : true
+  const renderField = (field: WizardField) => {
+    if (field.type === 'single-select' && field.options) {
+      return (
+        <div className="options">
+          {field.options.map((option) => (
+            <label className="field-option" key={option.value}>
+              <input
+                checked={answers[field.id] === option.value}
+                name={field.id}
+                type="radio"
+                value={option.value}
+                onChange={(event) => updateDemoAnswer(field.id, event.target.value)}
+              />
+              <span>
+                <span>{getText(locale, option.label)}</span>
+                {option.hint && (
+                  <span className="field-option__hint">{getText(locale, option.hint)}</span>
+                )}
+              </span>
+            </label>
+          ))}
+        </div>
+      )
+    }
 
-  const activeStepLabel =
-    view === 'wizard' ? `${currentStepIndex + 1} / ${workbuddySteps.length}` : 'Ready'
+    if (field.type === 'multi-select' && field.options) {
+      const selectedValues = splitAnswerValues(answers[field.id])
+
+      return (
+        <div className="options">
+          {field.options.map((option) => (
+            <label className="field-option" key={option.value}>
+              <input
+                checked={selectedValues.includes(option.value)}
+                name={field.id}
+                type="checkbox"
+                value={option.value}
+                onChange={() => toggleDemoAnswer(field.id, option.value)}
+              />
+              <span>
+                <span>{getText(locale, option.label)}</span>
+                {option.hint && (
+                  <span className="field-option__hint">{getText(locale, option.hint)}</span>
+                )}
+              </span>
+            </label>
+          ))}
+        </div>
+      )
+    }
+
+    if (field.type === 'textarea') {
+      return (
+        <textarea
+          id={field.id}
+          rows={6}
+          value={answers[field.id] ?? ''}
+          placeholder={field.placeholder ? getText(locale, field.placeholder) : ''}
+          onChange={(event) => updateDemoAnswer(field.id, event.target.value)}
+        />
+      )
+    }
+
+    const inputType = field.type === 'password' ? 'password' : field.type === 'url' ? 'url' : 'text'
+
+    return (
+      <input
+        id={field.id}
+        type={inputType}
+        value={answers[field.id] ?? ''}
+        placeholder={field.placeholder ? getText(locale, field.placeholder) : ''}
+        onChange={(event) => updateDemoAnswer(field.id, event.target.value)}
+      />
+    )
+  }
 
   return (
     <main className="shell">
@@ -251,50 +396,154 @@ function App() {
             <h1 className="masthead__title">{getCopy(locale, pageCopy.appTitle)}</h1>
             <p className="masthead__subtitle">{getCopy(locale, pageCopy.heroBody)}</p>
           </div>
-          <div className="tag">
+          <button className="tag tag--button" type="button" onClick={checkUpdates}>
             {getCopy(locale, pageCopy.localeTag)}
             {hasUpdates && <span className="update-badge">更新</span>}
-          </div>
+          </button>
         </header>
 
         <section className="layout">
           <article className="panel">
-            {/* Welcome View */}
             {view === 'welcome' && (
               <>
-                <span className="panel__eyebrow">Desktop scaffold</span>
-                <h2 className="panel__title">{getCopy(locale, pageCopy.heroTitle)}</h2>
-                <p className="panel__body">{getCopy(locale, pageCopy.heroBody)}</p>
+                <span className="panel__eyebrow">Step 1 / 7</span>
+                <h2 className="panel__title">给项目经理的周报准备助手</h2>
+                <p className="panel__body">
+                  这个最小 demo 只验证引导页面，不会真实连接系统或保存密码。我们先确认你的岗位，再逐页收集发送周报需要的基础工具、项目清单来源、规则和账号信息。
+                </p>
 
-                <div className="button-row" style={{ gap: '1rem' }}>
-                  <button className="button" type="button" onClick={() => setView('skills-list')}>
-                    浏览 Skills
-                  </button>
-                  <button className="button--ghost" type="button" onClick={() => setView('installed')}>
-                    已安装 ({installed.length})
-                  </button>
-                  <button className="button--ghost" type="button" onClick={checkUpdates}>
-                    检查更新
-                  </button>
+                <div className="field-stack">
+                  <div className="field">
+                    <label>你的岗位</label>
+                    <div className="options">
+                      {workbuddyRoles.map((role) => (
+                        <label className="field-option" key={role.value}>
+                          <input
+                            checked={answers.role === role.value}
+                            name="role"
+                            type="radio"
+                            value={role.value}
+                            onChange={(event) => updateDemoAnswer('role', event.target.value)}
+                          />
+                          <span>
+                            <span>{getText(locale, role.label)}</span>
+                            {role.hint && (
+                              <span className="field-option__hint">
+                                {getText(locale, role.hint)}
+                              </span>
+                            )}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ marginTop: '2rem' }}>
-                  <h3>快速开始</h3>
-                  <p className="muted">
-                    选择一个目标应用程序，然后配置并安装 Skills。
-                  </p>
+                <div className="button-row">
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={goForward}
+                    disabled={!canMoveForward}
+                  >
+                    {getCopy(locale, pageCopy.next)}
+                  </button>
+                  <button
+                    className="button--ghost"
+                    type="button"
+                    onClick={() => setView('skills-list')}
+                  >
+                    浏览 Skills 库
+                  </button>
+                  <button
+                    className="button--ghost"
+                    type="button"
+                    onClick={() => setView('installed')}
+                  >
+                    已安装 ({installed.length})
+                  </button>
                 </div>
               </>
             )}
 
-            {/* Skills List View */}
+            {view === 'wizard' && (
+              <>
+                <span className="panel__eyebrow">{`Step ${currentStepIndex + 2} / 7`}</span>
+                <h2 className="panel__title">{getText(locale, currentStep.title)}</h2>
+                <p className="panel__body">{getText(locale, currentStep.description)}</p>
+
+                {currentStep.id === 'credentials' ? (
+                  <div className="field-stack">
+                    <p className="hint-callout">
+                      这版只是界面确认，不会真正校验、发送或安全存储这些凭证。
+                    </p>
+                    {credentialFields.map((field) => (
+                      <div className="field" key={field.id}>
+                        <label htmlFor={field.id}>{getText(locale, field.label)}</label>
+                        {renderField(field)}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="field-stack">
+                    {currentStep.fields.map((field) => (
+                      <div className="field" key={field.id}>
+                        <label htmlFor={field.id}>{getText(locale, field.label)}</label>
+                        {renderField(field)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="button-row">
+                  <button className="button--ghost" type="button" onClick={goBack}>
+                    {getCopy(locale, pageCopy.previous)}
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={goForward}
+                    disabled={!canMoveForward}
+                  >
+                    {currentStep.id === 'credentials' ? '完成设置' : getCopy(locale, pageCopy.next)}
+                  </button>
+                </div>
+              </>
+            )}
+
+            {view === 'result' && (
+              <>
+                <span className="panel__eyebrow">Step 7 / 7</span>
+                <h2 className="panel__title">设置完成</h2>
+                <p className="panel__body">
+                  现在可以打开 WorkBuddy 来使用发送周报能力。后续接入真实能力时，会按照你刚才确认的资料来源、周报规则和账号信息继续完善。
+                </p>
+
+                <div className="summary-grid">
+                  {demoSummary.map((item) => (
+                    <section className="summary-card" key={item.label}>
+                      <h3>{item.label}</h3>
+                      <p>{item.value}</p>
+                    </section>
+                  ))}
+                </div>
+
+                <div className="button-row">
+                  <button className="button--ghost" type="button" onClick={goBack}>
+                    {getCopy(locale, pageCopy.previous)}
+                  </button>
+                  <button className="button" type="button" onClick={startDemo}>
+                    {getCopy(locale, pageCopy.restart)}
+                  </button>
+                </div>
+              </>
+            )}
+
             {view === 'skills-list' && (
               <>
                 <span className="panel__eyebrow">Skills 库</span>
                 <h2 className="panel__title">可用 Skills</h2>
-                <p className="panel__body">
-                  浏览并安装 Skills 到您的目标应用程序。
-                </p>
+                <p className="panel__body">浏览并安装 Skills 到你的目标应用程序。</p>
 
                 {loading && <p>加载中...</p>}
                 {error && <p className="error">{error}</p>}
@@ -326,14 +575,13 @@ function App() {
                 )}
 
                 <div className="button-row">
-                  <button className="button--ghost" type="button" onClick={() => setView('welcome')}>
+                  <button className="button--ghost" type="button" onClick={goBack}>
                     {getCopy(locale, pageCopy.previous)}
                   </button>
                 </div>
               </>
             )}
 
-            {/* Skill Detail View */}
             {view === 'skill-detail' && selectedSkill && (
               <>
                 <span className="panel__eyebrow">Skill 详情</span>
@@ -371,11 +619,11 @@ function App() {
                   <div style={{ marginTop: '1.5rem' }}>
                     <h3>配置变量</h3>
                     <ul className="variables-list">
-                      {selectedSkill.variables.map((v) => (
-                        <li key={v.id}>
-                          <strong>{v.label['zh-CN'] || v.id}</strong>
-                          {v.required && <span className="required">*</span>}
-                          <span className="muted">({v.var_type})</span>
+                      {selectedSkill.variables.map((variable) => (
+                        <li key={variable.id}>
+                          <strong>{variable.label['zh-CN'] || variable.id}</strong>
+                          {variable.required && <span className="required">*</span>}
+                          <span className="muted">({variable.var_type})</span>
                         </li>
                       ))}
                     </ul>
@@ -397,7 +645,6 @@ function App() {
               </>
             )}
 
-            {/* Install Wizard View */}
             {view === 'install-wizard' && selectedSkill && wizardState && (
               <>
                 <span className="panel__eyebrow">
@@ -409,7 +656,6 @@ function App() {
 
                 {!installResult ? (
                   <>
-                    {/* Step 1: Select Target App */}
                     {wizardState.currentStep === 0 && (
                       <>
                         <p className="panel__body">选择目标应用程序：</p>
@@ -423,10 +669,10 @@ function App() {
                                   name="targetApp"
                                   type="radio"
                                   value={app.id}
-                                  onChange={(e) =>
+                                  onChange={(event) =>
                                     setWizardState((current) =>
                                       current
-                                        ? { ...current, selectedAppId: e.target.value }
+                                        ? { ...current, selectedAppId: event.target.value }
                                         : null
                                     )
                                   }
@@ -441,42 +687,43 @@ function App() {
                       </>
                     )}
 
-                    {/* Step 2: Fill Variables */}
                     {wizardState.currentStep === 1 && (
                       <>
                         <p className="panel__body">填写配置变量：</p>
                         <div className="field-stack">
-                          {selectedSkill.variables.map((v) => (
-                            <div className="field" key={v.id}>
-                              <label htmlFor={v.id}>
-                                {v.label['zh-CN'] || v.id}
-                                {v.required && <span className="required">*</span>}
+                          {selectedSkill.variables.map((variable) => (
+                            <div className="field" key={variable.id}>
+                              <label htmlFor={variable.id}>
+                                {variable.label['zh-CN'] || variable.id}
+                                {variable.required && <span className="required">*</span>}
                               </label>
 
-                              {v.var_type === 'select' && v.options.length > 0 ? (
+                              {variable.var_type === 'select' && variable.options.length > 0 ? (
                                 <div className="options">
-                                  {v.options.map((opt) => (
-                                    <label className="field-option" key={opt.value}>
+                                  {variable.options.map((option) => (
+                                    <label className="field-option" key={option.value}>
                                       <input
-                                        checked={
-                                          wizardState.variables[v.id] === opt.value
-                                        }
-                                        name={v.id}
+                                        checked={wizardState.variables[variable.id] === option.value}
+                                        name={variable.id}
                                         type="radio"
-                                        value={opt.value}
-                                        onChange={(e) => updateAnswer(v.id, e.target.value)}
+                                        value={option.value}
+                                        onChange={(event) =>
+                                          updateInstallVariable(variable.id, event.target.value)
+                                        }
                                       />
-                                      <span>{opt.label['zh-CN'] || opt.value}</span>
+                                      <span>{option.label['zh-CN'] || option.value}</span>
                                     </label>
                                   ))}
                                 </div>
                               ) : (
                                 <input
-                                  id={v.id}
-                                  type={v.var_type === 'number' ? 'number' : 'text'}
-                                  value={wizardState.variables[v.id] || v.default || ''}
-                                  placeholder={v.placeholder?.['zh-CN'] || ''}
-                                  onChange={(e) => updateAnswer(v.id, e.target.value)}
+                                  id={variable.id}
+                                  type={variable.var_type === 'number' ? 'number' : 'text'}
+                                  value={wizardState.variables[variable.id] || variable.default || ''}
+                                  placeholder={variable.placeholder?.['zh-CN'] || ''}
+                                  onChange={(event) =>
+                                    updateInstallVariable(variable.id, event.target.value)
+                                  }
                                 />
                               )}
                             </div>
@@ -485,7 +732,6 @@ function App() {
                       </>
                     )}
 
-                    {/* Step 3: Confirm */}
                     {wizardState.currentStep === 2 && (
                       <>
                         <p className="panel__body">确认安装配置：</p>
@@ -493,8 +739,8 @@ function App() {
                           <section className="summary-card">
                             <h3>目标应用</h3>
                             <p>
-                              {availableApps.find((a) => a.id === wizardState.selectedAppId)
-                                ?.name || wizardState.selectedAppId}
+                              {availableApps.find((app) => app.id === wizardState.selectedAppId)?.name ||
+                                wizardState.selectedAppId}
                             </p>
                           </section>
                           <section className="summary-card">
@@ -511,9 +757,9 @@ function App() {
                           <div style={{ marginTop: '1rem' }}>
                             <h3>变量</h3>
                             <ul>
-                              {Object.entries(wizardState.variables).map(([k, v]) => (
-                                <li key={k}>
-                                  <strong>{k}:</strong> {v}
+                              {Object.entries(wizardState.variables).map(([key, value]) => (
+                                <li key={key}>
+                                  <strong>{key}:</strong> {value}
                                 </li>
                               ))}
                             </ul>
@@ -572,7 +818,6 @@ function App() {
               </>
             )}
 
-            {/* Installed Skills View */}
             {view === 'installed' && (
               <>
                 <span className="panel__eyebrow">已安装</span>
@@ -614,7 +859,6 @@ function App() {
               </>
             )}
 
-            {/* Settings View */}
             {view === 'settings' && (
               <>
                 <span className="panel__eyebrow">设置</span>
@@ -646,218 +890,47 @@ function App() {
                 </div>
               </>
             )}
-
-            {/* Legacy Selection View (for backward compatibility) */}
-            {view === 'selection' && (
-              <>
-                <span className="panel__eyebrow">Step 1</span>
-                <h2 className="panel__title">{getCopy(locale, pageCopy.selectionTitle)}</h2>
-                <p className="panel__body">{getCopy(locale, pageCopy.selectionBody)}</p>
-
-                <div className="grid grid--apps">
-                  {targetApps.map((app) => {
-                    const selected = false
-                    const disabled = app.status !== 'available'
-
-                    return (
-                      <section
-                        key={app.id}
-                        className="app-card"
-                        data-selected={selected}
-                        aria-label={app.name}
-                      >
-                        <span className="app-card__status">
-                          {disabled
-                            ? getCopy(locale, pageCopy.comingSoon)
-                            : getText(locale, app.highlight)}
-                        </span>
-                        <h3>{app.name}</h3>
-                        <p>{getText(locale, app.description)}</p>
-                        <div className="button-row">
-                          <button
-                            className={disabled ? 'button--ghost' : 'button'}
-                            type="button"
-                            disabled={disabled}
-                          >
-                            {disabled
-                              ? getCopy(locale, pageCopy.comingSoon)
-                              : `选择 ${app.name}`}
-                          </button>
-                        </div>
-                      </section>
-                    )
-                  })}
-                </div>
-
-                <div className="button-row">
-                  <button className="button--ghost" type="button" onClick={() => setView('welcome')}>
-                    {getCopy(locale, pageCopy.previous)}
-                  </button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={goForward}
-                    disabled={!canMoveForward}
-                  >
-                    {getCopy(locale, pageCopy.next)}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Legacy Wizard View */}
-            {view === 'wizard' && (
-              <>
-                <span className="panel__eyebrow">{`WorkBuddy · ${activeStepLabel}`}</span>
-                <h2 className="panel__title">{getText(locale, currentStep.title)}</h2>
-                <p className="panel__body">{getText(locale, currentStep.description)}</p>
-
-                <div className="field-stack">
-                  {currentStep.fields.map((field) => (
-                    <div className="field" key={field.id}>
-                      <label htmlFor={field.id}>{getText(locale, field.label)}</label>
-
-                      {field.type === 'single-select' && field.options ? (
-                        <div className="options">
-                          {field.options.map((option) => (
-                            <label className="field-option" key={option.value}>
-                              <input
-                                checked={answers[field.id] === option.value}
-                                name={field.id}
-                                type="radio"
-                                value={option.value}
-                                onChange={(event) => updateAnswer(field.id, event.target.value)}
-                              />
-                              <span>
-                                <span>{getText(locale, option.label)}</span>
-                                {option.hint && (
-                                  <span className="field-option__hint">
-                                    {getText(locale, option.hint)}
-                                  </span>
-                                )}
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <input
-                          id={field.id}
-                          type="text"
-                          value={answers[field.id] ?? ''}
-                          placeholder={
-                            field.placeholder ? getText(locale, field.placeholder) : ''
-                          }
-                          onChange={(event) => updateAnswer(field.id, event.target.value)}
-                        />
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="button-row">
-                  <button className="button--ghost" type="button" onClick={goBack}>
-                    {getCopy(locale, pageCopy.previous)}
-                  </button>
-                  <button
-                    className="button"
-                    type="button"
-                    onClick={goForward}
-                    disabled={!canMoveForward}
-                  >
-                    {getCopy(locale, pageCopy.next)}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Legacy Summary View */}
-            {view === 'summary' && (
-              <>
-                <span className="panel__eyebrow">Summary</span>
-                <h2 className="panel__title">{getCopy(locale, pageCopy.summaryTitle)}</h2>
-                <p className="panel__body">{getCopy(locale, pageCopy.summaryBody)}</p>
-
-                <div className="summary-grid">
-                  {summary.map((item) => (
-                    <section className="summary-card" key={item.label}>
-                      <h3>{item.label}</h3>
-                      <p>{item.value}</p>
-                    </section>
-                  ))}
-                </div>
-
-                <div className="button-row">
-                  <button className="button--ghost" type="button" onClick={goBack}>
-                    {getCopy(locale, pageCopy.previous)}
-                  </button>
-                  <button className="button" type="button" onClick={() => setView('result')}>
-                    {getCopy(locale, pageCopy.generate)}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Legacy Result View */}
-            {view === 'result' && (
-              <>
-                <span className="panel__eyebrow">Simulated result</span>
-                <h2 className="panel__title">{getCopy(locale, pageCopy.resultTitle)}</h2>
-                <p className="panel__body">{getCopy(locale, pageCopy.resultBody)}</p>
-
-                <div className="summary-grid">
-                  {summary.map((item) => (
-                    <section className="summary-card" key={item.label}>
-                      <h3>{item.label}</h3>
-                      <p>{item.value}</p>
-                    </section>
-                  ))}
-                </div>
-
-                <h3>{getCopy(locale, pageCopy.resultLocations)}</h3>
-                <div className="location-grid">
-                  <section className="location-card">
-                    <h3>macOS</h3>
-                    <p>~/Library/Application Support/WorkBuddy/skills/workbuddy-config.json</p>
-                  </section>
-                  <section className="location-card">
-                    <h3>Windows</h3>
-                    <p>%APPDATA%\WorkBuddy\skills\workbuddy-config.json</p>
-                  </section>
-                </div>
-
-                <div className="button-row">
-                  <button className="button--ghost" type="button" onClick={goBack}>
-                    {getCopy(locale, pageCopy.backToSummary)}
-                  </button>
-                  <button className="button" type="button" onClick={startFlow}>
-                    {getCopy(locale, pageCopy.restart)}
-                  </button>
-                </div>
-              </>
-            )}
           </article>
 
           <aside className="sidecard">
             <h2>{getCopy(locale, pageCopy.wizardTitle)}</h2>
             <p className="muted">
-              Skill Configurator - 管理和安装 Skills 到不同的目标应用程序。
+              这个 demo 只校验页面节奏和问题顺序，不会在本地保存任何真实账号密码。
             </p>
-            <ul>
-              <li>支持 Claude Code、Codex、WorkBuddy</li>
-              <li>模板系统支持变量替换</li>
-              <li>系统托盘常驻运行</li>
-              <li>自动检测版本更新</li>
-            </ul>
+
             <div className="summary-card">
-              <h3>当前状态</h3>
-              <p>
-                {installed.length > 0
-                  ? `${installed.length} 个 Skills 已安装`
-                  : '暂无已安装的 Skills'}
-              </p>
-              {hasUpdates && (
-                <p className="update-hint">有更新可用</p>
-              )}
+              <h3>引导进度</h3>
+              <p className="progress-label">{progressLabel}</p>
+              <div className="progress-list">
+                {onboardingMilestones.map((step, index) => {
+                  const state =
+                    progressIndex === -1
+                      ? 'idle'
+                      : index < progressIndex
+                        ? 'done'
+                        : index === progressIndex
+                          ? 'active'
+                          : 'upcoming'
+
+                  return (
+                    <div className="progress-item" data-state={state} key={step}>
+                      <span>{step}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div className="summary-card">
+              <h3>当前摘要</h3>
+              <div className="mini-summary">
+                {demoSummary.map((item) => (
+                  <div className="mini-summary__row" key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </div>
+                ))}
+              </div>
             </div>
           </aside>
         </section>
