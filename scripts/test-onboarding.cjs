@@ -27,23 +27,23 @@ const path = require('path');
 const ROLE_PRESETS = {
   'project-manager': {
     name: '项目经理',
-    useCase: '发送周报',
+    useCases: ['记录日志', '记录计划', '项目周报'],
   },
   'sales-manager': {
     name: '销售经理',
-    useCase: '发送周报',
+    useCases: ['记录日志', '记录计划', '项目周报'],
   },
   'qa-manager': {
     name: '质量经理',
-    useCase: '发送周报',
+    useCases: ['记录日志', '记录计划', '项目周报'],
   },
   'delivery-manager': {
     name: '交付经理',
-    useCase: '发送周报',
+    useCases: ['记录日志', '记录计划', '项目周报'],
   },
   'rd-manager': {
     name: '研发经理',
-    useCase: '发送周报',
+    useCases: ['记录日志', '记录计划', '项目周报'],
   },
 };
 
@@ -131,6 +131,7 @@ if (args.includes('--list-presets')) {
   console.log('\n可用的岗位预设 (--role):\n');
   for (const [key, preset] of Object.entries(ROLE_PRESETS)) {
     console.log(`  ${key.padEnd(20)} - ${preset.name}`);
+    console.log(`                       用例: ${preset.useCases.join(', ')}`);
   }
   console.log('\n可用的工具预设 (--tools):\n');
   for (const [key, preset] of Object.entries(TOOL_PRESETS)) {
@@ -148,7 +149,8 @@ const DEFAULT_CONFIG = {
   agentApps: ['workbuddy', 'claude-code'],
   role: '项目经理',
   baseSkills: ['jira', 'confluence'],
-  useCase: '发送周报',
+  useCase: '项目周报',
+  useCases: ['记录日志', '记录计划', '项目周报'],
   infoSources: 'Jira 项目看板、Confluence 周报模板、例会纪要目录、邮件归档',
   reportRules: '采用公司标准周报模板，按风险、里程碑、待办三部分组织。风险部分需要标注等级和责任人。',
   credentials: {
@@ -556,8 +558,11 @@ Examples:
     if (ROLE_PRESETS[options.role]) {
       const preset = ROLE_PRESETS[options.role];
       options.config.role = preset.name;
-      options.config.useCase = preset.useCase;
+      options.config.useCases = preset.useCases;
+      // 默认选择第一个用例
+      options.config.useCase = preset.useCases[0];
       console.log(`\n📋 Using role preset: ${options.role} (${preset.name})\n`);
+      console.log(`   Available use cases: ${preset.useCases.join(', ')}\n`);
     } else {
       console.error(`Unknown role preset: ${options.role}`);
       console.log('Use --list-presets to see available options');

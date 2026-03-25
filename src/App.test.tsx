@@ -55,7 +55,7 @@ describe('workbuddy weekly report onboarding demo', () => {
 
     expect(screen.getByRole('heading', { name: /岗位用例/i })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('radio', { name: '发送周报' }))
+    await user.click(screen.getByRole('radio', { name: '项目周报' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
     await user.type(
@@ -90,7 +90,7 @@ describe('workbuddy weekly report onboarding demo', () => {
 
     expect(screen.getByRole('heading', { name: '设置完成' })).toBeInTheDocument()
     expect(
-      screen.getByText(/现在可以在你选中的 Agent 应用里继续使用发送周报能力。/i)
+      screen.getByText(/现在可以在你选中的 Agent 应用里继续使用所选的岗位用例能力。/i)
     ).toBeInTheDocument()
     expect(screen.getAllByText('WorkBuddy、Claude Code').length).toBeGreaterThan(0)
     expect(screen.getAllByText('项目经理').length).toBeGreaterThan(0)
@@ -108,7 +108,7 @@ describe('workbuddy weekly report onboarding demo', () => {
     await user.click(screen.getByRole('button', { name: '下一步' }))
     await user.click(screen.getByRole('checkbox', { name: '禅道' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
-    await user.click(screen.getByRole('radio', { name: '发送周报' }))
+    await user.click(screen.getByRole('radio', { name: '项目周报' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
     await user.type(
       screen.getByLabelText('基础信息来源'),

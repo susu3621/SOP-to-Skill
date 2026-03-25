@@ -611,7 +611,7 @@ function App() {
                 <span className="panel__eyebrow">Step 8 / 8</span>
                 <h2 className="panel__title">设置完成</h2>
                 <p className="panel__body">
-                  现在可以在你选中的 Agent 应用里继续使用发送周报能力。后续接入真实能力时，会按照你刚才确认的岗位、基础信息来源、用例规则和账号信息继续完善。
+                  现在可以在你选中的 Agent 应用里继续使用所选的岗位用例能力。后续接入真实能力时，会按照你刚才确认的岗位、基础信息来源、用例规则和账号信息继续完善。
                 </p>
 
                 <div className="summary-grid">

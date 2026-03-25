@@ -45,11 +45,11 @@ Options:
   --help            Show this help message
 
 Available Role Presets:
-  project-manager    - 项目经理
-  sales-manager      - 销售经理
-  qa-manager         - 质量经理
-  delivery-manager   - 交付经理
-  rd-manager         - 研发经理
+  project-manager    - 项目经理 (用例: 记录日志, 记录计划, 项目周报)
+  sales-manager      - 销售经理 (用例: 记录日志, 记录计划, 项目周报)
+  qa-manager         - 质量经理 (用例: 记录日志, 记录计划, 项目周报)
+  delivery-manager   - 交付经理 (用例: 记录日志, 记录计划, 项目周报)
+  rd-manager         - 研发经理 (用例: 记录日志, 记录计划, 项目周报)
 
 Available Tool Presets:
   jira-confluence    - Jira & Confluence

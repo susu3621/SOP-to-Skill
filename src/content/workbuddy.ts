@@ -137,8 +137,18 @@ export const workbuddySteps: WizardStep[] = [
         required: true,
         options: [
           {
-            value: '发送周报',
-            label: text('发送周报'),
+            value: '记录日志',
+            label: text('记录日志'),
+            hint: text('记录每日工作内容和进展，形成项目日志。'),
+          },
+          {
+            value: '记录计划',
+            label: text('记录计划'),
+            hint: text('制定和更新项目计划，跟踪里程碑和任务。'),
+          },
+          {
+            value: '项目周报',
+            label: text('项目周报'),
             hint: text('汇总项目状态、风险和待办，形成标准周报。'),
           },
         ],
