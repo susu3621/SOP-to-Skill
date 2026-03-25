@@ -1,6 +1,6 @@
 ---
 name: jira
-description: Use when reading Jira issue details, searching Jira issues, or creating and updating Jira issues.
+description: Use when reading Jira issue details, searching Jira issues, creating and updating Jira issues, or setting time estimates and sprint planning.
 ---
 # Jira Skill
 
@@ -17,6 +17,9 @@ Use this skill for Jira workflows including reading and writing. It supports iss
 | **Create a new issue**          | `scripts/manage_jira_issue.py --project`                  | Specify project key and summary                      |
 | **Update an existing issue**    | `scripts/manage_jira_issue.py --issue`                    | Update by issue key                                  |
 | **Add comment to issue**        | `scripts/manage_jira_issue.py --issue --comment`          | Add comment without changing fields                  |
+| **Set time estimates**          | `scripts/plan_jira_issue.py --original-estimate`          | Set original/remaining estimates                     |
+| **Assign to sprint**            | `scripts/plan_jira_issue.py --sprint`                     | Requires sprint ID                                   |
+| **Set fix versions**            | `scripts/plan_jira_issue.py --fix-versions`               | Set target release versions                          |
 | Verify Jira authentication only | `scripts/test_jira_login.py`                              | Checks login without running a search                |
 | Inspect one issue in detail     | `scripts/get_jira_issue.py`                               | Fetches a single issue by key with sectioned context |
 
@@ -146,6 +149,58 @@ python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --summary "New titl
 **Common Options:**
 - `--dry-run`: Preview payload without making changes
 
+### Plan Issue (Time & Sprint)
+
+Set planning-related fields on an issue:
+
+```bash
+# Set time estimates
+python3 {{script_dir}}/plan_jira_issue.py --issue PROJ-123 \
+    --original-estimate "2d 4h" \
+    --remaining-estimate "1d 2h"
+
+# Assign to sprint (use sprint ID from your board)
+python3 {{script_dir}}/plan_jira_issue.py --issue PROJ-123 --sprint 12345
+
+# Set fix versions
+python3 {{script_dir}}/plan_jira_issue.py --issue PROJ-123 --fix-versions v1.0.0 v1.1.0
+
+# Combine planning updates with comment (auto-signed)
+python3 {{script_dir}}/plan_jira_issue.py --issue PROJ-123 \
+    --original-estimate "3d" \
+    --sprint 12345 \
+    --comment "Updated planning for Q2"
+
+# Preview changes
+python3 {{script_dir}}/plan_jira_issue.py --issue PROJ-123 \
+    --original-estimate "2d" \
+    --dry-run
+```
+
+**Planning Options:**
+- `--issue, -i`: Issue key (required)
+- `--original-estimate`: Original time estimate (e.g., `2d`, `4h`, `1w 2d`)
+- `--remaining-estimate`: Remaining time estimate
+- `--sprint`: Sprint ID to assign
+- `--sprint-field`: Custom field name for sprint (default: `customfield_10000`)
+- `--fix-versions`: Space-separated list of version names
+- `--comment`: Add a comment to the issue
+- `--auto-agent-comment`: Force "Co-Authored-By-Agent" signature on comment-only updates
+- `--dry-run`: Preview payload without making changes
+
+**Agent Signature Behavior:**
+- When setting time/sprint/versions (without user comment): auto-generates change log with "Co-Authored-By-Agent"
+- When user provides comment: no signature (use `--auto-agent-comment` to force)
+
+**Time Estimate Format:**
+- `w` - weeks
+- `d` - days
+- `h` - hours
+- `m` - minutes
+- Examples: `1d`, `4h`, `2d 4h`, `1w 3d 6h`
+
+**Note:** Sprint field names vary by Jira configuration. If `--sprint` fails, check your Jira custom field configuration and use `--sprint-field` to specify the correct field name.
+
 ## Utility Scripts
 
 | Script                         | Purpose                                                     |
@@ -154,6 +209,7 @@ python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --summary "New titl
 | `scripts/search_jira.py`     | Search Jira by keyword, updated date, reporter, or assignee |
 | `scripts/get_jira_issue.py`  | Fetch Jira issue details by key                             |
 | `scripts/manage_jira_issue.py` | Create or update Jira issues                              |
+| `scripts/plan_jira_issue.py` | Set timetracking, sprint, and fixVersions on issues       |
 | `scripts/test_jira_login.py` | Verify Jira authentication directly                         |
 
 ## Notes

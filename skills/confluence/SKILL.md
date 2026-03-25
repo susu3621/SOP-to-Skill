@@ -122,6 +122,13 @@ python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
     --space "~username" \
     --title "Existing Page"
 
+# Create with agent signature in version comment
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --space "~username" \
+    --title "My Page" \
+    --auto-agent-comment
+
 # Preview Wiki Markup without creating page
 python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
     --file input.md \
@@ -135,6 +142,7 @@ python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
 - `--title, -t`: Page title (defaults to filename)
 - `--page-id, -i`: Page ID to update (alternative to --space + --title)
 - `--parent-id, -p`: Parent page ID for nested pages
+- `--auto-agent-comment`: Add "Co-Authored-By-Agent" to version comment
 - `--dry-run`: Preview Wiki Markup without creating page
 - `--env-file, -e`: Custom .env file for credentials
 

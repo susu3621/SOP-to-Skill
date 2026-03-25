@@ -18,6 +18,9 @@ Usage:
     # Create as child of another page
     python create_confluence_page.py --file input.md --space "~username" --title "My Page" --parent-id 123456
 
+    # Create with agent signature in version comment
+    python create_confluence_page.py --file input.md --space "~username" --title "My Page" --auto-agent-comment
+
     # Use custom env file
     python create_confluence_page.py --file input.md --space "~username" --title "My Page" --env-file /path/to/.env
 """
@@ -33,6 +36,8 @@ sys.path.insert(0, str(script_dir))
 
 from confluence_auth import get_confluence_client
 from convert_markdown_to_wiki import MarkdownToWikiConverter
+
+AGENT_SIGNATURE = "Co-Authored-By-Agent"
 
 
 def markdown_to_wiki(markdown_content: str) -> str:
@@ -78,7 +83,8 @@ def create_page(
     space_key: str,
     title: str,
     wiki_content: str,
-    parent_id: Optional[str] = None
+    parent_id: Optional[str] = None,
+    version_comment: Optional[str] = None
 ) -> dict:
     """
     Create a new Confluence page.
@@ -89,6 +95,7 @@ def create_page(
         title: Page title
         wiki_content: Content in Wiki Markup format
         parent_id: Optional parent page ID
+        version_comment: Optional version comment
 
     Returns:
         Created page data
@@ -98,7 +105,8 @@ def create_page(
         title=title,
         body=wiki_content,
         parent_id=parent_id,
-        representation='wiki'
+        representation='wiki',
+        version_comment=version_comment
     )
 
 
@@ -107,7 +115,8 @@ def update_page(
     page_id: str,
     title: str,
     wiki_content: str,
-    parent_id: Optional[str] = None
+    parent_id: Optional[str] = None,
+    version_comment: Optional[str] = None
 ) -> dict:
     """
     Update an existing Confluence page.
@@ -118,6 +127,7 @@ def update_page(
         title: Page title
         wiki_content: Content in Wiki Markup format
         parent_id: Optional parent page ID
+        version_comment: Optional version comment
 
     Returns:
         Updated page data
@@ -127,7 +137,8 @@ def update_page(
         title=title,
         body=wiki_content,
         parent_id=parent_id,
-        representation='wiki'
+        representation='wiki',
+        version_comment=version_comment
     )
 
 
@@ -165,6 +176,11 @@ def main():
         help='Path to .env file with Confluence credentials'
     )
     parser.add_argument(
+        '--auto-agent-comment',
+        action='store_true',
+        help='Add "Co-Authored-By-Agent" to version comment'
+    )
+    parser.add_argument(
         '--dry-run',
         action='store_true',
         help='Show converted Wiki Markup without creating page'
@@ -192,9 +208,14 @@ def main():
         print(f"Space: {args.space or 'N/A'}")
         print(f"Page ID: {args.page_id or 'N/A'}")
         print(f"Parent ID: {args.parent_id or 'None'}")
+        if args.auto_agent_comment:
+            print(f"Version Comment: {AGENT_SIGNATURE}")
         print("\n--- Wiki Markup ---\n")
         print(wiki_content)
         return
+
+    # Prepare version comment
+    version_comment = AGENT_SIGNATURE if args.auto_agent_comment else None
 
     # Get Confluence client
     try:
@@ -227,7 +248,8 @@ def main():
                 page_id=page_id,
                 title=page_title,
                 wiki_content=wiki_content,
-                parent_id=args.parent_id
+                parent_id=args.parent_id,
+                version_comment=version_comment
             )
 
             print(f"✅ Page updated successfully!")
@@ -248,7 +270,8 @@ def main():
                     page_id=page_id,
                     title=title,
                     wiki_content=wiki_content,
-                    parent_id=args.parent_id
+                    parent_id=args.parent_id,
+                    version_comment=version_comment
                 )
 
                 print(f"✅ Page updated successfully!")
@@ -264,7 +287,8 @@ def main():
                     space_key=args.space,
                     title=title,
                     wiki_content=wiki_content,
-                    parent_id=args.parent_id
+                    parent_id=args.parent_id,
+                    version_comment=version_comment
                 )
 
                 print(f"✅ Page created successfully!")
