@@ -1,10 +1,10 @@
 ---
 name: confluence
-description: Use when listing Confluence spaces, reading Confluence content, searching Confluence, downloading pages to Markdown, converting Markdown to Confluence Wiki Markup, or rendering Mermaid diagrams for documentation.
+description: Use when listing Confluence spaces, reading Confluence content, searching Confluence, downloading pages to Markdown, converting Markdown to Confluence Wiki Markup, creating pages from Markdown, or rendering Mermaid diagrams for documentation.
 ---
-# Confluence Read-Only Skill
+# Confluence Skill
 
-Use this skill for read-only Confluence workflows. It supports space listing, keyword search, created-date search, updated-date search, page retrieval, page download, format conversion, and Mermaid rendering.
+Use this skill for Confluence workflows including reading and writing. It supports space listing, keyword search, date-based search, page retrieval, page download, page creation from Markdown, format conversion, and Mermaid rendering.
 
 ## Quick Decision Matrix
 
@@ -17,6 +17,8 @@ Use this skill for read-only Confluence workflows. It supports space listing, ke
 | Inspect labels/comments              | MCP read tools                          | Use `confluence_get_labels`, `confluence_get_comments`        |
 | Verify direct login                  | `scripts/test_confluence_login.py`    | Uses env vars only                                                |
 | Download pages to Markdown           | `scripts/download_confluence.py`      | Handles attachments and child pages                               |
+| **Create page from Markdown**        | `scripts/create_confluence_page.py`   | Converts Markdown to Wiki Markup and creates page                 |
+| **Update existing page**             | `scripts/create_confluence_page.py`   | Use `--update` flag to update existing pages                      |
 | Search pages from CLI                | `scripts/search_confluence.py`        | Calls the read-only search API                                    |
 | Convert Markdown to Wiki Markup      | `scripts/convert_markdown_to_wiki.py` | Local conversion only                                             |
 | Render Mermaid diagrams              | `scripts/render_mermaid.py`           | Produces PNG/SVG/PDF locally                                      |
@@ -86,6 +88,56 @@ python3 $REPO_ROOT/.agents/skills/confluence/scripts/download_confluence.py --do
 python3 $REPO_ROOT/.agents/skills/confluence/scripts/download_confluence.py --output-dir ./docs 123456789
 ```
 
+### Create Page from Markdown
+
+Create a new Confluence page from a Markdown file:
+
+```bash
+# Basic usage - title defaults to filename
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --space "~username"
+
+# Specify custom title
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --space "~username" \
+    --title "My Custom Title"
+
+# Create as child of another page
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --space "DEV" \
+    --title "Child Page" \
+    --parent-id 123456789
+
+# Update an existing page by ID (recommended)
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --page-id 123456789
+
+# Update an existing page by title (will auto-update if exists)
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --space "~username" \
+    --title "Existing Page"
+
+# Preview Wiki Markup without creating page
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
+    --file input.md \
+    --space "~username" \
+    --dry-run
+```
+
+**Options:**
+- `--file, -f`: Path to Markdown file (required)
+- `--space, -s`: Confluence space key (required for new pages)
+- `--title, -t`: Page title (defaults to filename)
+- `--page-id, -i`: Page ID to update (alternative to --space + --title)
+- `--parent-id, -p`: Parent page ID for nested pages
+- `--dry-run`: Preview Wiki Markup without creating page
+- `--env-file, -e`: Custom .env file for credentials
+
 ### Verify Login Outside MCP
 
 ```bash
@@ -123,9 +175,10 @@ python3 $REPO_ROOT/.agents/skills/confluence/scripts/render_mermaid.py notes.md 
 | `scripts/test_confluence_login.py`    | Minimal direct login probe                                   |
 | `scripts/download_confluence.py`      | Download pages to Markdown                                   |
 | `scripts/search_confluence.py`        | Search by keyword, created date, and updated date            |
+| `scripts/create_confluence_page.py`   | Create or update pages from Markdown files                   |
 | `scripts/convert_markdown_to_wiki.py` | Convert Markdown to Confluence Wiki Markup                   |
 | `scripts/render_mermaid.py`           | Render Mermaid diagrams locally                              |
-| `scripts/confluence_auth.py`          | Shared credential discovery for read-only scripts            |
+| `scripts/confluence_auth.py`          | Shared credential discovery for all scripts                  |
 
 ## Reference Docs
 

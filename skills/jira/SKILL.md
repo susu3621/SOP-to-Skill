@@ -1,10 +1,10 @@
 ---
 name: jira
-description: Use when reading Jira issue details or searching Jira issues by keyword, updated time, reporter, or assignee.
+description: Use when reading Jira issue details, searching Jira issues, or creating and updating Jira issues.
 ---
-# Jira Read-Only Skill
+# Jira Skill
 
-Use this skill for read-only Jira workflows. It supports single-condition issue search and detailed issue lookup by Jira key, including execution context from comments, changelog, parent, subtasks, linked issues, and resolution fields.
+Use this skill for Jira workflows including reading and writing. It supports issue search, detailed issue lookup, issue creation, and issue updates.
 
 ## Quick Decision Matrix
 
@@ -14,6 +14,9 @@ Use this skill for read-only Jira workflows. It supports single-condition issue 
 | Search by updated date range    | `scripts/search_jira.py --updated-after/--updated-before` | Supports lower bound, upper bound, or both           |
 | Search by reporter              | `scripts/search_jira.py --reporter`                       | Value is passed through to JQL                       |
 | Search by assignee              | `scripts/search_jira.py --assignee`                       | Value is passed through to JQL                       |
+| **Create a new issue**          | `scripts/manage_jira_issue.py --project`                  | Specify project key and summary                      |
+| **Update an existing issue**    | `scripts/manage_jira_issue.py --issue`                    | Update by issue key                                  |
+| **Add comment to issue**        | `scripts/manage_jira_issue.py --issue --comment`          | Add comment without changing fields                  |
 | Verify Jira authentication only | `scripts/test_jira_login.py`                              | Checks login without running a search                |
 | Inspect one issue in detail     | `scripts/get_jira_issue.py`                               | Fetches a single issue by key with sectioned context |
 
@@ -59,14 +62,99 @@ python3 {{script_dir}}/test_jira_login.py
 python3 {{script_dir}}/test_jira_login.py --env-file /path/to/.env
 ```
 
+### Create Issue
+
+Create a new Jira issue:
+
+```bash
+# Basic creation with required fields
+python3 {{script_dir}}/manage_jira_issue.py --project PROJ --summary "Issue title"
+
+# With description
+python3 {{script_dir}}/manage_jira_issue.py --project PROJ --summary "Bug report" --description "Detailed description"
+
+# With additional fields
+python3 {{script_dir}}/manage_jira_issue.py \
+    --project PROJ \
+    --summary "Bug report" \
+    --type Bug \
+    --priority High \
+    --assignee username \
+    --labels frontend urgent
+
+# Create as subtask
+python3 {{script_dir}}/manage_jira_issue.py \
+    --project PROJ \
+    --summary "Subtask title" \
+    --type Subtask \
+    --parent PROJ-100
+
+# With components
+python3 {{script_dir}}/manage_jira_issue.py \
+    --project PROJ \
+    --summary "Feature request" \
+    --components API Database
+
+# Preview without creating
+python3 {{script_dir}}/manage_jira_issue.py \
+    --project PROJ \
+    --summary "Test issue" \
+    --dry-run
+```
+
+### Update Issue
+
+Update an existing issue:
+
+```bash
+# Update summary and description
+python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --summary "New title" --description "New description"
+
+# Update specific fields
+python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --priority Low --assignee username
+
+# Add labels
+python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --labels bug verified
+
+# Add a comment only
+python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --comment "Status update: fixed in v1.2"
+
+# Update with custom fields
+python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --custom-fields '{"customfield_10001": "value"}'
+
+# Preview changes
+python3 {{script_dir}}/manage_jira_issue.py --issue PROJ-123 --summary "New title" --dry-run
+```
+
+**Create Options:**
+- `--project, -p`: Project key (required for create)
+- `--summary, -s`: Issue title (required for create)
+- `--description, -d`: Issue description
+- `--type, -t`: Issue type (default: Task). Examples: Task, Bug, Story, Epic, Subtask
+- `--priority`: Priority name. Examples: Highest, High, Medium, Low, Lowest
+- `--assignee, -a`: Assignee username
+- `--labels, -l`: Space-separated list of labels
+- `--components, -c`: Space-separated list of component names
+- `--parent`: Parent issue key (for subtasks)
+- `--custom-fields`: Custom fields as JSON string
+
+**Update Options:**
+- `--issue, -i`: Issue key to update (required for update)
+- All field options above can be used for partial updates
+- `--comment`: Add a comment to the issue
+
+**Common Options:**
+- `--dry-run`: Preview payload without making changes
+
 ## Utility Scripts
 
 | Script                         | Purpose                                                     |
 | ------------------------------ | ----------------------------------------------------------- |
 | `scripts/jira_auth.py`       | Shared credential discovery for Jira scripts                |
 | `scripts/search_jira.py`     | Search Jira by keyword, updated date, reporter, or assignee |
-| `scripts/test_jira_login.py` | Verify Jira authentication directly                         |
 | `scripts/get_jira_issue.py`  | Fetch Jira issue details by key                             |
+| `scripts/manage_jira_issue.py` | Create or update Jira issues                              |
+| `scripts/test_jira_login.py` | Verify Jira authentication directly                         |
 
 ## Notes
 
