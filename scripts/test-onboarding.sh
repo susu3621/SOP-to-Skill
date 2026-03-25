@@ -40,7 +40,7 @@ Options:
   --config <file>   Load test configuration from JSON file
   --output <dir>    Output directory for results (default: ./test-output)
   --role <preset>   Use a role preset (e.g., project-manager, sales-manager)
-  --tools <preset>  Use a tools preset (e.g., jira-confluence, notion)
+  --tools <preset>  Use a tools preset (e.g., jira, confluence, notion)
   --list-presets    List available role and tools presets
   --help            Show this help message
 
@@ -52,7 +52,8 @@ Available Role Presets:
   rd-manager         - 研发经理 (用例: 记录日志, 记录计划)
 
 Available Tool Presets:
-  jira-confluence    - Jira & Confluence
+  jira               - Jira
+  confluence         - Confluence
   saleseasy          - 销售易
   notion             - Notion
   zentao             - 禅道
@@ -60,7 +61,7 @@ Available Tool Presets:
 
 Example:
   $0 --headed
-  $0 --build-skill --role project-manager --tools jira-confluence
+  $0 --build-skill --role project-manager --tools jira
   $0 --config my-config.json --build-skill
 EOF
     exit 0

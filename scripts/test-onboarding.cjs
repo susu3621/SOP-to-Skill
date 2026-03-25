@@ -49,12 +49,18 @@ const ROLE_PRESETS = {
 
 // Tool presets - 工具预设
 const TOOL_PRESETS = {
-  'jira-confluence': {
-    name: 'Jira & Confluence',
-    baseSkills: ['jira', 'confluence'],
+  'jira': {
+    name: 'Jira',
+    baseSkills: ['jira'],
     credentials: {
       jiraUsername: 'test.user@example.com',
       jiraPassword: 'test-jira-api-token',
+    },
+  },
+  'confluence': {
+    name: 'Confluence',
+    baseSkills: ['confluence'],
+    credentials: {
       confluenceUsername: 'test.user@example.com',
       confluencePassword: 'test-confluence-api-token',
     },
