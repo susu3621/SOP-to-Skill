@@ -2,8 +2,9 @@
 #
 # Skill Configurator Onboarding Test Script
 #
-# This is a wrapper script that calls the Node.js test script.
-# For full options, run: ./scripts/test-onboarding.sh --help
+# 支持两种模式：
+# 1. 命令行模式：直接传入所有参数
+# 2. 交互模式：不带参数运行，按提示逐步输入
 #
 # Prerequisites:
 #   - Node.js and npm
@@ -15,59 +16,75 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# Default options
-HEADLESS="--headless"
-BUILD_SKILL=""
-ROLE=""
-TOOLS=""
-CONFIG_FILE=""
-OUTPUT_DIR="./test-output"
-
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
 NC='\033[0m'
 
+# Show help
 show_help() {
     cat << EOF
-Usage: $0 [options]
+Skill Configurator Onboarding Test Script
 
-Options:
-  --headed          Run with browser UI visible
-  --headless        Run in headless mode (default)
-  --build-skill     Generate skill configuration after test
-  --config <file>   Load test configuration from JSON file
-  --output <dir>    Output directory for results (default: ./test-output)
-  --role <preset>   Use a role preset (e.g., project-manager, sales-manager)
-  --tools <preset>  Use a tools preset (e.g., jira, confluence, notion)
-  --list-presets    List available role and tools presets
-  --help            Show this help message
+用法:
+  $0                              # 交互模式，按提示逐步输入
+  $0 [options]                    # 命令行模式，直接传入参数
 
-Available Role Presets:
-  project-manager    - 项目经理 (用例: 记录日志, 记录计划, 项目周报)
-  sales-manager      - 销售经理 (用例: 记录日志, 记录计划)
-  qa-manager         - 质量经理 (用例: 记录日志, 记录计划)
-  delivery-manager   - 交付经理 (用例: 记录日志, 记录计划)
-  rd-manager         - 研发经理 (用例: 记录日志, 记录计划)
+命令行选项:
+  --headed          显示浏览器界面
+  --headless        无界面模式 (默认)
+  --build-skill     测试完成后生成 Skill 配置
+  --output <dir>    输出目录 (默认: ./test-output)
+  --role <preset>   岗位预设 (见下方列表)
+  --tools <preset>  工具预设，可多次使用 (见下方列表)
+  --use-case <name> 用例名称
+  --info <text>     信息来源
+  --rules <text>    用例规则
+  --help            显示帮助
 
-Available Tool Presets:
-  jira               - Jira
-  confluence         - Confluence
-  saleseasy          - 销售易
-  notion             - Notion
-  zentao             - 禅道
-  full-stack         - All Tools
+岗位预设:
+  project-manager   项目经理 (用例: 记录日志, 记录计划, 项目周报)
+  sales-manager     销售经理 (用例: 记录日志, 记录计划)
+  qa-manager        质量经理 (用例: 记录日志, 记录计划)
+  delivery-manager  交付经理 (用例: 记录日志, 记录计划)
+  rd-manager        研发经理 (用例: 记录日志, 记录计划)
 
-Example:
-  $0 --headed
-  $0 --build-skill --role project-manager --tools jira
-  $0 --config my-config.json --build-skill
+工具预设:
+  jira              Jira
+  confluence        Confluence
+  saleseasy         销售易
+  notion            Notion
+  zentao            禅道
+
+示例:
+  # 交互模式
+  $0
+
+  # 命令行模式
+  $0 --role project-manager --tools jira --tools confluence \\
+     --use-case "项目周报" --info "Jira看板" --build-skill
 EOF
     exit 0
 }
 
+# Check prerequisites
+check_prerequisites() {
+    if ! command -v node &> /dev/null; then
+        echo -e "${RED}错误: 需要安装 Node.js${NC}"
+        exit 1
+    fi
+}
+
 # Parse arguments
+HEADLESS="--headless"
+BUILD_SKILL=""
+OUTPUT_DIR="./test-output"
+HAS_ARGS=false
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --headed)
@@ -82,55 +99,27 @@ while [[ $# -gt 0 ]]; do
             BUILD_SKILL="--build-skill"
             shift
             ;;
-        --config)
-            CONFIG_FILE="--config $2"
-            shift 2
-            ;;
         --output)
             OUTPUT_DIR="$2"
             shift 2
             ;;
-        --role)
-            ROLE="--role $2"
-            shift 2
-            ;;
-        --tools)
-            TOOLS="--tools $2"
-            shift 2
-            ;;
-        --list-presets)
-            node "$SCRIPT_DIR/test-onboarding.cjs" --list-presets
-            exit 0
-            ;;
         --help)
             show_help
             ;;
+        --role|--tools|--use-case|--info|--rules)
+            HAS_ARGS=true
+            shift 2
+            ;;
         *)
-            echo -e "${RED}Unknown option: $1${NC}"
-            show_help
+            shift
             ;;
     esac
 done
 
-echo ""
-echo "========================================"
-echo "  Skill Configurator Onboarding Test"
-echo "========================================"
-echo ""
+check_prerequisites
 
-# Run the Node.js test script
 cd "$PROJECT_ROOT"
 
-echo -e "${BLUE}[INFO]${NC} Running test script..."
-
-CMD="node \"$SCRIPT_DIR/test-onboarding.cjs\" $HEADLESS $BUILD_SKILL $CONFIG_FILE --output \"$OUTPUT_DIR\" $ROLE $TOOLS"
-
-if eval $CMD; then
-    echo ""
-    echo -e "${GREEN}[SUCCESS]${NC} Test completed!"
-    exit 0
-else
-    echo ""
-    echo -e "${RED}[ERROR]${NC} Test failed"
-    exit 1
-fi
+# Run the Node.js script with all arguments
+# The Node.js script handles both interactive and command-line modes
+exec node "$SCRIPT_DIR/test-onboarding.cjs" "$@"

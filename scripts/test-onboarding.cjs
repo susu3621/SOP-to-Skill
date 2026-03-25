@@ -22,6 +22,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const readline = require('readline');
 
 // Role presets - 岗位预设
 const ROLE_PRESETS = {
@@ -593,14 +594,312 @@ Examples:
   return options;
 }
 
+// ============================================================
+// Interactive Mode Functions
+// ============================================================
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+const colors = {
+  cyan: '\x1b[36m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  bold: '\x1b[1m',
+  reset: '\x1b[0m',
+};
+
+function question(prompt, defaultValue = '') {
+  return new Promise((resolve) => {
+    const displayPrompt = defaultValue
+      ? `${prompt} [${defaultValue}]: `
+      : `${prompt}: `;
+    rl.question(displayPrompt, (answer) => {
+      resolve(answer.trim() || defaultValue);
+    });
+  });
+}
+
+function questionHidden(prompt) {
+  return new Promise((resolve) => {
+    process.stdout.write(`${prompt}: `);
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+
+    let password = '';
+    process.stdin.on('data', (char) => {
+      if (char === '\n' || char === '\r' || char === '\u0004') {
+        process.stdin.setRawMode(false);
+        process.stdin.pause();
+        process.stdout.write('\n');
+        resolve(password);
+      } else if (char === '\u0003') {
+        process.exit();
+      } else if (char === '\u007F') {
+        password = password.slice(0, -1);
+      } else {
+        password += char;
+      }
+    });
+  });
+}
+
+function selectOption(prompt, options) {
+  return new Promise((resolve) => {
+    console.log(`\n${colors.cyan}${prompt}${colors.reset}\n`);
+    options.forEach((opt, idx) => {
+      console.log(`  ${(idx + 1).toString().padStart(2)}) ${opt.label}`);
+    });
+    console.log('');
+
+    const ask = () => {
+      rl.question(`请选择 [1-${options.length}]: `, (answer) => {
+        const num = parseInt(answer.trim(), 10);
+        if (num >= 1 && num <= options.length) {
+          resolve(options[num - 1].value);
+        } else {
+          console.log('无效选择，请重新输入');
+          ask();
+        }
+      });
+    };
+    ask();
+  });
+}
+
+function multiSelect(prompt, options) {
+  return new Promise((resolve) => {
+    const selected = new Set();
+
+    console.log(`\n${colors.cyan}${prompt}${colors.reset}`);
+    console.log(`${colors.yellow}  (可多选，输入数字选择/取消，输入 0 完成)${colors.reset}\n`);
+
+    options.forEach((opt, idx) => {
+      console.log(`  ${(idx + 1).toString().padStart(2)}) ${opt.label}`);
+    });
+    console.log('');
+
+    const ask = () => {
+      if (selected.size > 0) {
+        const selectedLabels = options
+          .filter((opt) => selected.has(opt.value))
+          .map((opt) => opt.label);
+        console.log(`${colors.yellow}当前选择: ${selectedLabels.join(', ')}${colors.reset}`);
+      }
+
+      rl.question(`选择 [1-${options.length}, 0=完成]: `, (answer) => {
+        const num = parseInt(answer.trim(), 10);
+
+        if (num === 0) {
+          if (selected.size === 0) {
+            console.log('请至少选择一个选项');
+            ask();
+            return;
+          }
+          resolve(Array.from(selected));
+          return;
+        }
+
+        if (num >= 1 && num <= options.length) {
+          const value = options[num - 1].value;
+          if (selected.has(value)) {
+            selected.delete(value);
+            console.log(`${colors.red}✗${colors.reset} 已取消: ${options[num - 1].label}`);
+          } else {
+            selected.add(value);
+            console.log(`${colors.green}✓${colors.reset} 已选择: ${options[num - 1].label}`);
+          }
+        } else {
+          console.log('无效选择');
+        }
+
+        ask();
+      });
+    };
+    ask();
+  });
+}
+
+function printStep(step, title) {
+  console.log(`\n${colors.cyan}${colors.bold}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+  console.log(`${colors.bold}  Step ${step}: ${title}${colors.reset}`);
+  console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
+}
+
+function printSuccess(msg) {
+  console.log(`${colors.green}✓ ${msg}${colors.reset}`);
+}
+
+async function interactiveMode() {
+  console.log(`\n${colors.bold}${colors.cyan}`);
+  console.log('╔══════════════════════════════════════════════════════════════════╗');
+  console.log('║       Skill Configurator Onboarding 测试向导                    ║');
+  console.log('╚══════════════════════════════════════════════════════════════════╝');
+  console.log(`${colors.reset}`);
+
+  const config = {
+    agentApps: ['workbuddy', 'claude-code'],
+    role: '',
+    baseSkills: [],
+    useCase: '',
+    infoSources: '',
+    reportRules: '',
+    credentials: {},
+  };
+
+  // Step 1: Select Role
+  printStep('1/6', '选择岗位');
+  const roleOptions = Object.entries(ROLE_PRESETS).map(([key, preset]) => ({
+    value: key,
+    label: `${preset.name} (${key})`,
+  }));
+  const selectedRoleKey = await selectOption('请选择你的岗位:', roleOptions);
+  const rolePreset = ROLE_PRESETS[selectedRoleKey];
+  config.role = rolePreset.name;
+  const availableUseCases = rolePreset.useCases;
+  printSuccess(`已选择岗位: ${rolePreset.name}`);
+
+  // Step 2: Select Tools
+  printStep('2/6', '选择基础工具');
+  const toolOptions = Object.entries(TOOL_PRESETS)
+    .filter(([key]) => key !== 'full-stack')
+    .map(([key, preset]) => ({
+      value: key,
+      label: preset.name,
+    }));
+  const selectedTools = await multiSelect('请选择要使用的基础工具:', toolOptions);
+  config.baseSkills = selectedTools;
+  printSuccess(`已选择工具: ${selectedTools.map((t) => TOOL_PRESETS[t].name).join(', ')}`);
+
+  // Step 3: Select Use Case
+  printStep('3/6', '选择岗位用例');
+  if (availableUseCases.length === 1) {
+    config.useCase = availableUseCases[0];
+    printSuccess(`该岗位只有一个用例: ${config.useCase}`);
+  } else {
+    const useCaseOptions = availableUseCases.map((uc) => ({ value: uc, label: uc }));
+    config.useCase = await selectOption('请选择要使用的岗位用例:', useCaseOptions);
+    printSuccess(`已选择用例: ${config.useCase}`);
+  }
+
+  // Step 4: Enter Info Sources
+  printStep('4/6', '输入基础信息来源');
+  console.log('请描述你的基础信息来源，例如：');
+  console.log(`${colors.yellow}  Jira 项目看板、Confluence 项目主页、销售易商机页、例会纪要目录${colors.reset}\n`);
+  config.infoSources = await question('基础信息来源');
+  printSuccess('已设置信息来源');
+
+  // Step 5: Enter Rules
+  printStep('5/6', '输入用例规则或模板');
+  console.log('如果这个用例在公司内部有模板、规则、语气或输出要求，可以写在这里。');
+  console.log(`${colors.yellow}  例如：采用固定模板，先风险后里程碑，没有更新也要写明阻塞项。${colors.reset}\n`);
+  config.reportRules = await question('用例规则或模板 (可选，回车跳过)', '');
+  if (config.reportRules) {
+    printSuccess('已设置用例规则');
+  } else {
+    console.log(`${colors.yellow}跳过，后续可在 Skill 中补充${colors.reset}`);
+  }
+
+  // Step 6: Enter Credentials
+  printStep('6/6', '输入账号凭证');
+  console.log('请为所选工具提供账号信息：\n');
+
+  for (const toolKey of selectedTools) {
+    const preset = TOOL_PRESETS[toolKey];
+    console.log(`${colors.bold}${preset.name}:${colors.reset}`);
+
+    for (const credKey of Object.keys(preset.credentials)) {
+      const label = credKey.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+      if (credKey.toLowerCase().includes('password') || credKey.toLowerCase().includes('token')) {
+        config.credentials[credKey] = await questionHidden(`  ${label}`);
+      } else {
+        config.credentials[credKey] = await question(`  ${label}`, preset.credentials[credKey]);
+      }
+    }
+    console.log('');
+  }
+  printSuccess('已设置所有凭证');
+
+  // Show summary
+  console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}`);
+  console.log(`${colors.bold}  配置摘要${colors.reset}`);
+  console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
+
+  console.log(`  ${colors.bold}岗位:${colors.reset}        ${config.role}`);
+  console.log(`  ${colors.bold}用例:${colors.reset}        ${config.useCase}`);
+  console.log(`  ${colors.bold}基础工具:${colors.reset}    ${config.baseSkills.map((t) => TOOL_PRESETS[t]?.name || t).join(', ')}`);
+  console.log(`  ${colors.bold}信息来源:${colors.reset}    ${config.infoSources}`);
+  if (config.reportRules) {
+    console.log(`  ${colors.bold}用例规则:${colors.reset}    ${config.reportRules}`);
+  }
+
+  console.log(`\n  ${colors.bold}凭证信息:${colors.reset}`);
+  for (const toolKey of selectedTools) {
+    const preset = TOOL_PRESETS[toolKey];
+    console.log(`    ${preset.name}:`);
+    for (const credKey of Object.keys(preset.credentials)) {
+      const label = credKey.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
+      if (credKey.toLowerCase().includes('password') || credKey.toLowerCase().includes('token')) {
+        console.log(`      ${label}: ******`);
+      } else {
+        console.log(`      ${label}: ${config.credentials[credKey]}`);
+      }
+    }
+  }
+
+  console.log(`\n${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
+
+  // Confirm
+  const confirm = await question('确认执行测试? [Y/n]', 'Y');
+  if (confirm.toLowerCase() === 'n') {
+    console.log(`\n${colors.yellow}已取消${colors.reset}`);
+    rl.close();
+    process.exit(0);
+  }
+
+  rl.close();
+
+  return {
+    headless: true,
+    buildSkill: false,
+    config,
+    outputDir: './test-output',
+  };
+}
+
 // Main execution
 async function main() {
-  const options = parseArgs();
+  const args = process.argv.slice(2);
 
-  console.log('🧪 WorkBuddy Onboarding E2E Test');
-  console.log('================================\n');
+  // Check if no meaningful arguments (interactive mode)
+  const hasOptions = args.some(
+    (arg) =>
+      arg === '--role' ||
+      arg === '--tools' ||
+      arg === '--config' ||
+      arg === '--use-case' ||
+      arg === '--help' ||
+      arg === '--list-presets'
+  );
+
+  let options;
+
+  if (!hasOptions && args.length === 0) {
+    // Interactive mode
+    options = await interactiveMode();
+  } else {
+    // Command line mode
+    options = parseArgs();
+  }
+
+  console.log('\n🧪 Skill Configurator Onboarding E2E Test');
+  console.log('========================================\n');
   console.log(`Mode: ${options.headless ? 'Headless' : 'Headed'}`);
-  console.log(`Build Skill: ${options.buildSkill}`);
+  console.log(`Build Skill: ${options.buildSkill || false}`);
   console.log(`Output: ${options.outputDir}`);
   console.log('');
 
