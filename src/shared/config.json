@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "agentApps": {
+    "antigravity": {
+      "name": "Antigravity",
+      "description": "适合承接企业工作流与 AI 协作场景"
+    },
+    "workbuddy": {
+      "name": "WorkBuddy",
+      "description": "企业级 AI 助手"
+    },
+    "claude-code": {
+      "name": "Claude Code",
+      "description": "Anthropic 官方 CLI 工具"
+    },
+    "codex": {
+      "name": "Codex",
+      "description": "OpenAI 代码助手"
+    },
+    "gemini-cli": {
+      "name": "Gemini CLI",
+      "description": "Google Gemini 命令行工具"
+    }
+  },
+  "roles": {
+    "project-manager": {
+      "name": "项目经理",
+      "description": "需要串联项目状态、风险、进度和跨团队同步",
+      "useCases": ["记录日志", "记录计划", "项目周报"]
+    },
+    "product-manager": {
+      "name": "产品经理",
+      "description": "更关注需求变更、版本范围和关键里程碑",
+      "useCases": ["记录日志", "记录计划"]
+    },
+    "sales-manager": {
+      "name": "销售经理",
+      "description": "更关注客户机会、商务节奏和项目推进状态",
+      "useCases": ["记录日志", "记录计划"]
+    },
+    "qa-manager": {
+      "name": "质量经理",
+      "description": "更关注质量风险、测试闭环和过程规范",
+      "useCases": ["记录日志", "记录计划"]
+    },
+    "delivery-manager": {
+      "name": "交付经理",
+      "description": "更关注交付节奏、上线问题和跨团队协同闭环",
+      "useCases": ["记录日志", "记录计划"]
+    },
+    "rd-manager": {
+      "name": "研发经理",
+      "description": "更关注研发进展、资源投入和风险暴露",
+      "useCases": ["记录日志", "记录计划"]
+    }
+  },
+  "baseSkills": {
+    "jira": {
+      "name": "Jira",
+      "description": "同步项目任务、缺陷、负责人和状态变化",
+      "credentials": {
+        "jiraUsername": {
+          "label": "Jira 用户名",
+          "placeholder": "your.name@example.com",
+          "type": "text",
+          "required": true
+        },
+        "jiraPassword": {
+          "label": "Jira 密码 / API Token",
+          "placeholder": "输入 Jira 密码或 API Token",
+          "type": "password",
+          "required": true
+        }
+      }
+    },
+    "confluence": {
+      "name": "Confluence",
+      "description": "读取周报模板、项目文档和会议纪要",
+      "credentials": {
+        "confluenceUsername": {
+          "label": "Confluence 用户名",
+          "placeholder": "your.name@example.com",
+          "type": "text",
+          "required": true
+        },
+        "confluencePassword": {
+          "label": "Confluence 密码 / API Token",
+          "placeholder": "输入 Confluence 密码或 API Token",
+          "type": "password",
+          "required": true
+        }
+      }
+    },
+    "saleseasy": {
+      "name": "销售易",
+      "description": "同步客户机会、商务推进和关键客户动态",
+      "credentials": {
+        "saleseasyUsername": {
+          "label": "销售易 用户名",
+          "placeholder": "your.name@example.com",
+          "type": "text",
+          "required": true
+        },
+        "saleseasyPassword": {
+          "label": "销售易 密码",
+          "placeholder": "输入销售易密码",
+          "type": "password",
+          "required": true
+        }
+      }
+    },
+    "notion": {
+      "name": "Notion",
+      "description": "读取团队知识库、项目页面和协作文档",
+      "credentials": {
+        "notionUserEmail": {
+          "label": "Notion 用户邮箱",
+          "placeholder": "your.name@example.com",
+          "type": "text",
+          "required": true
+        },
+        "notionToken": {
+          "label": "Notion Integration Token",
+          "placeholder": "输入 Notion Integration Token",
+          "type": "password",
+          "required": true
+        }
+      }
+    },
+    "zentao": {
+      "name": "禅道",
+      "description": "同步需求、Bug、任务和测试执行状态",
+      "credentials": {
+        "zentaoUsername": {
+          "label": "禅道 用户名",
+          "placeholder": "your.username",
+          "type": "text",
+          "required": true
+        },
+        "zentaoPassword": {
+          "label": "禅道 密码",
+          "placeholder": "输入禅道密码",
+          "type": "password",
+          "required": true
+        }
+      }
+    }
+  },
+  "useCases": {
+    "记录日志": {
+      "name": "记录日志",
+      "description": "记录每日工作内容和进展，形成项目日志"
+    },
+    "记录计划": {
+      "name": "记录计划",
+      "description": "制定和更新项目计划，跟踪里程碑和任务"
+    },
+    "项目周报": {
+      "name": "项目周报",
+      "description": "汇总项目状态、风险和待办，形成标准周报"
+    }
+  },
+  "testDefaults": {
+    "agentApps": ["workbuddy", "claude-code"],
+    "role": "project-manager",
+    "baseSkills": ["jira", "confluence"],
+    "useCase": "项目周报",
+    "infoSources": "Jira 项目看板、Confluence 周报模板、例会纪要目录、邮件归档",
+    "reportRules": "采用公司标准周报模板，按风险、里程碑、待办三部分组织。风险部分需要标注等级和责任人。"
+  }
+}

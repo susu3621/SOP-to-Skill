@@ -2,112 +2,54 @@
 /**
  * Skill Configurator Onboarding E2E Test Script
  *
- * This script automates the onboarding flow and optionally generates
- * a skill configuration based on the test input.
+ * Uses shared configuration from src/shared/config.json
  *
  * Usage:
  *   node scripts/test-onboarding.cjs [options]
- *
- * Options:
- *   --headed          Run with browser UI visible
- *   --headless        Run in headless mode (default)
- *   --build-skill     Generate skill configuration after test
- *   --config <file>   Load test configuration from JSON file
- *   --output <dir>    Output directory for results (default: ./test-output)
- *   --role <preset>   Use a role preset (e.g., project-manager)
- *   --tools <preset>  Use a tools preset (e.g., jira-confluence)
- *   --list-presets    List available presets
- *   --help            Show help message
+ *   node scripts/test-onboarding.cjs              # Interactive mode
+ *   node scripts/test-onboarding.cjs --headed    # With browser UI
+ *   node scripts/test-onboarding.cjs --help      # Show help
  */
 
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
-// Role presets - 岗位预设
-const ROLE_PRESETS = {
-  'project-manager': {
-    name: '项目经理',
-    useCases: ['记录日志', '记录计划', '项目周报'],
-  },
-  'sales-manager': {
-    name: '销售经理',
-    useCases: ['记录日志', '记录计划'],
-  },
-  'qa-manager': {
-    name: '质量经理',
-    useCases: ['记录日志', '记录计划'],
-  },
-  'delivery-manager': {
-    name: '交付经理',
-    useCases: ['记录日志', '记录计划'],
-  },
-  'rd-manager': {
-    name: '研发经理',
-    useCases: ['记录日志', '记录计划'],
-  },
+// Load shared configuration
+const SHARED_CONFIG_PATH = path.resolve(__dirname, '../src/shared/config.json');
+let sharedConfig;
+
+try {
+  sharedConfig = JSON.parse(fs.readFileSync(SHARED_CONFIG_PATH, 'utf8'));
+} catch (e) {
+  console.error('Error: Could not load shared configuration from', SHARED_CONFIG_PATH);
+  console.error('Make sure you run this script from the project root directory.');
+  process.exit(1);
+}
+
+// Helper to get config values
+const config = {
+  agentApps: sharedConfig.agentApps,
+  roles: sharedConfig.roles,
+  baseSkills: sharedConfig.baseSkills,
+  useCases: sharedConfig.useCases,
+  testDefaults: sharedConfig.testDefaults,
 };
 
-// Tool presets - 工具预设
-const TOOL_PRESETS = {
-  'jira': {
-    name: 'Jira',
-    baseSkills: ['jira'],
-    credentials: {
-      jiraUsername: 'test.user@example.com',
-      jiraPassword: 'test-jira-api-token',
-    },
-  },
-  'confluence': {
-    name: 'Confluence',
-    baseSkills: ['confluence'],
-    credentials: {
-      confluenceUsername: 'test.user@example.com',
-      confluencePassword: 'test-confluence-api-token',
-    },
-  },
-  'saleseasy': {
-    name: '销售易',
-    baseSkills: ['saleseasy'],
-    credentials: {
-      saleseasyUsername: 'sales.user@example.com',
-      saleseasyPassword: 'test-sales-password',
-    },
-  },
-  'notion': {
-    name: 'Notion',
-    baseSkills: ['notion'],
-    credentials: {
-      notionUsername: 'test.user@example.com',
-      notionPassword: 'test-notion-token',
-    },
-  },
-  'zentao': {
-    name: '禅道',
-    baseSkills: ['zentao'],
-    credentials: {
-      zentaoUsername: 'qa.user',
-      zentaoPassword: 'test-zentao-password',
-    },
-  },
-  'full-stack': {
-    name: 'All Tools',
-    baseSkills: ['jira', 'confluence', 'saleseasy', 'notion'],
-    credentials: {
-      jiraUsername: 'test.user@example.com',
-      jiraPassword: 'test-jira-token',
-      confluenceUsername: 'test.user@example.com',
-      confluencePassword: 'test-confluence-token',
-      saleseasyUsername: 'test.user@example.com',
-      saleseasyPassword: 'test-sales-password',
-      notionUsername: 'test.user@example.com',
-      notionPassword: 'test-notion-token',
-    },
-  },
+// Colors for terminal output
+const colors = {
+  cyan: '\x1b[36m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  red: '\x1b[31m',
+  blue: '\x1b[34m',
+  bold: '\x1b[1m',
+  reset: '\x1b[0m',
 };
 
-// Early exit for help and list-presets (before loading playwright)
+// Early exit handlers (before loading playwright)
 const args = process.argv.slice(2);
+
 if (args.includes('--help')) {
   console.log(`
 Skill Configurator Onboarding E2E Test Script
@@ -121,485 +63,43 @@ Options:
   --build-skill     Generate skill configuration after test
   --config <file>   Load test configuration from JSON file
   --output <dir>    Output directory for results (default: ./test-output)
-  --role <preset>   Use a role preset (e.g., project-manager, sales-manager)
-  --tools <preset>  Use a tools preset (e.g., jira-confluence, notion)
-  --list-presets    List available role and tools presets
+  --list-presets    List available presets
   --help            Show this help message
 
+Interactive Mode:
+  Run without options to use the step-by-step wizard.
+
 Examples:
-  node scripts/test-onboarding.cjs --headed
-  node scripts/test-onboarding.cjs --build-skill --role project-manager --tools jira-confluence
-  node scripts/test-onboarding.cjs --config my-config.json --build-skill
+  node scripts/test-onboarding.cjs                    # Interactive mode
+  node scripts/test-onboarding.cjs --headed           # Interactive with browser
+  node scripts/test-onboarding.cjs --build-skill      # Generate skill file
 `);
   process.exit(0);
 }
 
 if (args.includes('--list-presets')) {
-  console.log('\n可用的岗位预设 (--role):\n');
-  for (const [key, preset] of Object.entries(ROLE_PRESETS)) {
-    console.log(`  ${key.padEnd(20)} - ${preset.name}`);
-    console.log(`                       用例: ${preset.useCases.join(', ')}`);
+  console.log('\n可用的 Agent 应用:\n');
+  for (const [key, app] of Object.entries(config.agentApps)) {
+    console.log(`  ${key.padEnd(15)} - ${app.name}`);
   }
-  console.log('\n可用的工具预设 (--tools):\n');
-  for (const [key, preset] of Object.entries(TOOL_PRESETS)) {
-    console.log(`  ${key.padEnd(20)} - ${preset.name}`);
+
+  console.log('\n可用的岗位预设:\n');
+  for (const [key, role] of Object.entries(config.roles)) {
+    console.log(`  ${key.padEnd(20)} - ${role.name}`);
+    console.log(`                       用例: ${role.useCases.join(', ')}`);
+  }
+
+  console.log('\n可用的基础工具:\n');
+  for (const [key, skill] of Object.entries(config.baseSkills)) {
+    console.log(`  ${key.padEnd(15)} - ${skill.name}`);
+  }
+
+  console.log('\n可用的用例:\n');
+  for (const [key, useCase] of Object.entries(config.useCases)) {
+    console.log(`  ${key.padEnd(15)} - ${useCase.description}`);
   }
   console.log('');
   process.exit(0);
-}
-
-// Default test configuration
-const DEFAULT_CONFIG = {
-  agentApps: ['workbuddy', 'claude-code'],
-  role: '项目经理',
-  baseSkills: ['jira', 'confluence'],
-  useCase: '项目周报',
-  useCases: ['记录日志', '记录计划', '项目周报'],
-  infoSources: 'Jira 项目看板、Confluence 周报模板、例会纪要目录、邮件归档',
-  reportRules: '采用公司标准周报模板，按风险、里程碑、待办三部分组织。风险部分需要标注等级和责任人。',
-  credentials: {
-    jiraUsername: 'pm.user@example.com',
-    jiraPassword: 'test-jira-api-token',
-    confluenceUsername: 'pm.user@example.com',
-    confluencePassword: 'test-confluence-api-token',
-  },
-};
-
-class OnboardingTester {
-  constructor(options = {}) {
-    this.headless = options.headless !== false;
-    this.buildSkill = options.buildSkill || false;
-    this.config = options.config || DEFAULT_CONFIG;
-    this.outputDir = options.outputDir || './test-output';
-    this.baseURL = options.baseURL || 'http://localhost:1420';
-    this.browser = null;
-    this.context = null;
-    this.page = null;
-    this.results = [];
-  }
-
-  async init() {
-    console.log('🚀 Initializing browser...');
-
-    // Lazy load playwright only when needed
-    let chromium;
-    try {
-      chromium = require('playwright').chromium;
-    } catch (e) {
-      console.error('\n❌ Playwright is not installed.');
-      console.error('Please run: npm install playwright && npx playwright install\n');
-      process.exit(1);
-    }
-
-    this.browser = await chromium.launch({
-      headless: this.headless,
-      slowMo: this.headless ? 0 : 100,
-    });
-    this.context = await this.browser.newContext({
-      viewport: { width: 1280, height: 800 },
-    });
-    this.page = await this.context.newPage();
-
-    // Ensure output directory exists
-    if (!fs.existsSync(this.outputDir)) {
-      fs.mkdirSync(this.outputDir, { recursive: true });
-    }
-  }
-
-  async cleanup() {
-    if (this.browser) {
-      await this.browser.close();
-    }
-  }
-
-  async navigate() {
-    console.log(`📱 Navigating to ${this.baseURL}...`);
-    await this.page.goto(this.baseURL);
-    await this.page.waitForLoadState('networkidle');
-  }
-
-  async step1_selectAgentApps() {
-    console.log('\n📝 Step 1: Selecting Agent Apps...');
-
-    for (const app of this.config.agentApps) {
-      const label = this.getAgentAppLabel(app);
-      const checkbox = this.page.getByLabel(label, { exact: false });
-      await checkbox.check();
-      console.log(`  ✓ Selected: ${label}`);
-    }
-
-    await this.clickNext();
-    this.results.push({ step: 1, name: 'Select Agent Apps', status: 'passed' });
-  }
-
-  async step2_selectRole() {
-    console.log('\n📝 Step 2: Selecting Role...');
-
-    await this.page.getByLabel(this.config.role).check();
-    console.log(`  ✓ Selected role: ${this.config.role}`);
-
-    await this.clickNext();
-    this.results.push({ step: 2, name: 'Select Role', status: 'passed' });
-  }
-
-  async step3_selectBaseSkills() {
-    console.log('\n📝 Step 3: Selecting Base Skills...');
-
-    for (const skill of this.config.baseSkills) {
-      const label = this.getBaseSkillLabel(skill);
-      await this.page.getByLabel(label).check();
-      console.log(`  ✓ Selected: ${label}`);
-    }
-
-    await this.clickNext();
-    this.results.push({ step: 3, name: 'Select Base Skills', status: 'passed' });
-  }
-
-  async step4_selectUseCase() {
-    console.log('\n📝 Step 4: Selecting Use Case...');
-
-    await this.page.getByLabel(this.config.useCase).check();
-    console.log(`  ✓ Selected use case: ${this.config.useCase}`);
-
-    await this.clickNext();
-    this.results.push({ step: 4, name: 'Select Use Case', status: 'passed' });
-  }
-
-  async step5_enterInfoSources() {
-    console.log('\n📝 Step 5: Entering Info Sources...');
-
-    await this.page.getByLabel('基础信息来源').fill(this.config.infoSources);
-    console.log(`  ✓ Entered info sources`);
-
-    await this.clickNext();
-    this.results.push({ step: 5, name: 'Enter Info Sources', status: 'passed' });
-  }
-
-  async step6_enterReportRules() {
-    console.log('\n📝 Step 6: Entering Report Rules...');
-
-    await this.page.getByLabel('用例规则或模板').fill(this.config.reportRules);
-    console.log(`  ✓ Entered report rules`);
-
-    await this.clickNext();
-    this.results.push({ step: 6, name: 'Enter Report Rules', status: 'passed' });
-  }
-
-  async step7_enterCredentials() {
-    console.log('\n📝 Step 7: Entering Credentials...');
-
-    const credentialFields = this.getCredentialFields();
-
-    for (const [key, value] of Object.entries(credentialFields)) {
-      try {
-        await this.page.getByLabel(key).fill(value);
-        console.log(`  ✓ Entered: ${key}`);
-      } catch (e) {
-        console.log(`  ⚠ Field not found: ${key}`);
-      }
-    }
-
-    await this.clickNext();
-    this.results.push({ step: 7, name: 'Enter Credentials', status: 'passed' });
-  }
-
-  async step8_verifyCompletion() {
-    console.log('\n📝 Step 8: Verifying Completion...');
-
-    await this.page.waitForSelector('h2:has-text("设置完成")', { timeout: 10000 });
-    console.log('  ✓ Completion screen displayed');
-
-    // Verify summary shows correct values
-    const roleVisible = await this.page.isVisible(`text=${this.config.role}`);
-    if (roleVisible) {
-      console.log(`  ✓ Role "${this.config.role}" displayed in summary`);
-    }
-
-    this.results.push({ step: 8, name: 'Verify Completion', status: 'passed' });
-  }
-
-  async clickNext() {
-    await this.page.getByRole('button', { name: /下一步|完成设置/ }).click();
-    await this.page.waitForTimeout(500);
-  }
-
-  getAgentAppLabel(app) {
-    const labels = {
-      antigravity: 'Antigravity',
-      workbuddy: 'WorkBuddy',
-      'claude-code': 'Claude Code',
-      codex: 'Codex',
-      'gemini-cli': 'Gemini CLI',
-    };
-    return labels[app] || app;
-  }
-
-  getBaseSkillLabel(skill) {
-    const labels = {
-      jira: 'Jira',
-      confluence: 'Confluence',
-      saleseasy: '销售易',
-      notion: 'Notion',
-      zentao: '禅道',
-    };
-    return labels[skill] || skill;
-  }
-
-  getCredentialFields() {
-    const fields = {};
-    const skillCredentials = {
-      jira: [
-        ['Jira 用户名', 'jiraUsername'],
-        ['Jira 密码 / API Token', 'jiraPassword'],
-      ],
-      confluence: [
-        ['Confluence 用户名', 'confluenceUsername'],
-        ['Confluence 密码 / API Token', 'confluencePassword'],
-      ],
-      saleseasy: [
-        ['销售易 用户名', 'saleseasyUsername'],
-        ['销售易 密码', 'saleseasyPassword'],
-      ],
-      notion: [
-        ['Notion 用户邮箱', 'notionUsername'],
-        ['Notion 密码 / Integration Token', 'notionPassword'],
-      ],
-      zentao: [
-        ['禅道 用户名', 'zentaoUsername'],
-        ['禅道 密码', 'zentaoPassword'],
-      ],
-    };
-
-    for (const skill of this.config.baseSkills) {
-      if (skillCredentials[skill]) {
-        for (const [label, key] of skillCredentials[skill]) {
-          if (this.config.credentials[key]) {
-            fields[label] = this.config.credentials[key];
-          }
-        }
-      }
-    }
-
-    return fields;
-  }
-
-  generateSkillConfig() {
-    console.log('\n🔨 Generating skill configuration...');
-
-    const skillConfig = {
-      name: 'workbuddy-weekly-report',
-      version: '1.0.0',
-      description: 'WorkBuddy 周报发送能力配置',
-      author: 'test-script',
-      generatedAt: new Date().toISOString(),
-      config: {
-        agentApps: this.config.agentApps,
-        role: this.config.role,
-        baseSkills: this.config.baseSkills,
-        useCase: this.config.useCase,
-        infoSources: this.config.infoSources,
-        reportRules: this.config.reportRules,
-      },
-      credentials: this.config.credentials,
-      targets: this.config.agentApps,
-    };
-
-    const skillMD = `---
-name: workbuddy-weekly-report
-description: WorkBuddy 周报发送能力配置
----
-
-# WorkBuddy 周报发送能力
-
-## 配置信息
-
-- **岗位**: ${this.config.role}
-- **用例**: ${this.config.useCase}
-- **基础工具**: ${this.config.baseSkills.join('、')}
-- **Agent 应用**: ${this.config.agentApps.join('、')}
-
-## 信息来源
-
-${this.config.infoSources}
-
-## 报告规则
-
-${this.config.reportRules}
-
-## 凭证配置
-
-需要配置以下工具的凭证：
-
-${this.config.baseSkills.map(s => `- ${this.getBaseSkillLabel(s)}`).join('\n')}
-
----
-
-*Generated by test-onboarding.js at ${new Date().toLocaleString('zh-CN')}*
-`;
-
-    const skillJsonPath = path.join(this.outputDir, 'skill.json');
-    const skillMdPath = path.join(this.outputDir, 'SKILL.md');
-
-    fs.writeFileSync(skillJsonPath, JSON.stringify(skillConfig, null, 2));
-    fs.writeFileSync(skillMdPath, skillMD);
-
-    console.log(`  ✓ skill.json saved to: ${skillJsonPath}`);
-    console.log(`  ✓ SKILL.md saved to: ${skillMdPath}`);
-  }
-
-  printSummary() {
-    console.log('\n' + '='.repeat(50));
-    console.log('📊 Test Summary');
-    console.log('='.repeat(50));
-
-    for (const result of this.results) {
-      const icon = result.status === 'passed' ? '✅' : '❌';
-      console.log(`${icon} Step ${result.step}: ${result.name}`);
-    }
-
-    console.log('='.repeat(50));
-    const passed = this.results.filter(r => r.status === 'passed').length;
-    console.log(`Total: ${passed}/${this.results.length} steps passed`);
-    console.log('='.repeat(50));
-  }
-
-  async run() {
-    try {
-      await this.init();
-      await this.navigate();
-
-      await this.step1_selectAgentApps();
-      await this.step2_selectRole();
-      await this.step3_selectBaseSkills();
-      await this.step4_selectUseCase();
-      await this.step5_enterInfoSources();
-      await this.step6_enterReportRules();
-      await this.step7_enterCredentials();
-      await this.step8_verifyCompletion();
-
-      this.printSummary();
-
-      if (this.buildSkill) {
-        this.generateSkillConfig();
-      }
-
-      console.log('\n✅ All tests passed!\n');
-      return true;
-    } catch (error) {
-      console.error('\n❌ Test failed:', error.message);
-      return false;
-    } finally {
-      await this.cleanup();
-    }
-  }
-}
-
-// CLI argument parsing
-function parseArgs() {
-  const args = process.argv.slice(2);
-  const options = {
-    headless: true,
-    buildSkill: false,
-    config: { ...DEFAULT_CONFIG },
-    outputDir: './test-output',
-    role: null,
-    tools: null,
-  };
-
-  for (let i = 0; i < args.length; i++) {
-    switch (args[i]) {
-      case '--headed':
-        options.headless = false;
-        break;
-      case '--headless':
-        options.headless = true;
-        break;
-      case '--build-skill':
-        options.buildSkill = true;
-        break;
-      case '--config':
-        const configFile = args[++i];
-        options.config = JSON.parse(fs.readFileSync(configFile, 'utf8'));
-        break;
-      case '--output':
-        options.outputDir = args[++i];
-        break;
-      case '--role':
-        options.role = args[++i];
-        break;
-      case '--tools':
-        options.tools = args[++i];
-        break;
-      case '--list-presets':
-        console.log('\n可用的岗位预设 (--role):\n');
-        for (const [key, preset] of Object.entries(ROLE_PRESETS)) {
-          console.log(`  ${key.padEnd(20)} - ${preset.name}`);
-        }
-        console.log('\n可用的工具预设 (--tools):\n');
-        for (const [key, preset] of Object.entries(TOOL_PRESETS)) {
-          console.log(`  ${key.padEnd(20)} - ${preset.name}`);
-        }
-        console.log('');
-        process.exit(0);
-      case '--help':
-        console.log(`
-Skill Configurator Onboarding E2E Test Script
-
-Usage:
-  node scripts/test-onboarding.js [options]
-
-Options:
-  --headed          Run with browser UI visible
-  --headless        Run in headless mode (default)
-  --build-skill     Generate skill configuration after test
-  --config <file>   Load test configuration from JSON file
-  --output <dir>    Output directory for results (default: ./test-output)
-  --role <preset>   Use a role preset (e.g., project-manager, sales-manager)
-  --tools <preset>  Use a tools preset (e.g., jira-confluence, notion)
-  --list-presets    List available role and tools presets
-  --help            Show this help message
-
-Examples:
-  node scripts/test-onboarding.js --headed
-  node scripts/test-onboarding.js --build-skill --role project-manager --tools jira-confluence
-  node scripts/test-onboarding.js --config my-config.json --build-skill
-`);
-        process.exit(0);
-    }
-  }
-
-  // Apply role preset
-  if (options.role) {
-    if (ROLE_PRESETS[options.role]) {
-      const preset = ROLE_PRESETS[options.role];
-      options.config.role = preset.name;
-      options.config.useCases = preset.useCases;
-      // 默认选择第一个用例
-      options.config.useCase = preset.useCases[0];
-      console.log(`\n📋 Using role preset: ${options.role} (${preset.name})\n`);
-      console.log(`   Available use cases: ${preset.useCases.join(', ')}\n`);
-    } else {
-      console.error(`Unknown role preset: ${options.role}`);
-      console.log('Use --list-presets to see available options');
-      process.exit(1);
-    }
-  }
-
-  // Apply tools preset
-  if (options.tools) {
-    if (TOOL_PRESETS[options.tools]) {
-      const preset = TOOL_PRESETS[options.tools];
-      options.config.baseSkills = preset.baseSkills;
-      options.config.credentials = { ...options.config.credentials, ...preset.credentials };
-      console.log(`📋 Using tools preset: ${options.tools} (${preset.name})\n`);
-    } else {
-      console.error(`Unknown tools preset: ${options.tools}`);
-      console.log('Use --list-presets to see available options');
-      process.exit(1);
-    }
-  }
-
-  return options;
 }
 
 // ============================================================
@@ -610,15 +110,6 @@ const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
-
-const colors = {
-  cyan: '\x1b[36m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
-  bold: '\x1b[1m',
-  reset: '\x1b[0m',
-};
 
 function question(prompt, defaultValue = '') {
   return new Promise((resolve) => {
@@ -639,10 +130,11 @@ function questionHidden(prompt) {
     process.stdin.setEncoding('utf8');
 
     let password = '';
-    process.stdin.on('data', (char) => {
+    const onData = (char) => {
       if (char === '\n' || char === '\r' || char === '\u0004') {
         process.stdin.setRawMode(false);
         process.stdin.pause();
+        process.stdin.removeListener('data', onData);
         process.stdout.write('\n');
         resolve(password);
       } else if (char === '\u0003') {
@@ -652,7 +144,8 @@ function questionHidden(prompt) {
       } else {
         password += char;
       }
-    });
+    };
+    process.stdin.on('data', onData);
   });
 }
 
@@ -742,15 +235,6 @@ function printSuccess(msg) {
   console.log(`${colors.green}✓ ${msg}${colors.reset}`);
 }
 
-// Agent App presets
-const AGENT_APP_PRESETS = {
-  'workbuddy': { name: 'WorkBuddy', description: '企业级 AI 助手' },
-  'claude-code': { name: 'Claude Code', description: 'Anthropic 官方 CLI 工具' },
-  'antigravity': { name: 'Antigravity', description: '通用 AI 平台' },
-  'codex': { name: 'Codex', description: 'OpenAI 代码助手' },
-  'gemini-cli': { name: 'Gemini CLI', description: 'Google Gemini 命令行工具' },
-};
-
 async function interactiveMode() {
   console.log(`\n${colors.bold}${colors.cyan}`);
   console.log('╔══════════════════════════════════════════════════════════════════╗');
@@ -758,8 +242,9 @@ async function interactiveMode() {
   console.log('╚══════════════════════════════════════════════════════════════════╝');
   console.log(`${colors.reset}`);
 
-  const config = {
+  const testConfig = {
     agentApps: [],
+    roleKey: '',
     role: '',
     baseSkills: [],
     useCase: '',
@@ -770,82 +255,78 @@ async function interactiveMode() {
 
   // Step 1: Select Agent Apps
   printStep('1/7', '选择目标 Agent 应用');
-  console.log('选择你想要配置的 Agent 应用（可多选）：\n');
-  const agentAppOptions = Object.entries(AGENT_APP_PRESETS).map(([key, preset]) => ({
+  const agentAppOptions = Object.entries(config.agentApps).map(([key, app]) => ({
     value: key,
-    label: `${preset.name} - ${preset.description}`,
+    label: `${app.name} - ${app.description}`,
   }));
-  config.agentApps = await multiSelect('请选择目标 Agent 应用:', agentAppOptions);
-  const selectedAppNames = config.agentApps.map((k) => AGENT_APP_PRESETS[k].name).join(', ');
-  printSuccess(`已选择 Agent 应用: ${selectedAppNames}`);
+  testConfig.agentApps = await multiSelect('请选择目标 Agent 应用:', agentAppOptions);
+  printSuccess(`已选择: ${testConfig.agentApps.map((k) => config.agentApps[k].name).join(', ')}`);
 
   // Step 2: Select Role
   printStep('2/7', '选择岗位');
-  const roleOptions = Object.entries(ROLE_PRESETS).map(([key, preset]) => ({
+  const roleOptions = Object.entries(config.roles).map(([key, role]) => ({
     value: key,
-    label: `${preset.name} (${key})`,
+    label: `${role.name} - ${role.description}`,
   }));
-  const selectedRoleKey = await selectOption('请选择你的岗位:', roleOptions);
-  const rolePreset = ROLE_PRESETS[selectedRoleKey];
-  config.role = rolePreset.name;
-  const availableUseCases = rolePreset.useCases;
-  printSuccess(`已选择岗位: ${rolePreset.name}`);
+  testConfig.roleKey = await selectOption('请选择你的岗位:', roleOptions);
+  testConfig.role = config.roles[testConfig.roleKey].name;
+  const roleUseCases = config.roles[testConfig.roleKey].useCases;
+  printSuccess(`已选择岗位: ${testConfig.role}`);
 
-  // Step 3: Select Tools
+  // Step 3: Select Base Skills
   printStep('3/7', '选择基础工具');
-  const toolOptions = Object.entries(TOOL_PRESETS)
-    .filter(([key]) => key !== 'full-stack')
-    .map(([key, preset]) => ({
-      value: key,
-      label: preset.name,
-    }));
-  const selectedTools = await multiSelect('请选择要使用的基础工具:', toolOptions);
-  config.baseSkills = selectedTools;
-  printSuccess(`已选择工具: ${selectedTools.map((t) => TOOL_PRESETS[t].name).join(', ')}`);
+  const skillOptions = Object.entries(config.baseSkills).map(([key, skill]) => ({
+    value: key,
+    label: `${skill.name} - ${skill.description}`,
+  }));
+  testConfig.baseSkills = await multiSelect('请选择要使用的基础工具:', skillOptions);
+  printSuccess(`已选择工具: ${testConfig.baseSkills.map((k) => config.baseSkills[k].name).join(', ')}`);
 
   // Step 4: Select Use Case
   printStep('4/7', '选择岗位用例');
-  if (availableUseCases.length === 1) {
-    config.useCase = availableUseCases[0];
-    printSuccess(`该岗位只有一个用例: ${config.useCase}`);
+  if (roleUseCases.length === 1) {
+    testConfig.useCase = roleUseCases[0];
+    printSuccess(`该岗位只有一个用例: ${testConfig.useCase}`);
   } else {
-    const useCaseOptions = availableUseCases.map((uc) => ({ value: uc, label: uc }));
-    config.useCase = await selectOption('请选择要使用的岗位用例:', useCaseOptions);
-    printSuccess(`已选择用例: ${config.useCase}`);
+    const useCaseOptions = roleUseCases.map((uc) => ({
+      value: uc,
+      label: `${uc} - ${config.useCases[uc]?.description || ''}`,
+    }));
+    testConfig.useCase = await selectOption('请选择要使用的岗位用例:', useCaseOptions);
+    printSuccess(`已选择用例: ${testConfig.useCase}`);
   }
 
   // Step 5: Enter Info Sources
   printStep('5/7', '输入基础信息来源');
   console.log('请描述你的基础信息来源，例如：');
-  console.log(`${colors.yellow}  Jira 项目看板、Confluence 项目主页、销售易商机页、例会纪要目录${colors.reset}\n`);
-  config.infoSources = await question('基础信息来源');
+  console.log(`${colors.yellow}  Jira 项目看板、Confluence 项目主页、例会纪要目录${colors.reset}\n`);
+  testConfig.infoSources = await question('基础信息来源', config.testDefaults.infoSources);
   printSuccess('已设置信息来源');
 
   // Step 6: Enter Rules
   printStep('6/7', '输入用例规则或模板');
   console.log('如果这个用例在公司内部有模板、规则、语气或输出要求，可以写在这里。');
   console.log(`${colors.yellow}  例如：采用固定模板，先风险后里程碑，没有更新也要写明阻塞项。${colors.reset}\n`);
-  config.reportRules = await question('用例规则或模板 (可选，回车跳过)', '');
-  if (config.reportRules) {
+  testConfig.reportRules = await question('用例规则或模板 (可选，回车跳过)', config.testDefaults.reportRules);
+  if (testConfig.reportRules) {
     printSuccess('已设置用例规则');
   } else {
-    console.log(`${colors.yellow}跳过，后续可在 Skill 中补充${colors.reset}`);
+    console.log(`${colors.yellow}跳过${colors.reset}`);
   }
 
   // Step 7: Enter Credentials
   printStep('7/7', '输入账号凭证');
   console.log('请为所选工具提供账号信息：\n');
 
-  for (const toolKey of selectedTools) {
-    const preset = TOOL_PRESETS[toolKey];
-    console.log(`${colors.bold}${preset.name}:${colors.reset}`);
+  for (const skillKey of testConfig.baseSkills) {
+    const skill = config.baseSkills[skillKey];
+    console.log(`${colors.bold}${skill.name}:${colors.reset}`);
 
-    for (const credKey of Object.keys(preset.credentials)) {
-      const label = credKey.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
-      if (credKey.toLowerCase().includes('password') || credKey.toLowerCase().includes('token')) {
-        config.credentials[credKey] = await questionHidden(`  ${label}`);
+    for (const [credKey, cred] of Object.entries(skill.credentials)) {
+      if (cred.type === 'password') {
+        testConfig.credentials[credKey] = await questionHidden(`  ${cred.label}`);
       } else {
-        config.credentials[credKey] = await question(`  ${label}`, preset.credentials[credKey]);
+        testConfig.credentials[credKey] = await question(`  ${cred.label}`, cred.placeholder);
       }
     }
     console.log('');
@@ -857,26 +338,22 @@ async function interactiveMode() {
   console.log(`${colors.bold}  配置摘要${colors.reset}`);
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
-  console.log(`  ${colors.bold}Agent 应用:${colors.reset}  ${config.agentApps.map((k) => AGENT_APP_PRESETS[k]?.name || k).join(', ')}`);
-  console.log(`  ${colors.bold}岗位:${colors.reset}        ${config.role}`);
-  console.log(`  ${colors.bold}用例:${colors.reset}        ${config.useCase}`);
-  console.log(`  ${colors.bold}基础工具:${colors.reset}    ${config.baseSkills.map((t) => TOOL_PRESETS[t]?.name || t).join(', ')}`);
-  console.log(`  ${colors.bold}信息来源:${colors.reset}    ${config.infoSources}`);
-  if (config.reportRules) {
-    console.log(`  ${colors.bold}用例规则:${colors.reset}    ${config.reportRules}`);
+  console.log(`  ${colors.bold}Agent 应用:${colors.reset}  ${testConfig.agentApps.map((k) => config.agentApps[k].name).join(', ')}`);
+  console.log(`  ${colors.bold}岗位:${colors.reset}        ${testConfig.role}`);
+  console.log(`  ${colors.bold}用例:${colors.reset}        ${testConfig.useCase}`);
+  console.log(`  ${colors.bold}基础工具:${colors.reset}    ${testConfig.baseSkills.map((k) => config.baseSkills[k].name).join(', ')}`);
+  console.log(`  ${colors.bold}信息来源:${colors.reset}    ${testConfig.infoSources}`);
+  if (testConfig.reportRules) {
+    console.log(`  ${colors.bold}用例规则:${colors.reset}    ${testConfig.reportRules}`);
   }
 
   console.log(`\n  ${colors.bold}凭证信息:${colors.reset}`);
-  for (const toolKey of selectedTools) {
-    const preset = TOOL_PRESETS[toolKey];
-    console.log(`    ${preset.name}:`);
-    for (const credKey of Object.keys(preset.credentials)) {
-      const label = credKey.replace(/([A-Z])/g, ' $1').replace(/^./, (s) => s.toUpperCase());
-      if (credKey.toLowerCase().includes('password') || credKey.toLowerCase().includes('token')) {
-        console.log(`      ${label}: ******`);
-      } else {
-        console.log(`      ${label}: ${config.credentials[credKey]}`);
-      }
+  for (const skillKey of testConfig.baseSkills) {
+    const skill = config.baseSkills[skillKey];
+    console.log(`    ${skill.name}:`);
+    for (const [credKey, cred] of Object.entries(skill.credentials)) {
+      const displayValue = cred.type === 'password' ? '******' : testConfig.credentials[credKey];
+      console.log(`      ${cred.label}: ${displayValue}`);
     }
   }
 
@@ -892,49 +369,316 @@ async function interactiveMode() {
 
   rl.close();
 
-  return {
-    headless: true,
-    buildSkill: false,
-    config,
-    outputDir: './test-output',
-  };
+  return testConfig;
 }
 
-// Main execution
-async function main() {
-  const args = process.argv.slice(2);
+// ============================================================
+// Test Runner
+// ============================================================
 
-  // Check if no meaningful arguments (interactive mode)
+class OnboardingTester {
+  constructor(options = {}) {
+    this.headless = options.headless !== false;
+    this.buildSkill = options.buildSkill || false;
+    this.config = options.config;
+    this.outputDir = options.outputDir || './test-output';
+    this.baseURL = options.baseURL || 'http://localhost:1420';
+    this.browser = null;
+    this.context = null;
+    this.page = null;
+    this.results = [];
+  }
+
+  async init() {
+    console.log('🚀 Initializing browser...');
+
+    // Lazy load playwright only when needed
+    let chromium;
+    try {
+      chromium = require('playwright').chromium;
+    } catch (e) {
+      console.error('\n❌ Playwright is not installed.');
+      console.error('Please run: npm install playwright && npx playwright install\n');
+      process.exit(1);
+    }
+
+    this.browser = await chromium.launch({
+      headless: this.headless,
+      slowMo: this.headless ? 0 : 100,
+    });
+
+    this.context = await this.browser.newContext({
+      viewport: { width: 1280, height: 800 },
+    });
+
+    this.page = await this.context.newPage();
+
+    // Ensure output directory exists
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
+  }
+
+  async cleanup() {
+    if (this.browser) {
+      await this.browser.close();
+    }
+  }
+
+  async navigate() {
+    console.log(`📱 Navigating to ${this.baseURL}...`);
+    await this.page.goto(this.baseURL);
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async runTest() {
+    const cfg = this.config;
+
+    // Step 1: Select Agent Apps
+    console.log('\n📝 Step 1: Selecting Agent Apps...');
+    for (const app of cfg.agentApps) {
+      const label = config.agentApps[app]?.name || app;
+      await this.page.getByLabel(label, { exact: false }).check();
+      console.log(`  ✓ Selected: ${label}`);
+    }
+    await this.clickNext();
+
+    // Step 2: Select Role
+    console.log('\n📝 Step 2: Selecting Role...');
+    await this.page.getByLabel(cfg.role).check();
+    console.log(`  ✓ Selected role: ${cfg.role}`);
+    await this.clickNext();
+
+    // Step 3: Select Base Skills
+    console.log('\n📝 Step 3: Selecting Base Skills...');
+    for (const skill of cfg.baseSkills) {
+      const label = config.baseSkills[skill]?.name || skill;
+      await this.page.getByLabel(label, { exact: false }).check();
+      console.log(`  ✓ Selected: ${label}`);
+    }
+    await this.clickNext();
+
+    // Step 4: Select Use Case
+    console.log('\n📝 Step 4: Selecting Use Case...');
+    await this.page.getByLabel(cfg.useCase).check();
+    console.log(`  ✓ Selected use case: ${cfg.useCase}`);
+    await this.clickNext();
+
+    // Step 5: Enter Info Sources
+    console.log('\n📝 Step 5: Entering Info Sources...');
+    await this.page.getByLabel('基础信息来源').fill(cfg.infoSources);
+    console.log(`  ✓ Entered info sources`);
+    await this.clickNext();
+
+    // Step 6: Enter Report Rules
+    console.log('\n📝 Step 6: Entering Report Rules...');
+    await this.page.getByLabel('用例规则或模板').fill(cfg.reportRules || '');
+    console.log(`  ✓ Entered report rules`);
+    await this.clickNext();
+
+    // Step 7: Enter Credentials
+    console.log('\n📝 Step 7: Entering Credentials...');
+    for (const skill of cfg.baseSkills) {
+      const skillConfig = config.baseSkills[skill];
+      if (!skillConfig?.credentials) continue;
+
+      for (const [credKey, cred] of Object.entries(skillConfig.credentials)) {
+        if (cfg.credentials[credKey]) {
+          try {
+            await this.page.getByLabel(cred.label).fill(cfg.credentials[credKey]);
+            console.log(`  ✓ Entered: ${cred.label}`);
+          } catch (e) {
+            console.log(`  ⚠ Field not found: ${cred.label}`);
+          }
+        }
+      }
+    }
+    await this.clickNext();
+
+    // Step 8: Verify Completion
+    console.log('\n📝 Step 8: Verifying Completion...');
+    await this.page.waitForSelector('h2:has-text("设置完成")', { timeout: 10000 });
+    console.log('  ✓ Completion screen displayed');
+
+    // Verify summary shows correct values
+    const roleVisible = await this.page.isVisible(`text=${cfg.role}`);
+    if (roleVisible) {
+      console.log(`  ✓ Role "${cfg.role}" displayed in summary`);
+    }
+
+    console.log('\n✅ All tests passed!\n');
+    return true;
+  }
+
+  async clickNext() {
+    await this.page.getByRole('button', { name: /下一步|完成设置/ }).click();
+    await this.page.waitForTimeout(500);
+  }
+
+  async run() {
+    try {
+      await this.init();
+      await this.navigate();
+      await this.runTest();
+
+      if (this.buildSkill) {
+        this.generateSkillConfig();
+      }
+
+      return true;
+    } catch (error) {
+      console.error('\n❌ Test failed:', error.message);
+      return false;
+    } finally {
+      await this.cleanup();
+    }
+  }
+
+  generateSkillConfig() {
+    const cfg = this.config;
+
+    const skillConfig = {
+      name: 'onboarding-generated-skill',
+      version: '1.0.0',
+      description: `${cfg.role} - ${cfg.useCase}`,
+      generatedAt: new Date().toISOString(),
+      config: {
+        agentApps: cfg.agentApps,
+        role: cfg.role,
+        baseSkills: cfg.baseSkills,
+        useCase: cfg.useCase,
+        infoSources: cfg.infoSources,
+        reportRules: cfg.reportRules,
+      },
+      credentials: Object.keys(cfg.credentials).reduce((acc, key) => {
+        acc[key] = '******';
+        return acc;
+      }, {}),
+    };
+
+    const skillMD = `---
+name: ${skillConfig.name}
+description: ${skillConfig.description}
+---
+
+# ${cfg.role} - ${cfg.useCase}
+
+## 配置信息
+
+- **岗位**: ${cfg.role}
+- **用例**: ${cfg.useCase}
+- **基础工具**: ${cfg.baseSkills.map((s) => config.baseSkills[s]?.name || s).join('、')}
+- **Agent 应用**: ${cfg.agentApps.map((a) => config.agentApps[a]?.name || a).join('、')}
+
+## 信息来源
+
+${cfg.infoSources}
+
+## 用例规则
+
+${cfg.reportRules || '未设置'}
+
+---
+
+*Generated by test-onboarding.cjs at ${new Date().toLocaleString('zh-CN')}*
+`;
+
+    const skillJsonPath = path.join(this.outputDir, 'skill.json');
+    const skillMdPath = path.join(this.outputDir, 'SKILL.md');
+
+    fs.writeFileSync(skillJsonPath, JSON.stringify(skillConfig, null, 2));
+    fs.writeFileSync(skillMdPath, skillMD);
+
+    console.log(`\n🔨 Skill configuration generated:`);
+    console.log(`  ✓ ${skillJsonPath}`);
+    console.log(`  ✓ ${skillMdPath}`);
+  }
+}
+
+// ============================================================
+// Main
+// ============================================================
+
+async function main() {
   const hasOptions = args.some(
     (arg) =>
       arg === '--role' ||
-      arg === '--tools' ||
+      arg === '--base-skills' ||
       arg === '--config' ||
       arg === '--use-case' ||
-      arg === '--help' ||
       arg === '--list-presets'
   );
 
-  let options;
+  let testConfig;
+  let headless = true;
+  let buildSkill = false;
+  let outputDir = './test-output';
 
-  if (!hasOptions && args.length === 0) {
+  // Parse common options
+  if (args.includes('--headed')) headless = false;
+  if (args.includes('--headless')) headless = true;
+  if (args.includes('--build-skill')) buildSkill = true;
+
+  const outputIdx = args.indexOf('--output');
+  if (outputIdx >= 0 && args[outputIdx + 1]) {
+    outputDir = args[outputIdx + 1];
+  }
+
+  if (!hasOptions && args.filter((a) => !a.startsWith('--')).length === 0) {
     // Interactive mode
-    options = await interactiveMode();
+    testConfig = await interactiveMode();
   } else {
-    // Command line mode
-    options = parseArgs();
+    // Command line mode - use defaults
+    testConfig = {
+      agentApps: config.testDefaults.agentApps,
+      roleKey: config.testDefaults.role,
+      role: config.roles[config.testDefaults.role].name,
+      baseSkills: config.testDefaults.baseSkills,
+      useCase: config.testDefaults.useCase,
+      infoSources: config.testDefaults.infoSources,
+      reportRules: config.testDefaults.reportRules,
+      credentials: {},
+    };
+
+    // Collect credentials from command line or prompt
+    console.log('\n使用默认配置进行测试...');
+    console.log(`  岗位: ${testConfig.role}`);
+    console.log(`  用例: ${testConfig.useCase}`);
+    console.log(`  工具: ${testConfig.baseSkills.join(', ')}`);
+    console.log('');
+
+    // Prompt for credentials
+    for (const skillKey of testConfig.baseSkills) {
+      const skill = config.baseSkills[skillKey];
+      console.log(`${colors.bold}${skill.name}:${colors.reset}`);
+
+      for (const [credKey, cred] of Object.entries(skill.credentials)) {
+        if (cred.type === 'password') {
+          testConfig.credentials[credKey] = await questionHidden(`  ${cred.label}`);
+        } else {
+          testConfig.credentials[credKey] = await question(`  ${cred.label}`, cred.placeholder);
+        }
+      }
+      console.log('');
+    }
+    rl.close();
   }
 
   console.log('\n🧪 Skill Configurator Onboarding E2E Test');
   console.log('========================================\n');
-  console.log(`Mode: ${options.headless ? 'Headless' : 'Headed'}`);
-  console.log(`Build Skill: ${options.buildSkill || false}`);
-  console.log(`Output: ${options.outputDir}`);
+  console.log(`Mode: ${headless ? 'Headless' : 'Headed'}`);
+  console.log(`Build Skill: ${buildSkill}`);
+  console.log(`Output: ${outputDir}`);
   console.log('');
 
-  const tester = new OnboardingTester(options);
-  const success = await tester.run();
+  const tester = new OnboardingTester({
+    headless,
+    buildSkill,
+    config: testConfig,
+    outputDir,
+  });
 
+  const success = await tester.run();
   process.exit(success ? 0 : 1);
 }
 

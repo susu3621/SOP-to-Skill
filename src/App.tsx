@@ -228,10 +228,11 @@ function App() {
 
   const goBack = useCallback(() => {
     if (view === 'wizard') {
-      if (currentStepIndex > 0) {
+      if (currentStepIndex > 1) {
         setCurrentStepIndex((index) => index - 1)
       } else {
         setView('welcome')
+        setCurrentStepIndex(0)
       }
       return
     }
@@ -263,7 +264,7 @@ function App() {
 
   const goForward = useCallback(() => {
     if (view === 'welcome') {
-      setCurrentStepIndex(0)
+      setCurrentStepIndex(1) // Skip step 0 (agent-apps) since welcome already handles it
       setView('wizard')
       return
     }
