@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useSkills } from './hooks/useSkills'
@@ -417,12 +417,36 @@ function App() {
     )
   }
 
+  // Track navigation direction for animation
+  const prevViewRef = useRef<ViewType>(view)
+  const prevStepRef = useRef<number>(currentStepIndex)
+  const [animationDirection, setAnimationDirection] = useState<'forward' | 'backward'>('forward')
+
+  useEffect(() => {
+    // Determine direction based on view/step changes
+    if (view !== prevViewRef.current) {
+      if (view === 'wizard' || (view === 'result' && prevViewRef.current === 'wizard')) {
+        setAnimationDirection('forward')
+      } else {
+        setAnimationDirection('backward')
+      }
+    } else if (view === 'wizard' && currentStepIndex !== prevStepRef.current) {
+      setAnimationDirection(currentStepIndex > prevStepRef.current ? 'forward' : 'backward')
+    }
+    prevViewRef.current = view
+    prevStepRef.current = currentStepIndex
+  }, [view, currentStepIndex])
+
+  // Summary visibility state
+  const [summaryVisible, setSummaryVisible] = useState(false)
+
+  const isOnboardingView = view === 'welcome' || view === 'wizard' || view === 'result'
+
   return (
     <main className="shell">
       <div className="shell__inner">
         <header className="masthead">
           <div>
-            <p className="panel__eyebrow">{getCopy(locale, pageCopy.appSubtitle)}</p>
             <h1 className="masthead__title">{getCopy(locale, pageCopy.appTitle)}</h1>
             <p className="masthead__subtitle">{getCopy(locale, pageCopy.heroBody)}</p>
           </div>
@@ -432,8 +456,51 @@ function App() {
           </button>
         </header>
 
+        {/* Floating summary - left corner, auto-hide */}
+        {isOnboardingView && (
+          <>
+            <button
+              className="summary-toggle"
+              type="button"
+              onClick={() => setSummaryVisible(!summaryVisible)}
+              onBlur={() => setSummaryVisible(false)}
+            >
+              📋 配置摘要
+            </button>
+            <aside
+              className={`floating-summary ${summaryVisible ? 'visible' : ''}`}
+              onMouseEnter={() => setSummaryVisible(true)}
+              onMouseLeave={() => setSummaryVisible(false)}
+            >
+              <div className="floating-summary__header">
+                <span className="floating-summary__title">当前配置</span>
+                <button
+                  className="floating-summary__toggle"
+                  type="button"
+                  onClick={() => setSummaryVisible(false)}
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="floating-summary__content">
+                {demoSummary.map((item) => (
+                  <div className="floating-summary__row" key={item.label}>
+                    <span className="floating-summary__label">{item.label}</span>
+                    <span className="floating-summary__value">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          </>
+        )}
+
         <section className="layout">
-          <article className="panel">
+          <div className="layout__main">
+            <article
+              className="panel"
+              key={`${view}-${currentStepIndex}`}
+              data-animation={animationDirection}
+            >
             {view === 'welcome' && (
               <>
                 <span className="panel__eyebrow">Step 1 / 8</span>
@@ -919,51 +986,37 @@ function App() {
               </>
             )}
           </article>
+        </div>
 
-          <aside className="sidecard">
-            <h2>{getCopy(locale, pageCopy.wizardTitle)}</h2>
-            <p className="muted">
-              这个 demo 只校验页面节奏和问题顺序，不会在本地保存任何真实账号密码。
-            </p>
+        {/* Bottom progress footer */}
+        {isOnboardingView && (
+          <footer className="layout__footer">
+            <div className="progress-footer">
+              {onboardingMilestones.map((step, index) => {
+                const state =
+                  progressIndex === -1
+                    ? 'idle'
+                    : index < progressIndex
+                      ? 'done'
+                      : index === progressIndex
+                        ? 'active'
+                        : 'upcoming'
 
-            <div className="summary-card">
-              <h3>引导进度</h3>
-              <p className="progress-label">{progressLabel}</p>
-              <div className="progress-list">
-                {onboardingMilestones.map((step, index) => {
-                  const state =
-                    progressIndex === -1
-                      ? 'idle'
-                      : index < progressIndex
-                        ? 'done'
-                        : index === progressIndex
-                          ? 'active'
-                          : 'upcoming'
-
-                  return (
-                    <div className="progress-item" data-state={state} key={step}>
-                      <span>{step}</span>
-                    </div>
-                  )
-                })}
-              </div>
+                return (
+                  <div
+                    className={`progress-dot progress-dot--${state}`}
+                    key={step}
+                    title={step}
+                  />
+                )
+              })}
+              <span className="progress-label">{progressLabel}</span>
             </div>
-
-            <div className="summary-card">
-              <h3>当前摘要</h3>
-              <div className="mini-summary">
-                {demoSummary.map((item) => (
-                  <div className="mini-summary__row" key={item.label}>
-                    <span>{item.label}</span>
-                    <strong>{item.value}</strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
-        </section>
-      </div>
-    </main>
+          </footer>
+        )}
+      </section>
+    </div>
+  </main>
   )
 }
 
