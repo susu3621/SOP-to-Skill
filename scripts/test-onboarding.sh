@@ -46,10 +46,10 @@ Options:
 
 Available Role Presets:
   project-manager    - 项目经理 (用例: 记录日志, 记录计划, 项目周报)
-  sales-manager      - 销售经理 (用例: 记录日志, 记录计划, 项目周报)
-  qa-manager         - 质量经理 (用例: 记录日志, 记录计划, 项目周报)
-  delivery-manager   - 交付经理 (用例: 记录日志, 记录计划, 项目周报)
-  rd-manager         - 研发经理 (用例: 记录日志, 记录计划, 项目周报)
+  sales-manager      - 销售经理 (用例: 记录日志, 记录计划)
+  qa-manager         - 质量经理 (用例: 记录日志, 记录计划)
+  delivery-manager   - 交付经理 (用例: 记录日志, 记录计划)
+  rd-manager         - 研发经理 (用例: 记录日志, 记录计划)
 
 Available Tool Presets:
   jira-confluence    - Jira & Confluence

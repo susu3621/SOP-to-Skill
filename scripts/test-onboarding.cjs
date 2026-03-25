@@ -31,19 +31,19 @@ const ROLE_PRESETS = {
   },
   'sales-manager': {
     name: '销售经理',
-    useCases: ['记录日志', '记录计划', '项目周报'],
+    useCases: ['记录日志', '记录计划'],
   },
   'qa-manager': {
     name: '质量经理',
-    useCases: ['记录日志', '记录计划', '项目周报'],
+    useCases: ['记录日志', '记录计划'],
   },
   'delivery-manager': {
     name: '交付经理',
-    useCases: ['记录日志', '记录计划', '项目周报'],
+    useCases: ['记录日志', '记录计划'],
   },
   'rd-manager': {
     name: '研发经理',
-    useCases: ['记录日志', '记录计划', '项目周报'],
+    useCases: ['记录日志', '记录计划'],
   },
 };
 
