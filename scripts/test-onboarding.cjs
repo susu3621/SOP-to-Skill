@@ -148,9 +148,6 @@ if (args.includes('--list-presets')) {
   process.exit(0);
 }
 
-// Now load playwright (only when actually running tests)
-const { chromium } = require('playwright');
-
 // Default test configuration
 const DEFAULT_CONFIG = {
   agentApps: ['workbuddy', 'claude-code'],
@@ -183,6 +180,17 @@ class OnboardingTester {
 
   async init() {
     console.log('🚀 Initializing browser...');
+
+    // Lazy load playwright only when needed
+    let chromium;
+    try {
+      chromium = require('playwright').chromium;
+    } catch (e) {
+      console.error('\n❌ Playwright is not installed.');
+      console.error('Please run: npm install playwright && npx playwright install\n');
+      process.exit(1);
+    }
+
     this.browser = await chromium.launch({
       headless: this.headless,
       slowMo: this.headless ? 0 : 100,
