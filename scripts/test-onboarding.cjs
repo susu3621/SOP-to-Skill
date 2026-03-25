@@ -6,20 +6,142 @@
  * a skill configuration based on the test input.
  *
  * Usage:
- *   node scripts/test-onboarding.js [options]
+ *   node scripts/test-onboarding.cjs [options]
  *
  * Options:
- *   --headless       Run in headless mode (default: true)
- *   --headed         Run with browser UI visible
- *   --build-skill    Generate skill configuration after test
- *   --config <file>  Load test configuration from JSON file
- *   --output <dir>   Output directory for results (default: ./test-output)
- *   --help           Show help message
+ *   --headed          Run with browser UI visible
+ *   --headless        Run in headless mode (default)
+ *   --build-skill     Generate skill configuration after test
+ *   --config <file>   Load test configuration from JSON file
+ *   --output <dir>    Output directory for results (default: ./test-output)
+ *   --role <preset>   Use a role preset (e.g., project-manager)
+ *   --tools <preset>  Use a tools preset (e.g., jira-confluence)
+ *   --list-presets    List available presets
+ *   --help            Show help message
  */
 
-const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
+
+// Role presets - 岗位预设
+const ROLE_PRESETS = {
+  'project-manager': {
+    name: '项目经理',
+    useCase: '发送周报',
+  },
+  'sales-manager': {
+    name: '销售经理',
+    useCase: '发送周报',
+  },
+  'qa-manager': {
+    name: '质量经理',
+    useCase: '发送周报',
+  },
+  'delivery-manager': {
+    name: '交付经理',
+    useCase: '发送周报',
+  },
+  'rd-manager': {
+    name: '研发经理',
+    useCase: '发送周报',
+  },
+};
+
+// Tool presets - 工具预设
+const TOOL_PRESETS = {
+  'jira-confluence': {
+    name: 'Jira & Confluence',
+    baseSkills: ['jira', 'confluence'],
+    credentials: {
+      jiraUsername: 'test.user@example.com',
+      jiraPassword: 'test-jira-api-token',
+      confluenceUsername: 'test.user@example.com',
+      confluencePassword: 'test-confluence-api-token',
+    },
+  },
+  'saleseasy': {
+    name: '销售易',
+    baseSkills: ['saleseasy'],
+    credentials: {
+      saleseasyUsername: 'sales.user@example.com',
+      saleseasyPassword: 'test-sales-password',
+    },
+  },
+  'notion': {
+    name: 'Notion',
+    baseSkills: ['notion'],
+    credentials: {
+      notionUsername: 'test.user@example.com',
+      notionPassword: 'test-notion-token',
+    },
+  },
+  'zentao': {
+    name: '禅道',
+    baseSkills: ['zentao'],
+    credentials: {
+      zentaoUsername: 'qa.user',
+      zentaoPassword: 'test-zentao-password',
+    },
+  },
+  'full-stack': {
+    name: 'All Tools',
+    baseSkills: ['jira', 'confluence', 'saleseasy', 'notion'],
+    credentials: {
+      jiraUsername: 'test.user@example.com',
+      jiraPassword: 'test-jira-token',
+      confluenceUsername: 'test.user@example.com',
+      confluencePassword: 'test-confluence-token',
+      saleseasyUsername: 'test.user@example.com',
+      saleseasyPassword: 'test-sales-password',
+      notionUsername: 'test.user@example.com',
+      notionPassword: 'test-notion-token',
+    },
+  },
+};
+
+// Early exit for help and list-presets (before loading playwright)
+const args = process.argv.slice(2);
+if (args.includes('--help')) {
+  console.log(`
+Skill Configurator Onboarding E2E Test Script
+
+Usage:
+  node scripts/test-onboarding.cjs [options]
+
+Options:
+  --headed          Run with browser UI visible
+  --headless        Run in headless mode (default)
+  --build-skill     Generate skill configuration after test
+  --config <file>   Load test configuration from JSON file
+  --output <dir>    Output directory for results (default: ./test-output)
+  --role <preset>   Use a role preset (e.g., project-manager, sales-manager)
+  --tools <preset>  Use a tools preset (e.g., jira-confluence, notion)
+  --list-presets    List available role and tools presets
+  --help            Show this help message
+
+Examples:
+  node scripts/test-onboarding.cjs --headed
+  node scripts/test-onboarding.cjs --build-skill --role project-manager --tools jira-confluence
+  node scripts/test-onboarding.cjs --config my-config.json --build-skill
+`);
+  process.exit(0);
+}
+
+if (args.includes('--list-presets')) {
+  console.log('\n可用的岗位预设 (--role):\n');
+  for (const [key, preset] of Object.entries(ROLE_PRESETS)) {
+    console.log(`  ${key.padEnd(20)} - ${preset.name}`);
+  }
+  console.log('\n可用的工具预设 (--tools):\n');
+  for (const [key, preset] of Object.entries(TOOL_PRESETS)) {
+    console.log(`  ${key.padEnd(20)} - ${preset.name}`);
+  }
+  console.log('');
+  process.exit(0);
+}
+
+// Now load playwright (only when actually running tests)
+const { chromium } = require('playwright');
 
 // Default test configuration
 const DEFAULT_CONFIG = {
@@ -34,60 +156,6 @@ const DEFAULT_CONFIG = {
     jiraPassword: 'test-jira-api-token',
     confluenceUsername: 'pm.user@example.com',
     confluencePassword: 'test-confluence-api-token',
-  },
-};
-
-// Test scenarios
-const TEST_SCENARIOS = {
-  'pm-jira-confluence': {
-    name: 'Project Manager with Jira & Confluence',
-    config: {
-      ...DEFAULT_CONFIG,
-      role: '项目经理',
-      baseSkills: ['jira', 'confluence'],
-    },
-  },
-  'sales-manager': {
-    name: 'Sales Manager with Sales Easy',
-    config: {
-      ...DEFAULT_CONFIG,
-      role: '销售经理',
-      baseSkills: ['saleseasy'],
-      credentials: {
-        saleseasyUsername: 'sales.user@example.com',
-        saleseasyPassword: 'test-sales-password',
-      },
-    },
-  },
-  'qa-manager': {
-    name: 'QA Manager with Zentao',
-    config: {
-      ...DEFAULT_CONFIG,
-      role: '质量经理',
-      baseSkills: ['zentao'],
-      credentials: {
-        zentaoUsername: 'qa.user',
-        zentaoPassword: 'test-zentao-password',
-      },
-    },
-  },
-  'full-stack': {
-    name: 'Full Stack - All Tools',
-    config: {
-      ...DEFAULT_CONFIG,
-      role: '项目经理',
-      baseSkills: ['jira', 'confluence', 'saleseasy', 'notion'],
-      credentials: {
-        jiraUsername: 'full.user@example.com',
-        jiraPassword: 'test-jira-token',
-        confluenceUsername: 'full.user@example.com',
-        confluencePassword: 'test-confluence-token',
-        saleseasyUsername: 'full.user@example.com',
-        saleseasyPassword: 'test-sales-password',
-        notionUsername: 'full.user@example.com',
-        notionPassword: 'test-notion-token',
-      },
-    },
   },
 };
 
@@ -415,9 +483,10 @@ function parseArgs() {
   const options = {
     headless: true,
     buildSkill: false,
-    config: DEFAULT_CONFIG,
+    config: { ...DEFAULT_CONFIG },
     outputDir: './test-output',
-    scenario: null,
+    role: null,
+    tools: null,
   };
 
   for (let i = 0; i < args.length; i++) {
@@ -438,19 +507,26 @@ function parseArgs() {
       case '--output':
         options.outputDir = args[++i];
         break;
-      case '--scenario':
-        options.scenario = args[++i];
+      case '--role':
+        options.role = args[++i];
         break;
-      case '--list-scenarios':
-        console.log('\nAvailable test scenarios:\n');
-        for (const [key, scenario] of Object.entries(TEST_SCENARIOS)) {
-          console.log(`  ${key.padEnd(20)} - ${scenario.name}`);
+      case '--tools':
+        options.tools = args[++i];
+        break;
+      case '--list-presets':
+        console.log('\n可用的岗位预设 (--role):\n');
+        for (const [key, preset] of Object.entries(ROLE_PRESETS)) {
+          console.log(`  ${key.padEnd(20)} - ${preset.name}`);
+        }
+        console.log('\n可用的工具预设 (--tools):\n');
+        for (const [key, preset] of Object.entries(TOOL_PRESETS)) {
+          console.log(`  ${key.padEnd(20)} - ${preset.name}`);
         }
         console.log('');
         process.exit(0);
       case '--help':
         console.log(`
-WorkBuddy Onboarding E2E Test Script
+Skill Configurator Onboarding E2E Test Script
 
 Usage:
   node scripts/test-onboarding.js [options]
@@ -461,26 +537,44 @@ Options:
   --build-skill     Generate skill configuration after test
   --config <file>   Load test configuration from JSON file
   --output <dir>    Output directory for results (default: ./test-output)
-  --scenario <name> Run a predefined test scenario
-  --list-scenarios  List available test scenarios
+  --role <preset>   Use a role preset (e.g., project-manager, sales-manager)
+  --tools <preset>  Use a tools preset (e.g., jira-confluence, notion)
+  --list-presets    List available role and tools presets
   --help            Show this help message
 
 Examples:
   node scripts/test-onboarding.js --headed
-  node scripts/test-onboarding.js --build-skill --scenario pm-jira-confluence
+  node scripts/test-onboarding.js --build-skill --role project-manager --tools jira-confluence
   node scripts/test-onboarding.js --config my-config.json --build-skill
 `);
         process.exit(0);
     }
   }
 
-  if (options.scenario) {
-    if (TEST_SCENARIOS[options.scenario]) {
-      options.config = TEST_SCENARIOS[options.scenario].config;
-      console.log(`\n📋 Using scenario: ${TEST_SCENARIOS[options.scenario].name}\n`);
+  // Apply role preset
+  if (options.role) {
+    if (ROLE_PRESETS[options.role]) {
+      const preset = ROLE_PRESETS[options.role];
+      options.config.role = preset.name;
+      options.config.useCase = preset.useCase;
+      console.log(`\n📋 Using role preset: ${options.role} (${preset.name})\n`);
     } else {
-      console.error(`Unknown scenario: ${options.scenario}`);
-      console.log('Use --list-scenarios to see available options');
+      console.error(`Unknown role preset: ${options.role}`);
+      console.log('Use --list-presets to see available options');
+      process.exit(1);
+    }
+  }
+
+  // Apply tools preset
+  if (options.tools) {
+    if (TOOL_PRESETS[options.tools]) {
+      const preset = TOOL_PRESETS[options.tools];
+      options.config.baseSkills = preset.baseSkills;
+      options.config.credentials = { ...options.config.credentials, ...preset.credentials };
+      console.log(`📋 Using tools preset: ${options.tools} (${preset.name})\n`);
+    } else {
+      console.error(`Unknown tools preset: ${options.tools}`);
+      console.log('Use --list-presets to see available options');
       process.exit(1);
     }
   }
