@@ -742,6 +742,15 @@ function printSuccess(msg) {
   console.log(`${colors.green}✓ ${msg}${colors.reset}`);
 }
 
+// Agent App presets
+const AGENT_APP_PRESETS = {
+  'workbuddy': { name: 'WorkBuddy', description: '企业级 AI 助手' },
+  'claude-code': { name: 'Claude Code', description: 'Anthropic 官方 CLI 工具' },
+  'antigravity': { name: 'Antigravity', description: '通用 AI 平台' },
+  'codex': { name: 'Codex', description: 'OpenAI 代码助手' },
+  'gemini-cli': { name: 'Gemini CLI', description: 'Google Gemini 命令行工具' },
+};
+
 async function interactiveMode() {
   console.log(`\n${colors.bold}${colors.cyan}`);
   console.log('╔══════════════════════════════════════════════════════════════════╗');
@@ -750,7 +759,7 @@ async function interactiveMode() {
   console.log(`${colors.reset}`);
 
   const config = {
-    agentApps: ['workbuddy', 'claude-code'],
+    agentApps: [],
     role: '',
     baseSkills: [],
     useCase: '',
@@ -759,8 +768,19 @@ async function interactiveMode() {
     credentials: {},
   };
 
-  // Step 1: Select Role
-  printStep('1/6', '选择岗位');
+  // Step 1: Select Agent Apps
+  printStep('1/7', '选择目标 Agent 应用');
+  console.log('选择你想要配置的 Agent 应用（可多选）：\n');
+  const agentAppOptions = Object.entries(AGENT_APP_PRESETS).map(([key, preset]) => ({
+    value: key,
+    label: `${preset.name} - ${preset.description}`,
+  }));
+  config.agentApps = await multiSelect('请选择目标 Agent 应用:', agentAppOptions);
+  const selectedAppNames = config.agentApps.map((k) => AGENT_APP_PRESETS[k].name).join(', ');
+  printSuccess(`已选择 Agent 应用: ${selectedAppNames}`);
+
+  // Step 2: Select Role
+  printStep('2/7', '选择岗位');
   const roleOptions = Object.entries(ROLE_PRESETS).map(([key, preset]) => ({
     value: key,
     label: `${preset.name} (${key})`,
@@ -771,8 +791,8 @@ async function interactiveMode() {
   const availableUseCases = rolePreset.useCases;
   printSuccess(`已选择岗位: ${rolePreset.name}`);
 
-  // Step 2: Select Tools
-  printStep('2/6', '选择基础工具');
+  // Step 3: Select Tools
+  printStep('3/7', '选择基础工具');
   const toolOptions = Object.entries(TOOL_PRESETS)
     .filter(([key]) => key !== 'full-stack')
     .map(([key, preset]) => ({
@@ -783,8 +803,8 @@ async function interactiveMode() {
   config.baseSkills = selectedTools;
   printSuccess(`已选择工具: ${selectedTools.map((t) => TOOL_PRESETS[t].name).join(', ')}`);
 
-  // Step 3: Select Use Case
-  printStep('3/6', '选择岗位用例');
+  // Step 4: Select Use Case
+  printStep('4/7', '选择岗位用例');
   if (availableUseCases.length === 1) {
     config.useCase = availableUseCases[0];
     printSuccess(`该岗位只有一个用例: ${config.useCase}`);
@@ -794,15 +814,15 @@ async function interactiveMode() {
     printSuccess(`已选择用例: ${config.useCase}`);
   }
 
-  // Step 4: Enter Info Sources
-  printStep('4/6', '输入基础信息来源');
+  // Step 5: Enter Info Sources
+  printStep('5/7', '输入基础信息来源');
   console.log('请描述你的基础信息来源，例如：');
   console.log(`${colors.yellow}  Jira 项目看板、Confluence 项目主页、销售易商机页、例会纪要目录${colors.reset}\n`);
   config.infoSources = await question('基础信息来源');
   printSuccess('已设置信息来源');
 
-  // Step 5: Enter Rules
-  printStep('5/6', '输入用例规则或模板');
+  // Step 6: Enter Rules
+  printStep('6/7', '输入用例规则或模板');
   console.log('如果这个用例在公司内部有模板、规则、语气或输出要求，可以写在这里。');
   console.log(`${colors.yellow}  例如：采用固定模板，先风险后里程碑，没有更新也要写明阻塞项。${colors.reset}\n`);
   config.reportRules = await question('用例规则或模板 (可选，回车跳过)', '');
@@ -812,8 +832,8 @@ async function interactiveMode() {
     console.log(`${colors.yellow}跳过，后续可在 Skill 中补充${colors.reset}`);
   }
 
-  // Step 6: Enter Credentials
-  printStep('6/6', '输入账号凭证');
+  // Step 7: Enter Credentials
+  printStep('7/7', '输入账号凭证');
   console.log('请为所选工具提供账号信息：\n');
 
   for (const toolKey of selectedTools) {
@@ -837,6 +857,7 @@ async function interactiveMode() {
   console.log(`${colors.bold}  配置摘要${colors.reset}`);
   console.log(`${colors.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${colors.reset}\n`);
 
+  console.log(`  ${colors.bold}Agent 应用:${colors.reset}  ${config.agentApps.map((k) => AGENT_APP_PRESETS[k]?.name || k).join(', ')}`);
   console.log(`  ${colors.bold}岗位:${colors.reset}        ${config.role}`);
   console.log(`  ${colors.bold}用例:${colors.reset}        ${config.useCase}`);
   console.log(`  ${colors.bold}基础工具:${colors.reset}    ${config.baseSkills.map((t) => TOOL_PRESETS[t]?.name || t).join(', ')}`);
