@@ -26,9 +26,7 @@ impl TargetAppId {
         match self {
             TargetAppId::ClaudeCode => format!("~/.claude/skills/{}.md", skill_id),
             TargetAppId::Codex => format!("~/.codex/instructions/{}.md", skill_id),
-            TargetAppId::WorkBuddy => {
-                format!("~/Library/Application Support/WorkBuddy/skills/{}.json", skill_id)
-            }
+            TargetAppId::WorkBuddy => format!("~/.workbuddy/skills/{}.json", skill_id),
         }
     }
 
@@ -38,8 +36,25 @@ impl TargetAppId {
                 format!(r"%USERPROFILE%\.claude\skills\{}.md", skill_id)
             }
             TargetAppId::Codex => format!(r"%USERPROFILE%\.codex\instructions\{}.md", skill_id),
-            TargetAppId::WorkBuddy => format!(r"%APPDATA%\WorkBuddy\skills\{}.json", skill_id),
+            TargetAppId::WorkBuddy => format!(r"%USERPROFILE%\.workbuddy\skills\{}.json", skill_id),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::TargetAppId;
+
+    #[test]
+    fn workbuddy_output_paths_use_dot_workbuddy_directory() {
+        assert_eq!(
+            TargetAppId::WorkBuddy.output_path_macos("mail"),
+            "~/.workbuddy/skills/mail.json"
+        );
+        assert_eq!(
+            TargetAppId::WorkBuddy.output_path_windows("mail"),
+            r"%USERPROFILE%\.workbuddy\skills\mail.json"
+        );
     }
 }
 

@@ -41,4 +41,41 @@ describe('install-skill.sh custom target root', () => {
 
     expect(fs.existsSync(installedSkillDir)).toBe(false)
   })
+
+  it('supports workbuddy as a custom installation target root', () => {
+    const installScript = path.resolve('scripts/install-skill.sh')
+    const uninstallScript = path.resolve('scripts/uninstall-skill.sh')
+    const customWorkbuddyRoot = path.join(tempDir, '.workbuddy', 'skills')
+
+    execFileSync(installScript, ['mail', 'workbuddy', customWorkbuddyRoot], {
+      cwd: process.cwd(),
+      env: process.env,
+    })
+
+    const installedSkillDir = path.join(customWorkbuddyRoot, 'mail')
+    const installedSkillMd = fs.readFileSync(path.join(installedSkillDir, 'SKILL.md'), 'utf8')
+
+    expect(fs.existsSync(installedSkillDir)).toBe(true)
+    expect(installedSkillMd).toContain(installedSkillDir)
+    expect(installedSkillMd).toContain(path.join(installedSkillDir, 'scripts'))
+
+    execFileSync(uninstallScript, ['mail', 'workbuddy', customWorkbuddyRoot], {
+      cwd: process.cwd(),
+      env: process.env,
+    })
+
+    expect(fs.existsSync(installedSkillDir)).toBe(false)
+  })
+
+  it('treats uninstalling an already-missing target as a no-op', () => {
+    const uninstallScript = path.resolve('scripts/uninstall-skill.sh')
+    const customWorkbuddyRoot = path.join(tempDir, '.workbuddy', 'skills')
+
+    expect(() => {
+      execFileSync(uninstallScript, ['confluence', 'workbuddy', customWorkbuddyRoot], {
+        cwd: process.cwd(),
+        env: process.env,
+      })
+    }).not.toThrow()
+  })
 })

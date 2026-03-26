@@ -3,11 +3,12 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./scripts/install-skill.sh <skill-id> <codex|claude-code> [target-root]
+Usage: ./scripts/install-skill.sh <skill-id> <codex|claude-code|workbuddy> [target-root]
 
 Examples:
   ./scripts/install-skill.sh jira codex
   ./scripts/install-skill.sh jira claude-code
+  ./scripts/install-skill.sh jira workbuddy
   ./scripts/install-skill.sh jira codex /tmp/custom-codex-skills
 EOF
 }
@@ -46,6 +47,9 @@ case "$TARGET_APP" in
     ;;
   claude-code)
     DEFAULT_ROOT_SUBPATH=".claude/skills"
+    ;;
+  workbuddy)
+    DEFAULT_ROOT_SUBPATH=".workbuddy/skills"
     ;;
   *)
     echo "Unsupported target app: $TARGET_APP" >&2

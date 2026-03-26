@@ -1,5 +1,8 @@
 // @vitest-environment node
 
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
@@ -12,14 +15,69 @@ function loadManager() {
       storageDir: string
       useCases: Array<{ id: string; name: string }>
       agents: Array<{ id: string; installedSkillIds: string[]; name: string }>
-    }) => {
+    }, homeDir?: string) => {
       lines: string[]
     }
-    getDefaultInstallRoot: (agentType: 'codex' | 'claude-code', homeDir: string) => string
+    collapseHomePath: (inputPath: string, homeDir?: string) => string
+    expandHomePath: (inputPath: string, homeDir?: string) => string
+    getBasicInfoMenuOptions: () => Array<{ label: string; value: string }>
+    getDefaultInstallRoot: (agentType: 'codex' | 'claude-code' | 'workbuddy', homeDir: string) => string
+    getInstallationMenuOptions: () => Array<{ label: string; value: string }>
     parseManagerArgs: (args: string[]) => {
+      forceReinstall: boolean
       help: boolean
       storageDir: string | null
     }
+    buildSkillSyncPlan: (input: {
+      currentSkillIds: string[]
+      desiredSkillIds: string[]
+      forceReinstall?: boolean
+    }) => {
+      addedSkillIds: string[]
+      removedSkillIds: string[]
+    }
+    getUseCaseEditContext: (
+      selectedRoles: Array<{ id: string; name: string }>
+    ) =>
+      | { status: 'blocked'; message: string }
+      | { status: 'ready'; role: { id: string; name: string } }
+    buildDesiredInstalledSkillIds: (input: {
+      selectedBaseSkills: Array<{ id: string; name: string }>
+      selectedRoles: Array<{ id: string; name: string }>
+      useCases: Array<{
+        applicableRoleIds: string[]
+        description: string
+        id: string
+        infoSources: string
+        name: string
+        rules: string
+      }>
+    }, sharedConfig: {
+      useCases: Record<string, { directory: string }>
+    }) => string[]
+    installGeneratedSkillPackage: (sourceDir: string, installRoot: string, skillId: string) => string
+    stageGeneratedUseCaseSkillPackage: (input: {
+      agent: { type: string }
+      outputDir: string
+      role: { id: string; name: string }
+      selectedBaseSkills: Array<{ id: string; name: string }>
+      useCase: {
+        description: string
+        infoSources: string
+        name: string
+        rules: string
+      }
+    }, sharedConfig: {
+      agentApps: Record<string, { name: string }>
+      baseSkills: Record<string, { name: string }>
+      useCases: Record<string, { directory: string }>
+    }) => { skillId: string; sourceDir: string }
+    renderHelp: (homeDir?: string) => string
+    getRoleScopedUseCases: (
+      useCases: Array<{ applicableRoleIds: string[]; id: string; name: string }>,
+      roleId: string
+    ) => Array<{ applicableRoleIds: string[]; id: string; name: string }>
+    getUseCaseMenuOptions: () => Array<{ label: string; value: string }>
   }
 }
 
@@ -28,10 +86,17 @@ describe('onboarding manager helpers', () => {
     const { parseManagerArgs } = loadManager()
 
     expect(parseManagerArgs(['--storage-dir', '/tmp/onboarding-state'])).toEqual({
+      forceReinstall: false,
       help: false,
       storageDir: '/tmp/onboarding-state',
     })
+    expect(parseManagerArgs(['--force-reinstall'])).toEqual({
+      forceReinstall: true,
+      help: false,
+      storageDir: null,
+    })
     expect(parseManagerArgs(['--help'])).toEqual({
+      forceReinstall: false,
       help: true,
       storageDir: null,
     })
@@ -68,10 +133,213 @@ describe('onboarding manager helpers', () => {
     expect(snapshot.lines).toContain('已安装技能总数: 2')
   })
 
-  it('maps agent types to default install roots', () => {
-    const { getDefaultInstallRoot } = loadManager()
+  it('uses ~ for home-relative display paths and expands it back before execution', () => {
+    const { buildOverviewSnapshot, collapseHomePath, expandHomePath, getDefaultInstallRoot, renderHelp } =
+      loadManager()
+    const homeDir = '/tmp/test-home'
 
-    expect(getDefaultInstallRoot('codex', '/Users/juns')).toBe('/Users/juns/.codex/skills')
-    expect(getDefaultInstallRoot('claude-code', '/Users/juns')).toBe('/Users/juns/.claude/skills')
+    expect(collapseHomePath(getDefaultInstallRoot('codex', homeDir), homeDir)).toBe('~/.codex/skills')
+    expect(collapseHomePath(getDefaultInstallRoot('claude-code', homeDir), homeDir)).toBe('~/.claude/skills')
+    expect(collapseHomePath(getDefaultInstallRoot('workbuddy', homeDir), homeDir)).toBe(
+      '~/.workbuddy/skills'
+    )
+    expect(expandHomePath('~/.codex/skills', homeDir)).toBe('/tmp/test-home/.codex/skills')
+
+    const snapshot = buildOverviewSnapshot(
+      {
+        agents: [],
+        baseSkills: [],
+        roles: [],
+        storageDir: '/tmp/test-home/.skills-for-no-engineer/onboarding',
+        useCases: [],
+      },
+      homeDir
+    )
+
+    expect(snapshot.lines).toContain('配置目录: ~/.skills-for-no-engineer/onboarding')
+    expect(renderHelp(homeDir)).toContain('默认配置目录: ~/.skills-for-no-engineer/onboarding')
+  })
+
+  it('uses selection menus for preseeded items and filters use cases by role', () => {
+    const {
+      getBasicInfoMenuOptions,
+      getInstallationMenuOptions,
+      getUseCaseEditContext,
+      getRoleScopedUseCases,
+      getUseCaseMenuOptions,
+    } = loadManager()
+
+    expect(getBasicInfoMenuOptions()).toEqual([
+      { label: '选择岗位', value: 'selectRoles' },
+      { label: '选择基础技能', value: 'selectBaseSkills' },
+      { label: '返回主菜单', value: 'back' },
+    ])
+    expect(getUseCaseMenuOptions()).toEqual([
+      { label: '按岗位选择并编辑用例', value: 'edit' },
+      { label: '返回主菜单', value: 'back' },
+    ])
+    expect(getInstallationMenuOptions()).toEqual([
+      { label: '选择安装目标并同步已选基础技能', value: 'apply' },
+      { label: '返回主菜单', value: 'back' },
+    ])
+    expect(getUseCaseEditContext([])).toEqual({
+      status: 'blocked',
+      message: '请先进入基础信息设置并选择岗位，然后再配置用例。',
+    })
+    expect(getUseCaseEditContext([{ id: 'project-manager', name: '项目经理' }])).toEqual({
+      status: 'ready',
+      role: { id: 'project-manager', name: '项目经理' },
+    })
+
+    const useCases = [
+      { applicableRoleIds: ['project-manager', 'qa-manager'], id: 'planning', name: '记录计划' },
+      { applicableRoleIds: ['project-manager'], id: 'weekly-report', name: '项目周报' },
+      { applicableRoleIds: ['sales-manager'], id: 'daily-log', name: '记录日志' },
+    ]
+
+    expect(getRoleScopedUseCases(useCases, 'project-manager').map((item) => item.name)).toEqual([
+      '记录计划',
+      '项目周报',
+    ])
+    expect(getRoleScopedUseCases(useCases, 'qa-manager').map((item) => item.name)).toEqual(['记录计划'])
+  })
+
+  it('builds installation ids from selected base skills plus the selected role use cases', () => {
+    const { buildDesiredInstalledSkillIds } = loadManager()
+
+    const skillIds = buildDesiredInstalledSkillIds(
+      {
+        selectedBaseSkills: [
+          { id: 'confluence', name: 'Confluence' },
+          { id: 'jira', name: 'Jira' },
+        ],
+        selectedRoles: [{ id: 'project-manager', name: '项目经理' }],
+        useCases: [
+          {
+            applicableRoleIds: ['project-manager', 'qa-manager'],
+            description: '维护项目计划',
+            id: 'planning',
+            infoSources: 'Jira 看板',
+            name: '记录计划',
+            rules: '按里程碑更新',
+          },
+          {
+            applicableRoleIds: ['project-manager'],
+            description: '输出项目周报',
+            id: 'weekly-report',
+            infoSources: 'Confluence 模板',
+            name: '项目周报',
+            rules: '按模板输出',
+          },
+        ],
+      },
+      {
+        useCases: {
+          记录计划: { directory: 'planning' },
+          项目周报: { directory: 'weekly-report' },
+        },
+      }
+    )
+
+    expect(skillIds).toEqual([
+      'confluence',
+      'jira',
+      'project-manager-planning',
+      'project-manager-weekly-report',
+    ])
+  })
+
+  it('builds a full reinstall plan when force-reinstall is enabled', () => {
+    const { buildSkillSyncPlan } = loadManager()
+
+    expect(
+      buildSkillSyncPlan({
+        currentSkillIds: ['confluence', 'jira', 'project-manager-weekly-report'],
+        desiredSkillIds: ['confluence', 'jira', 'project-manager-weekly-report'],
+        forceReinstall: false,
+      })
+    ).toEqual({
+      addedSkillIds: [],
+      removedSkillIds: [],
+    })
+
+    expect(
+      buildSkillSyncPlan({
+        currentSkillIds: ['confluence', 'jira', 'project-manager-weekly-report'],
+        desiredSkillIds: ['confluence', 'jira', 'project-manager-weekly-report'],
+        forceReinstall: true,
+      })
+    ).toEqual({
+      addedSkillIds: ['confluence', 'jira', 'project-manager-weekly-report'],
+      removedSkillIds: ['confluence', 'jira', 'project-manager-weekly-report'],
+    })
+  })
+
+  it('copies a generated use-case skill package into the target install root', () => {
+    const { installGeneratedSkillPackage } = loadManager()
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'generated-skill-install-'))
+
+    try {
+      const sourceDir = path.join(tempDir, 'source')
+      const installRoot = path.join(tempDir, 'target-root')
+      fs.mkdirSync(sourceDir, { recursive: true })
+      fs.mkdirSync(path.join(sourceDir, 'scripts'), { recursive: true })
+      fs.writeFileSync(path.join(sourceDir, 'SKILL.md'), '# 项目经理-项目周报\n', 'utf8')
+      fs.writeFileSync(path.join(sourceDir, 'skill.json'), '{"name":"项目经理-项目周报"}\n', 'utf8')
+
+      const installedDir = installGeneratedSkillPackage(
+        sourceDir,
+        installRoot,
+        'project-manager-weekly-report'
+      )
+
+      expect(installedDir).toBe(path.join(installRoot, 'project-manager-weekly-report'))
+      expect(fs.readFileSync(path.join(installedDir, 'SKILL.md'), 'utf8')).toContain('项目经理-项目周报')
+      expect(fs.existsSync(path.join(installedDir, 'skill.json'))).toBe(true)
+    } finally {
+      fs.rmSync(tempDir, { force: true, recursive: true })
+    }
+  })
+
+  it('stages generated use-case skills in local-only mode for CLI installation', () => {
+    const { stageGeneratedUseCaseSkillPackage } = loadManager()
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'generated-skill-stage-'))
+
+    try {
+      const staged = stageGeneratedUseCaseSkillPackage(
+        {
+          agent: { type: 'workbuddy' },
+          outputDir: tempDir,
+          role: { id: 'project-manager', name: '项目经理' },
+          selectedBaseSkills: [{ id: 'jira', name: 'Jira' }],
+          useCase: {
+            description: '输出项目周报',
+            infoSources: 'Confluence 模板',
+            name: '项目周报',
+            rules: '按模板输出',
+          },
+        },
+        {
+          agentApps: {
+            workbuddy: { name: 'WorkBuddy' },
+          },
+          baseSkills: {
+            jira: { name: 'Jira' },
+          },
+          useCases: {
+            项目周报: { directory: 'weekly-report' },
+          },
+        }
+      )
+
+      expect(staged.skillId).toBe('project-manager-weekly-report')
+      expect(staged.sourceDir).toBe(path.join(tempDir, 'project-manager-weekly-report'))
+
+      const stagedSkillMd = fs.readFileSync(path.join(staged.sourceDir, 'SKILL.md'), 'utf8')
+      expect(stagedSkillMd).toContain('## 测试环境说明')
+      expect(stagedSkillMd).toContain('最终结果不要进行更新执行，而是打印出来。')
+    } finally {
+      fs.rmSync(tempDir, { force: true, recursive: true })
+    }
   })
 })

@@ -9,8 +9,14 @@ import { createRequire } from 'node:module'
 const require = createRequire(import.meta.url)
 
 type SharedConfig = {
-  roles: Record<string, { name: string }>
+  roles: Record<string, { name: string; useCases?: string[] }>
   baseSkills: Record<string, { name: string }>
+  agentApps?: Record<string, { name: string }>
+  useCases?: Record<string, { directory: string; name: string; description: string }>
+  testDefaults?: {
+    role?: string
+    baseSkills?: string[]
+  }
 }
 
 function loadStore() {
@@ -22,13 +28,15 @@ function loadStore() {
       createAgent: (input: {
         installRoot: string
         name: string
-        type: 'codex' | 'claude-code'
+        type: 'codex' | 'claude-code' | 'workbuddy'
       }) => { id: string }
       deleteBaseSkill: (id: string) => void
       deleteRole: (id: string) => void
       initialize: () => void
       listBaseSkills: () => Array<{ id: string; name: string }>
+      listSelectedBaseSkills: () => Array<{ id: string; name: string }>
       listRoles: () => Array<{ id: string; name: string }>
+      listSelectedRoles: () => Array<{ id: string; name: string }>
       listUseCases: () => Array<{
         applicableRoleIds: string[]
         id: string
@@ -40,6 +48,8 @@ function loadStore() {
         basicInfo: {
           baseSkills: Array<{ id: string; name: string }>
           roles: Array<{ id: string; name: string }>
+          selectedBaseSkillIds: string[]
+          selectedRoleIds: string[]
         }
         installations: {
           agents: Array<{
@@ -62,6 +72,8 @@ function loadStore() {
         }
       }
       renameRole: (id: string, name: string) => void
+      setSelectedBaseSkills: (skillIds: string[]) => Array<{ id: string; name: string }>
+      setSelectedRoles: (roleIds: string[]) => Array<{ id: string; name: string }>
       setAgentInstalledSkills: (agentId: string, skillIds: string[]) => void
       upsertUseCase: (input: {
         applicableRoleIds: string[]
@@ -78,24 +90,50 @@ function loadStore() {
 function createSharedConfig(): SharedConfig {
   return {
     roles: {
-      'project-manager': { name: '项目经理' },
-      'qa-manager': { name: '质量经理' },
+      'project-manager': { name: '项目经理', useCases: ['记录计划', '项目周报'] },
+      'qa-manager': { name: '质量经理', useCases: ['记录计划'] },
     },
     baseSkills: {
-      jira: { name: 'Jira' },
       confluence: { name: 'Confluence' },
+      jira: { name: 'Jira' },
+      mail: { name: 'Mail' },
+    },
+    agentApps: {
+      codex: { name: 'Codex' },
+      'claude-code': { name: 'Claude Code' },
+      workbuddy: { name: 'WorkBuddy' },
+    },
+    useCases: {
+      记录计划: {
+        directory: 'planning',
+        name: '记录计划',
+        description: '维护项目计划、里程碑和下一步安排。',
+      },
+      项目周报: {
+        directory: 'weekly-report',
+        name: '项目周报',
+        description: '沉淀项目周报，汇总风险、进展与待办。',
+      },
+    },
+    testDefaults: {
+      role: 'project-manager',
+      baseSkills: ['jira', 'confluence'],
     },
   }
 }
 
 describe('createOnboardingConfigStore', () => {
   let storageDir: string
+  let originalHome: string | undefined
 
   beforeEach(() => {
     storageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'onboarding-config-store-'))
+    originalHome = process.env.HOME
+    process.env.HOME = path.join(storageDir, 'home')
   })
 
   afterEach(() => {
+    process.env.HOME = originalHome
     fs.rmSync(storageDir, { force: true, recursive: true })
   })
 
@@ -119,12 +157,42 @@ describe('createOnboardingConfigStore', () => {
         { id: 'confluence', name: 'Confluence' },
       ])
     )
-    expect(files.useCases.useCases.map((item) => item.name)).toEqual([
-      '记录日志',
-      '记录计划',
-      '项目周报',
-    ])
-    expect(files.installations.agents).toEqual([])
+    expect(files.basicInfo.selectedRoleIds).toEqual(['project-manager'])
+    expect(files.basicInfo.selectedBaseSkillIds).toEqual(['jira', 'confluence'])
+    expect(files.useCases.useCases).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: '记录计划',
+          applicableRoleIds: ['project-manager', 'qa-manager'],
+        }),
+        expect.objectContaining({
+          name: '项目周报',
+          applicableRoleIds: ['project-manager'],
+        }),
+      ])
+    )
+    expect(files.installations.agents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'codex',
+          name: 'Codex',
+          type: 'codex',
+          installRoot: path.join(process.env.HOME as string, '.codex', 'skills'),
+        }),
+        expect.objectContaining({
+          id: 'claude-code',
+          name: 'Claude Code',
+          type: 'claude-code',
+          installRoot: path.join(process.env.HOME as string, '.claude', 'skills'),
+        }),
+        expect.objectContaining({
+          id: 'workbuddy',
+          name: 'WorkBuddy',
+          type: 'workbuddy',
+          installRoot: path.join(process.env.HOME as string, '.workbuddy', 'skills'),
+        }),
+      ])
+    )
   })
 
   it('blocks deleting a role that is still referenced by a use case and keeps ids stable across rename', () => {
@@ -156,6 +224,92 @@ describe('createOnboardingConfigStore', () => {
     })
   })
 
+  it('stores only one selected role and lets later choices replace it', () => {
+    const { createOnboardingConfigStore } = loadStore()
+    const store = createOnboardingConfigStore({
+      sharedConfig: createSharedConfig(),
+      storageDir,
+    })
+
+    store.initialize()
+
+    expect(store.listSelectedRoles()).toEqual([{ id: 'project-manager', name: '项目经理' }])
+
+    const nextSelection = store.setSelectedRoles(['qa-manager', 'project-manager'])
+
+    expect(nextSelection).toEqual([{ id: 'qa-manager', name: '质量经理' }])
+    expect(store.readRawFiles().basicInfo.selectedRoleIds).toEqual(['qa-manager'])
+
+    store.setSelectedRoles(['project-manager'])
+    expect(store.readRawFiles().basicInfo.selectedRoleIds).toEqual(['project-manager'])
+  })
+
+  it('replaces stale base skill entries with the current shared-config list during initialize', () => {
+    const { createOnboardingConfigStore } = loadStore()
+    const basicInfoPath = path.join(storageDir, 'basic-info.json')
+
+    fs.mkdirSync(storageDir, { recursive: true })
+    fs.writeFileSync(
+      basicInfoPath,
+      JSON.stringify(
+        {
+          baseSkills: [
+            { id: 'zentao', name: '禅道' },
+            { id: 'saleseasy', name: '销售易' },
+            { id: 'confluence', name: 'Confluence' },
+            { id: 'jira', name: 'Jira' },
+            { id: 'notion', name: 'Notion' },
+          ],
+          roles: [
+            { id: 'project-manager', name: '项目经理' },
+            { id: 'qa-manager', name: '质量经理' },
+          ],
+          selectedBaseSkillIds: ['zentao', 'jira', 'mail'],
+          selectedRoleIds: ['project-manager'],
+        },
+        null,
+        2
+      )
+    )
+
+    const store = createOnboardingConfigStore({
+      sharedConfig: createSharedConfig(),
+      storageDir,
+    })
+
+    store.initialize()
+
+    expect(store.readRawFiles().basicInfo.baseSkills).toEqual([
+      { id: 'confluence', name: 'Confluence' },
+      { id: 'jira', name: 'Jira' },
+      { id: 'mail', name: 'Mail' },
+    ])
+    expect(store.readRawFiles().basicInfo.selectedBaseSkillIds).toEqual(['jira', 'mail'])
+  })
+
+  it('keeps base skills as multi-select', () => {
+    const { createOnboardingConfigStore } = loadStore()
+    const store = createOnboardingConfigStore({
+      sharedConfig: createSharedConfig(),
+      storageDir,
+    })
+
+    store.initialize()
+
+    expect(store.listSelectedBaseSkills()).toEqual([
+      { id: 'confluence', name: 'Confluence' },
+      { id: 'jira', name: 'Jira' },
+    ])
+
+    const nextSelection = store.setSelectedBaseSkills(['confluence', 'jira'])
+
+    expect(nextSelection).toEqual([
+      { id: 'confluence', name: 'Confluence' },
+      { id: 'jira', name: 'Jira' },
+    ])
+    expect(store.readRawFiles().basicInfo.selectedBaseSkillIds).toEqual(['confluence', 'jira'])
+  })
+
   it('blocks deleting a base skill that is still installed by an agent', () => {
     const { createOnboardingConfigStore } = loadStore()
     const store = createOnboardingConfigStore({
@@ -175,5 +329,26 @@ describe('createOnboardingConfigStore', () => {
     store.setAgentInstalledSkills(createdAgent.id, [jiraSkill.id])
 
     expect(() => store.deleteBaseSkill(jiraSkill.id)).toThrow(/仍安装在 agent 上/)
+  })
+
+  it('allows installed skill ids to include generated role use-case skills', () => {
+    const { createOnboardingConfigStore } = loadStore()
+    const store = createOnboardingConfigStore({
+      sharedConfig: createSharedConfig(),
+      storageDir,
+    })
+
+    store.initialize()
+
+    store.setAgentInstalledSkills('codex', ['jira', 'project-manager-weekly-report'])
+
+    expect(store.readRawFiles().installations.agents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'codex',
+          installedSkillIds: ['jira', 'project-manager-weekly-report'],
+        }),
+      ])
+    )
   })
 })

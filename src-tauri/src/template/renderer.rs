@@ -88,9 +88,7 @@ pub fn get_output_dir(app_id: &TargetAppId, skill_id: &str) -> PathBuf {
     let path_template = match app_id {
         TargetAppId::ClaudeCode => format!("~/.claude/skills/{}", skill_id),
         TargetAppId::Codex => format!("~/.codex/skills/{}", skill_id),
-        TargetAppId::WorkBuddy => {
-            format!("~/Library/Application Support/WorkBuddy/skills/{}", skill_id)
-        }
+        TargetAppId::WorkBuddy => format!("~/.workbuddy/skills/{}", skill_id),
     };
 
     PathBuf::from(expand_path(&path_template))
@@ -238,5 +236,13 @@ mod tests {
         delete_skill_path(&output_dir).unwrap();
 
         assert!(!output_dir.exists());
+    }
+
+    #[test]
+    fn test_get_output_dir_uses_dot_workbuddy_skills() {
+        let home_dir = dirs::home_dir().expect("home dir");
+        let output_dir = get_output_dir(&TargetAppId::WorkBuddy, "mail");
+
+        assert_eq!(output_dir, home_dir.join(".workbuddy").join("skills").join("mail"));
     }
 }

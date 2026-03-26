@@ -51,24 +51,6 @@
     }
   },
   "baseSkills": {
-    "jira": {
-      "name": "Jira",
-      "description": "同步项目任务、缺陷、负责人和状态变化",
-      "credentials": {
-        "jiraUsername": {
-          "label": "Jira 用户名",
-          "placeholder": "your.name@example.com",
-          "type": "text",
-          "required": true
-        },
-        "jiraPassword": {
-          "label": "Jira 密码 / API Token",
-          "placeholder": "输入 Jira 密码或 API Token",
-          "type": "password",
-          "required": true
-        }
-      }
-    },
     "confluence": {
       "name": "Confluence",
       "description": "读取周报模板、项目文档和会议纪要",
@@ -87,56 +69,50 @@
         }
       }
     },
-    "saleseasy": {
-      "name": "销售易",
-      "description": "同步客户机会、商务推进和关键客户动态",
+    "jira": {
+      "name": "Jira",
+      "description": "同步项目任务、缺陷、负责人和状态变化",
       "credentials": {
-        "saleseasyUsername": {
-          "label": "销售易 用户名",
+        "jiraUsername": {
+          "label": "Jira 用户名",
           "placeholder": "your.name@example.com",
           "type": "text",
           "required": true
         },
-        "saleseasyPassword": {
-          "label": "销售易 密码",
-          "placeholder": "输入销售易密码",
+        "jiraPassword": {
+          "label": "Jira 密码 / API Token",
+          "placeholder": "输入 Jira 密码或 API Token",
           "type": "password",
           "required": true
         }
       }
     },
-    "notion": {
-      "name": "Notion",
-      "description": "读取团队知识库、项目页面和协作文档",
+    "mail": {
+      "name": "Mail",
+      "description": "发送周报邮件并复用邮件收发账号配置",
       "credentials": {
-        "notionUserEmail": {
-          "label": "Notion 用户邮箱",
-          "placeholder": "your.name@example.com",
+        "mailHost": {
+          "label": "Mail SMTP Host",
+          "placeholder": "smtp.example.com",
           "type": "text",
           "required": true
         },
-        "notionToken": {
-          "label": "Notion Integration Token",
-          "placeholder": "输入 Notion Integration Token",
-          "type": "password",
-          "required": true
-        }
-      }
-    },
-    "zentao": {
-      "name": "禅道",
-      "description": "同步需求、Bug、任务和测试执行状态",
-      "credentials": {
-        "zentaoUsername": {
-          "label": "禅道 用户名",
-          "placeholder": "your.username",
+        "mailUsername": {
+          "label": "Mail 用户名",
+          "placeholder": "bot@example.com",
           "type": "text",
           "required": true
         },
-        "zentaoPassword": {
-          "label": "禅道 密码",
-          "placeholder": "输入禅道密码",
+        "mailPassword": {
+          "label": "Mail 密码 / App Password",
+          "placeholder": "输入 Mail 密码或应用专用密码",
           "type": "password",
+          "required": true
+        },
+        "mailFrom": {
+          "label": "Mail 发件邮箱",
+          "placeholder": "bot@example.com",
+          "type": "text",
           "required": true
         }
       }

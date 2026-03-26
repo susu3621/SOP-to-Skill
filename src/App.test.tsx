@@ -51,9 +51,9 @@ describe('workbuddy weekly report onboarding demo', () => {
       screen.getByRole('heading', { name: /连接你已经在用的基础工具/i })
     ).toBeInTheDocument()
 
+    await user.click(screen.getByRole('checkbox', { name: 'Confluence' }))
     await user.click(screen.getByRole('checkbox', { name: 'Jira' }))
-    await user.click(screen.getByRole('checkbox', { name: '销售易' }))
-    await user.click(screen.getByRole('checkbox', { name: 'Notion' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Mail' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
     // Step 4: Select Use Case
@@ -65,7 +65,7 @@ describe('workbuddy weekly report onboarding demo', () => {
     // Step 5: Enter Info Sources
     await user.type(
       screen.getByLabelText('基础信息来源'),
-      'Jira 项目看板、Confluence 项目主页、销售易商机页。'
+      'Jira 项目看板、Confluence 项目主页、邮件归档。'
     )
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
@@ -80,19 +80,23 @@ describe('workbuddy weekly report onboarding demo', () => {
     expect(
       screen.getByRole('heading', { name: /补充账号与凭证/i })
     ).toBeInTheDocument()
+    expect(screen.getByLabelText('Confluence 用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('Confluence 密码 / API Token')).toBeInTheDocument()
     expect(screen.getByLabelText('Jira 用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('Jira 密码 / API Token')).toBeInTheDocument()
-    expect(screen.getByLabelText('销售易 用户名')).toBeInTheDocument()
-    expect(screen.getByLabelText('销售易 密码')).toBeInTheDocument()
-    expect(screen.getByLabelText('Notion 用户邮箱')).toBeInTheDocument()
-    expect(screen.getByLabelText('Notion Integration Token')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail SMTP Host')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail 用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail 密码 / App Password')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail 发件邮箱')).toBeInTheDocument()
 
+    await user.type(screen.getByLabelText('Confluence 用户名'), 'pm.wiki@example.com')
+    await user.type(screen.getByLabelText('Confluence 密码 / API Token'), 'confluence-secret')
     await user.type(screen.getByLabelText('Jira 用户名'), 'pm.jira')
     await user.type(screen.getByLabelText('Jira 密码 / API Token'), 'jira-secret')
-    await user.type(screen.getByLabelText('销售易 用户名'), 'sales.owner')
-    await user.type(screen.getByLabelText('销售易 密码'), 'sales-secret')
-    await user.type(screen.getByLabelText('Notion 用户邮箱'), 'pm.wiki@example.com')
-    await user.type(screen.getByLabelText('Notion Integration Token'), 'notion-secret')
+    await user.type(screen.getByLabelText('Mail SMTP Host'), 'smtp.example.com')
+    await user.type(screen.getByLabelText('Mail 用户名'), 'bot@example.com')
+    await user.type(screen.getByLabelText('Mail 密码 / App Password'), 'mail-secret')
+    await user.type(screen.getByLabelText('Mail 发件邮箱'), 'bot@example.com')
     await user.click(screen.getByRole('button', { name: '完成设置' }))
 
     // Step 8: Verify Completion
@@ -102,7 +106,7 @@ describe('workbuddy weekly report onboarding demo', () => {
     ).toBeInTheDocument()
     expect(screen.getAllByText('WorkBuddy、Claude Code').length).toBeGreaterThan(0)
     expect(screen.getAllByText('项目经理').length).toBeGreaterThan(0)
-    expect(screen.getAllByText('Jira、销售易、Notion').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Confluence、Jira、Mail').length).toBeGreaterThan(0)
   })
 
   it('shows credential fields only for the selected base skills', async () => {
@@ -121,7 +125,7 @@ describe('workbuddy weekly report onboarding demo', () => {
 
     // Step 3: Select Base Skills
     expect(screen.getByRole('heading', { name: /基础工具/i })).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: '禅道' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Mail' }))
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
     // Step 4: Select Use Case
@@ -132,7 +136,7 @@ describe('workbuddy weekly report onboarding demo', () => {
     // Step 5: Enter Info Sources
     await user.type(
       screen.getByLabelText('基础信息来源'),
-      '禅道项目列表、项目例会纪要目录。'
+      '邮件归档、抄送列表。'
     )
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
@@ -140,11 +144,13 @@ describe('workbuddy weekly report onboarding demo', () => {
     await user.type(screen.getByLabelText('用例规则或模板'), '沿用标准模板')
     await user.click(screen.getByRole('button', { name: '下一步' }))
 
-    // Step 7: Verify only Zentao credentials are shown
-    expect(screen.getByLabelText('禅道 用户名')).toBeInTheDocument()
-    expect(screen.getByLabelText('禅道 密码')).toBeInTheDocument()
+    // Step 7: Verify only Mail credentials are shown
+    expect(screen.getByLabelText('Mail SMTP Host')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail 用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail 密码 / App Password')).toBeInTheDocument()
+    expect(screen.getByLabelText('Mail 发件邮箱')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Confluence 用户名')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('销售易 用户名')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Notion 用户邮箱')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Confluence 密码 / API Token')).not.toBeInTheDocument()
   })
 })

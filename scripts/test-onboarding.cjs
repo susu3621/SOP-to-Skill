@@ -36,6 +36,7 @@ async function main() {
   }
 
   await runConfigManager({
+    forceReinstall: args.forceReinstall,
     sharedConfig: loadSharedConfig(),
     storageDir: args.storageDir,
   });

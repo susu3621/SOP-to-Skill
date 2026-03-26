@@ -1,6 +1,11 @@
+const fs = require('fs');
 const { execFileSync } = require('child_process');
 const path = require('path');
 const { createPromptSession } = require('./prompt-session.cjs');
+const {
+  generateSkillArtifacts,
+  writeSkillArtifacts,
+} = require('./skill-generator.cjs');
 const {
   createOnboardingConfigStore,
   requireHomeDirectory,
@@ -17,6 +22,7 @@ const colors = {
 };
 
 function parseManagerArgs(args) {
+  let forceReinstall = false;
   let help = false;
   let storageDir = null;
 
@@ -25,6 +31,11 @@ function parseManagerArgs(args) {
 
     if (current === '--help') {
       help = true;
+      continue;
+    }
+
+    if (current === '--force-reinstall') {
+      forceReinstall = true;
       continue;
     }
 
@@ -42,9 +53,47 @@ function parseManagerArgs(args) {
   }
 
   return {
+    forceReinstall,
     help,
     storageDir,
   };
+}
+
+function collapseHomePath(inputPath, homeDir = requireHomeDirectory()) {
+  if (!inputPath) {
+    return inputPath;
+  }
+
+  const normalizedHomeDir = path.normalize(homeDir);
+  const normalizedInputPath = path.normalize(inputPath);
+
+  if (normalizedInputPath === normalizedHomeDir) {
+    return '~';
+  }
+
+  const homePrefix = `${normalizedHomeDir}${path.sep}`;
+  if (normalizedInputPath.startsWith(homePrefix)) {
+    return `~${normalizedInputPath.slice(normalizedHomeDir.length)}`;
+  }
+
+  return inputPath;
+}
+
+function expandHomePath(inputPath, homeDir = requireHomeDirectory()) {
+  if (!inputPath) {
+    return inputPath;
+  }
+
+  if (inputPath === '~') {
+    return homeDir;
+  }
+
+  if (inputPath.startsWith('~/') || inputPath.startsWith('~\\')) {
+    const pathSegments = inputPath.slice(2).split(/[\\/]+/).filter(Boolean);
+    return path.join(homeDir, ...pathSegments);
+  }
+
+  return inputPath;
 }
 
 function getDefaultInstallRoot(agentType, homeDir = requireHomeDirectory()) {
@@ -56,37 +105,51 @@ function getDefaultInstallRoot(agentType, homeDir = requireHomeDirectory()) {
     return path.join(homeDir, '.claude', 'skills');
   }
 
+  if (agentType === 'workbuddy') {
+    return path.join(homeDir, '.workbuddy', 'skills');
+  }
+
   throw new Error(`不支持的 agent 类型: ${agentType}`);
 }
 
-function buildOverviewSnapshot(input) {
+function buildOverviewSnapshot(input, homeDir = requireHomeDirectory()) {
   const installedSkillCount = input.agents.reduce(
     (total, agent) => total + agent.installedSkillIds.length,
     0
   );
+  const selectedRoleCount = Array.isArray(input.selectedRoleIds) ? input.selectedRoleIds.length : null;
+  const selectedBaseSkillCount = Array.isArray(input.selectedBaseSkillIds)
+    ? input.selectedBaseSkillIds.length
+    : null;
 
   return {
     lines: [
-      `配置目录: ${input.storageDir}`,
+      `配置目录: ${collapseHomePath(input.storageDir, homeDir)}`,
       `岗位数: ${input.roles.length}`,
       `基础技能数: ${input.baseSkills.length}`,
       `用例数: ${input.useCases.length}`,
       `Agent 数: ${input.agents.length}`,
       `已安装技能总数: ${installedSkillCount}`,
-    ],
+      selectedRoleCount === null ? null : `已选岗位数: ${selectedRoleCount}`,
+      selectedBaseSkillCount === null ? null : `已选基础技能数: ${selectedBaseSkillCount}`,
+    ].filter(Boolean),
   };
 }
 
-function renderHelp() {
+function renderHelp(homeDir = requireHomeDirectory()) {
+  const defaultStorageDir = path.join(homeDir, '.skills-for-no-engineer', 'onboarding');
+
   return `Skill Configurator Onboarding Config Manager
 
 用法:
   node scripts/test-onboarding.cjs
   node scripts/test-onboarding.cjs --storage-dir <dir>
+  node scripts/test-onboarding.cjs --force-reinstall
   node scripts/test-onboarding.cjs --help
 
 说明:
-  默认配置目录: ${resolveDefaultStorageDir()}
+  默认配置目录: ${collapseHomePath(defaultStorageDir, homeDir)}
+  安装阶段可使用 --force-reinstall 先卸载已记录技能，再按当前配置全量重装
   入口模块:
     1. 基础信息设置
     2. 用例配置
@@ -222,6 +285,124 @@ function buildSkillNameMap(store) {
   return new Map(store.listBaseSkills().map((skill) => [skill.id, skill.name]));
 }
 
+function getBasicInfoMenuOptions() {
+  return [
+    { label: '选择岗位', value: 'selectRoles' },
+    { label: '选择基础技能', value: 'selectBaseSkills' },
+    { label: '返回主菜单', value: 'back' },
+  ];
+}
+
+function getUseCaseMenuOptions() {
+  return [
+    { label: '按岗位选择并编辑用例', value: 'edit' },
+    { label: '返回主菜单', value: 'back' },
+  ];
+}
+
+function getInstallationMenuOptions() {
+  return [
+    { label: '选择安装目标并同步已选基础技能', value: 'apply' },
+    { label: '返回主菜单', value: 'back' },
+  ];
+}
+
+function getUseCaseEditContext(selectedRoles) {
+  if (!selectedRoles || selectedRoles.length === 0) {
+    return {
+      status: 'blocked',
+      message: '请先进入基础信息设置并选择岗位，然后再配置用例。',
+    };
+  }
+
+  return {
+    status: 'ready',
+    role: selectedRoles[0],
+  };
+}
+
+function getRoleScopedUseCases(useCases, roleId) {
+  return useCases.filter((useCase) => useCase.applicableRoleIds.includes(roleId));
+}
+
+function getUseCaseDirectory(useCaseName, sharedConfig) {
+  const useCaseDirectory = sharedConfig.useCases?.[useCaseName]?.directory;
+  if (!useCaseDirectory) {
+    throw new Error(`未找到用例目录映射: ${useCaseName}`);
+  }
+
+  return useCaseDirectory;
+}
+
+function buildDesiredInstalledSkillIds(input, sharedConfig) {
+  const selectedBaseSkillIds = (input.selectedBaseSkills || []).map((skill) => skill.id);
+  const selectedRole = (input.selectedRoles || [])[0];
+  if (!selectedRole) {
+    return [...new Set(selectedBaseSkillIds)];
+  }
+
+  const roleUseCaseSkillIds = (input.useCases || [])
+    .filter((useCase) => useCase.applicableRoleIds.includes(selectedRole.id))
+    .map((useCase) => `${selectedRole.id}-${getUseCaseDirectory(useCase.name, sharedConfig)}`);
+
+  return [...new Set([...selectedBaseSkillIds, ...roleUseCaseSkillIds])];
+}
+
+function buildSkillSyncPlan(input) {
+  const currentSkillIds = input.currentSkillIds || [];
+  const desiredSkillIds = input.desiredSkillIds || [];
+
+  if (input.forceReinstall) {
+    return {
+      addedSkillIds: [...desiredSkillIds],
+      removedSkillIds: [...currentSkillIds],
+    };
+  }
+
+  const currentSkillIdSet = new Set(currentSkillIds);
+  const desiredSkillIdSet = new Set(desiredSkillIds);
+
+  return {
+    addedSkillIds: desiredSkillIds.filter((skillId) => !currentSkillIdSet.has(skillId)),
+    removedSkillIds: currentSkillIds.filter((skillId) => !desiredSkillIdSet.has(skillId)),
+  };
+}
+
+function stageGeneratedUseCaseSkillPackage(input, sharedConfig) {
+  const generated = generateSkillArtifacts(
+    {
+      agentApps: [input.agent.type],
+      baseSkills: (input.selectedBaseSkills || []).map((skill) => skill.id),
+      credentials: {},
+      infoSources: input.useCase.infoSources,
+      localOnly: true,
+      outputDir: input.outputDir,
+      reportRules: input.useCase.rules,
+      roleKey: input.role.id,
+      role: input.role.name,
+      useCase: input.useCase.name,
+    },
+    sharedConfig
+  );
+
+  writeSkillArtifacts(generated);
+
+  return {
+    skillId: generated.useCaseDir,
+    sourceDir: path.dirname(generated.skillMdPath),
+  };
+}
+
+function installGeneratedSkillPackage(sourceDir, installRoot, skillId) {
+  const targetDir = path.join(installRoot, skillId);
+
+  fs.mkdirSync(installRoot, { recursive: true });
+  fs.rmSync(targetDir, { force: true, recursive: true });
+  fs.cpSync(sourceDir, targetDir, { recursive: true });
+
+  return targetDir;
+}
+
 function executeSkillScript(scriptName, args) {
   const scriptPath = path.resolve(__dirname, '..', scriptName);
   execFileSync(scriptPath, args, {
@@ -230,161 +411,58 @@ function executeSkillScript(scriptName, args) {
   });
 }
 
-async function manageRoles(question, store) {
-  while (true) {
-    const action = await selectOption(question, '岗位管理', [
-      { label: '查看岗位列表', value: 'list' },
-      { label: '新增岗位', value: 'create' },
-      { label: '修改岗位名称', value: 'rename' },
-      { label: '删除岗位', value: 'delete' },
-      { label: '返回', value: 'back' },
-    ]);
-
-    try {
-      if (action === 'list') {
-        printList('岗位列表', store.listRoles(), (item) => `${item.name} [${item.id}]`);
-        await pause(question);
-        continue;
-      }
-
-      if (action === 'create') {
-        const name = await question('岗位名称');
-        if (!name) {
-          printWarning('岗位名称不能为空。');
-          continue;
-        }
-        const created = store.createRole(name);
-        printSuccess(`已新增岗位: ${created.name} (${created.id})`);
-        continue;
-      }
-
-      if (action === 'rename') {
-        const roles = store.listRoles();
-        const selectedRoleId = await chooseNamedItem(question, '请选择要修改的岗位', roles);
-        if (!selectedRoleId) {
-          continue;
-        }
-        const current = roles.find((item) => item.id === selectedRoleId);
-        const nextName = await question('新的岗位名称', current.name);
-        if (!nextName) {
-          printWarning('岗位名称不能为空。');
-          continue;
-        }
-        store.renameRole(selectedRoleId, nextName);
-        printSuccess(`已更新岗位: ${nextName}`);
-        continue;
-      }
-
-      if (action === 'delete') {
-        const roles = store.listRoles();
-        const selectedRoleId = await chooseNamedItem(question, '请选择要删除的岗位', roles);
-        if (!selectedRoleId) {
-          continue;
-        }
-        const current = roles.find((item) => item.id === selectedRoleId);
-        const approved = await confirm(question, `确认删除岗位 "${current.name}"?`);
-        if (!approved) {
-          printWarning('已取消删除。');
-          continue;
-        }
-        store.deleteRole(selectedRoleId);
-        printSuccess(`已删除岗位: ${current.name}`);
-        continue;
-      }
-
-      return;
-    } catch (error) {
-      printError(error.message);
-      await pause(question);
-    }
+async function selectRoles(question, store) {
+  const roles = store.listRoles();
+  if (roles.length === 0) {
+    printWarning('当前没有可选岗位。');
+    await pause(question);
+    return;
   }
+
+  const currentRole = store.listSelectedRoles()[0] || null;
+  if (currentRole) {
+    printWarning(`当前已选岗位: ${currentRole.name}`);
+  }
+
+  const selectedRoleId = await chooseNamedItem(question, '请选择岗位（单选）', roles);
+  if (!selectedRoleId) {
+    return;
+  }
+
+  const selectedRoles = store.setSelectedRoles([selectedRoleId]);
+  printSuccess(`已选择岗位: ${selectedRoles[0]?.name || '无'}`);
 }
 
-async function manageBaseSkills(question, store) {
-  while (true) {
-    const action = await selectOption(question, '基础技能管理', [
-      { label: '查看基础技能列表', value: 'list' },
-      { label: '新增基础技能', value: 'create' },
-      { label: '修改基础技能名称', value: 'rename' },
-      { label: '删除基础技能', value: 'delete' },
-      { label: '返回', value: 'back' },
-    ]);
+async function selectBaseSkills(question, store) {
+  const baseSkills = store.listBaseSkills();
+  const selectedBaseSkillIds = store.listSelectedBaseSkills().map((skill) => skill.id);
+  const nextSkillIds = await multiSelect(
+    question,
+    '请选择基础技能',
+    baseSkills.map((skill) => ({
+      label: `${skill.name} (${skill.id})`,
+      value: skill.id,
+    })),
+    selectedBaseSkillIds,
+    true
+  );
 
-    try {
-      if (action === 'list') {
-        printList('基础技能列表', store.listBaseSkills(), (item) => `${item.name} [${item.id}]`);
-        await pause(question);
-        continue;
-      }
-
-      if (action === 'create') {
-        const name = await question('基础技能名称');
-        if (!name) {
-          printWarning('基础技能名称不能为空。');
-          continue;
-        }
-        const created = store.createBaseSkill(name);
-        printSuccess(`已新增基础技能: ${created.name} (${created.id})`);
-        continue;
-      }
-
-      if (action === 'rename') {
-        const baseSkills = store.listBaseSkills();
-        const selectedSkillId = await chooseNamedItem(question, '请选择要修改的基础技能', baseSkills);
-        if (!selectedSkillId) {
-          continue;
-        }
-        const current = baseSkills.find((item) => item.id === selectedSkillId);
-        const nextName = await question('新的基础技能名称', current.name);
-        if (!nextName) {
-          printWarning('基础技能名称不能为空。');
-          continue;
-        }
-        store.renameBaseSkill(selectedSkillId, nextName);
-        printSuccess(`已更新基础技能: ${nextName}`);
-        continue;
-      }
-
-      if (action === 'delete') {
-        const baseSkills = store.listBaseSkills();
-        const selectedSkillId = await chooseNamedItem(question, '请选择要删除的基础技能', baseSkills);
-        if (!selectedSkillId) {
-          continue;
-        }
-        const current = baseSkills.find((item) => item.id === selectedSkillId);
-        const approved = await confirm(question, `确认删除基础技能 "${current.name}"?`);
-        if (!approved) {
-          printWarning('已取消删除。');
-          continue;
-        }
-        store.deleteBaseSkill(selectedSkillId);
-        printSuccess(`已删除基础技能: ${current.name}`);
-        continue;
-      }
-
-      return;
-    } catch (error) {
-      printError(error.message);
-      await pause(question);
-    }
-  }
+  const selectedSkills = store.setSelectedBaseSkills(nextSkillIds);
+  const summary = selectedSkills.map((skill) => skill.name).join('、') || '无';
+  printSuccess(`已选择基础技能: ${summary}`);
 }
 
 async function manageBasicInfo(question, store) {
   while (true) {
-    const action = await selectOption(question, '基础信息设置', [
-      { label: '岗位管理', value: 'roles' },
-      { label: '基础技能管理', value: 'skills' },
-      { label: '返回主菜单', value: 'back' },
-    ]);
+    const action = await selectOption(question, '基础信息设置', getBasicInfoMenuOptions());
 
-    if (action === 'roles') {
-      await manageRoles(question, store);
+    if (action === 'selectRoles') {
+      await selectRoles(question, store);
       continue;
     }
 
-    if (action === 'skills') {
-      await manageBaseSkills(question, store);
+    if (action === 'selectBaseSkills') {
+      await selectBaseSkills(question, store);
       continue;
     }
 
@@ -392,107 +470,51 @@ async function manageBasicInfo(question, store) {
   }
 }
 
-async function promptApplicableRoles(question, store, selectedRoleIds = []) {
-  const roles = store.listRoles();
-  if (roles.length === 0) {
-    printWarning('当前没有岗位，用例将保存为空岗位绑定。');
-    return [];
+async function editRoleScopedUseCase(question, store) {
+  const editContext = getUseCaseEditContext(store.listSelectedRoles());
+  if (editContext.status === 'blocked') {
+    printWarning(editContext.message);
+    await pause(question);
+    return;
   }
 
-  return multiSelect(
-    question,
-    '请选择适用岗位',
-    roles.map((role) => ({
-      label: `${role.name} (${role.id})`,
-      value: role.id,
-    })),
-    selectedRoleIds,
-    true
-  );
+  const role = editContext.role;
+  const useCases = store.listUseCasesForRole(role.id);
+  if (useCases.length === 0) {
+    printWarning(`岗位 "${role.name}" 当前没有可编辑的预置用例。`);
+    await pause(question);
+    return;
+  }
+
+  const selectedUseCaseId = await chooseNamedItem(question, `请选择 ${role.name} 的用例`, useCases);
+  if (!selectedUseCaseId) {
+    return;
+  }
+
+  const current = useCases.find((item) => item.id === selectedUseCaseId);
+  const nextDescription = await question('用例描述', current.description);
+  const nextInfoSources = await question('信息来源', current.infoSources);
+  const nextRules = await question('规则', current.rules);
+
+  const updated = store.upsertUseCase({
+    applicableRoleIds: current.applicableRoleIds,
+    description: nextDescription,
+    id: current.id,
+    infoSources: nextInfoSources,
+    name: current.name,
+    rules: nextRules,
+  });
+
+  printSuccess(`已更新用例内容: ${role.name} / ${updated.name}`);
 }
 
 async function manageUseCases(question, store) {
   while (true) {
-    const action = await selectOption(question, '用例配置', [
-      { label: '查看用例列表', value: 'list' },
-      { label: '新增用例', value: 'create' },
-      { label: '修改用例', value: 'edit' },
-      { label: '删除用例', value: 'delete' },
-      { label: '返回主菜单', value: 'back' },
-    ]);
+    const action = await selectOption(question, '用例配置', getUseCaseMenuOptions());
 
     try {
-      if (action === 'list') {
-        const roleNames = buildRoleNameMap(store);
-        printList('用例列表', store.listUseCases(), (useCase) => {
-          const applicableRoles = useCase.applicableRoleIds
-            .map((roleId) => roleNames.get(roleId) || roleId)
-            .join(', ');
-          return `${useCase.name} [${useCase.id}] 适用岗位: ${applicableRoles || '未设置'}`;
-        });
-        await pause(question);
-        continue;
-      }
-
-      if (action === 'create') {
-        const name = await question('用例名称');
-        if (!name) {
-          printWarning('用例名称不能为空。');
-          continue;
-        }
-        const description = await question('用例描述');
-        const infoSources = await question('信息来源');
-        const rules = await question('规则');
-        const applicableRoleIds = await promptApplicableRoles(question, store, []);
-        const created = store.upsertUseCase({
-          applicableRoleIds,
-          description,
-          infoSources,
-          name,
-          rules,
-        });
-        printSuccess(`已新增用例: ${created.name} (${created.id})`);
-        continue;
-      }
-
       if (action === 'edit') {
-        const useCases = store.listUseCases();
-        const selectedUseCaseId = await chooseNamedItem(question, '请选择要修改的用例', useCases);
-        if (!selectedUseCaseId) {
-          continue;
-        }
-        const current = useCases.find((item) => item.id === selectedUseCaseId);
-        const nextName = await question('用例名称', current.name);
-        const nextDescription = await question('用例描述', current.description);
-        const nextInfoSources = await question('信息来源', current.infoSources);
-        const nextRules = await question('规则', current.rules);
-        const applicableRoleIds = await promptApplicableRoles(question, store, current.applicableRoleIds);
-        const updated = store.upsertUseCase({
-          applicableRoleIds,
-          description: nextDescription,
-          id: current.id,
-          infoSources: nextInfoSources,
-          name: nextName,
-          rules: nextRules,
-        });
-        printSuccess(`已更新用例: ${updated.name}`);
-        continue;
-      }
-
-      if (action === 'delete') {
-        const useCases = store.listUseCases();
-        const selectedUseCaseId = await chooseNamedItem(question, '请选择要删除的用例', useCases);
-        if (!selectedUseCaseId) {
-          continue;
-        }
-        const current = useCases.find((item) => item.id === selectedUseCaseId);
-        const approved = await confirm(question, `确认删除用例 "${current.name}"?`);
-        if (!approved) {
-          printWarning('已取消删除。');
-          continue;
-        }
-        store.deleteUseCase(selectedUseCaseId);
-        printSuccess(`已删除用例: ${current.name}`);
+        await editRoleScopedUseCase(question, store);
         continue;
       }
 
@@ -504,10 +526,11 @@ async function manageUseCases(question, store) {
   }
 }
 
-function formatAgent(agent, store) {
+function formatAgent(agent, store, homeDir = requireHomeDirectory()) {
   const skillNames = buildSkillNameMap(store);
   const installedLabels = agent.installedSkillIds.map((skillId) => skillNames.get(skillId) || skillId);
-  return `${agent.name} [${agent.id}] type=${agent.type} root=${agent.installRoot} 已装技能: ${
+  const displayInstallRoot = collapseHomePath(agent.installRoot, homeDir);
+  return `${agent.name} [${agent.id}] type=${agent.type} root=${displayInstallRoot} 已装技能: ${
     installedLabels.join(', ') || '无'
   }`;
 }
@@ -516,10 +539,20 @@ async function createAgent(question, store) {
   const type = await selectOption(question, '请选择 agent 类型', [
     { label: 'Codex', value: 'codex' },
     { label: 'Claude Code', value: 'claude-code' },
+    { label: 'WorkBuddy', value: 'workbuddy' },
   ]);
-  const defaultName = type === 'codex' ? 'Codex' : 'Claude Code';
+  const defaultName = {
+    codex: 'Codex',
+    'claude-code': 'Claude Code',
+    workbuddy: 'WorkBuddy',
+  }[type];
+  const homeDir = requireHomeDirectory();
   const name = await question('Agent 名称', defaultName);
-  const installRoot = await question('技能安装目录', getDefaultInstallRoot(type));
+  const installRootInput = await question(
+    '技能安装目录',
+    collapseHomePath(getDefaultInstallRoot(type, homeDir), homeDir)
+  );
+  const installRoot = expandHomePath(installRootInput, homeDir);
 
   if (!name || !installRoot) {
     throw new Error('Agent 名称和技能安装目录不能为空。');
@@ -542,8 +575,13 @@ async function editAgent(question, store) {
   }
 
   const current = agents.find((item) => item.id === selectedAgentId);
+  const homeDir = requireHomeDirectory();
   const nextName = await question('Agent 名称', current.name);
-  const nextInstallRoot = await question('技能安装目录', current.installRoot);
+  const nextInstallRootInput = await question(
+    '技能安装目录',
+    collapseHomePath(current.installRoot, homeDir)
+  );
+  const nextInstallRoot = expandHomePath(nextInstallRootInput, homeDir);
 
   if (!nextName || !nextInstallRoot) {
     throw new Error('Agent 名称和技能安装目录不能为空。');
@@ -574,36 +612,61 @@ async function deleteAgent(question, store) {
   printSuccess(`已删除 agent: ${current.name}`);
 }
 
-async function updateAgentSkills(question, store) {
+async function updateAgentSkills(question, store, sharedConfig, forceReinstall = false) {
   const agents = store.listAgents();
-  const selectedAgentId = await chooseNamedItem(question, '请选择要维护的 agent', agents);
+  const selectedAgentId = await chooseNamedItem(question, '请选择安装目标', agents);
   if (!selectedAgentId) {
     return;
   }
 
   const agent = store.getAgent(selectedAgentId);
-  const baseSkills = store.listBaseSkills();
-  if (baseSkills.length === 0) {
-    printWarning('当前没有基础技能可供安装。');
+  const selectedBaseSkills = store.listSelectedBaseSkills();
+  const selectedRoles = store.listSelectedRoles();
+  const selectedRole = selectedRoles[0] || null;
+  const roleUseCases = selectedRole ? store.listUseCasesForRole(selectedRole.id) : [];
+  const nextSkillIds = buildDesiredInstalledSkillIds(
+    {
+      selectedBaseSkills,
+      selectedRoles,
+      useCases: roleUseCases,
+    },
+    sharedConfig
+  );
+
+  if (nextSkillIds.length === 0) {
+    printWarning('当前没有可同步安装的基础技能或用例技能。');
     await pause(question);
     return;
   }
 
-  const nextSkillIds = await multiSelect(
-    question,
-    `维护 ${agent.name} 的已安装技能`,
-    baseSkills.map((skill) => ({
-      label: `${skill.name} (${skill.id})`,
-      value: skill.id,
-    })),
-    agent.installedSkillIds,
-    true
-  );
+  const baseSkillIds = new Set(selectedBaseSkills.map((skill) => skill.id));
+  const stagedUseCasePackages = new Map();
+  const generatedSkillOutputDir = path.join(store.storageDir, 'generated-skills');
 
-  const currentSkillIds = new Set(agent.installedSkillIds);
-  const desiredSkillIds = new Set(nextSkillIds);
-  const removedSkillIds = agent.installedSkillIds.filter((skillId) => !desiredSkillIds.has(skillId));
-  const addedSkillIds = nextSkillIds.filter((skillId) => !currentSkillIds.has(skillId));
+  if (selectedRole) {
+    for (const useCase of roleUseCases) {
+      const staged = stageGeneratedUseCaseSkillPackage(
+        {
+          agent,
+          outputDir: generatedSkillOutputDir,
+          role: selectedRole,
+          selectedBaseSkills,
+          useCase,
+        },
+        sharedConfig
+      );
+      stagedUseCasePackages.set(staged.skillId, staged);
+    }
+  }
+
+  const {
+    addedSkillIds,
+    removedSkillIds,
+  } = buildSkillSyncPlan({
+    currentSkillIds: agent.installedSkillIds,
+    desiredSkillIds: nextSkillIds,
+    forceReinstall,
+  });
 
   if (removedSkillIds.length === 0 && addedSkillIds.length === 0) {
     printWarning('安装列表未发生变化。');
@@ -620,48 +683,29 @@ async function updateAgentSkills(question, store) {
   }
 
   for (const skillId of addedSkillIds) {
-    executeSkillScript('install-skill.sh', [skillId, agent.type, agent.installRoot]);
+    if (baseSkillIds.has(skillId)) {
+      executeSkillScript('install-skill.sh', [skillId, agent.type, agent.installRoot]);
+    } else {
+      const stagedPackage = stagedUseCasePackages.get(skillId);
+      if (!stagedPackage) {
+        throw new Error(`未找到待安装的用例技能包: ${skillId}`);
+      }
+
+      installGeneratedSkillPackage(stagedPackage.sourceDir, agent.installRoot, skillId);
+    }
     appliedSkillIds.add(skillId);
     store.setAgentInstalledSkills(agent.id, Array.from(appliedSkillIds));
     printSuccess(`已安装技能: ${skillId}`);
   }
 }
 
-async function manageInstallations(question, store) {
+async function manageInstallations(question, store, sharedConfig, forceReinstall = false) {
   while (true) {
-    const action = await selectOption(question, '安装技能', [
-      { label: '查看 agent 列表', value: 'list' },
-      { label: '新增 agent', value: 'create' },
-      { label: '修改 agent', value: 'edit' },
-      { label: '删除 agent', value: 'delete' },
-      { label: '维护已安装技能', value: 'skills' },
-      { label: '返回主菜单', value: 'back' },
-    ]);
+    const action = await selectOption(question, '安装技能', getInstallationMenuOptions());
 
     try {
-      if (action === 'list') {
-        printList('Agent 列表', store.listAgents(), (agent) => formatAgent(agent, store));
-        await pause(question);
-        continue;
-      }
-
-      if (action === 'create') {
-        await createAgent(question, store);
-        continue;
-      }
-
-      if (action === 'edit') {
-        await editAgent(question, store);
-        continue;
-      }
-
-      if (action === 'delete') {
-        await deleteAgent(question, store);
-        continue;
-      }
-
-      if (action === 'skills') {
-        await updateAgentSkills(question, store);
+      if (action === 'apply') {
+        await updateAgentSkills(question, store, sharedConfig, forceReinstall);
         continue;
       }
 
@@ -678,6 +722,8 @@ function printOverview(store) {
   const snapshot = buildOverviewSnapshot({
     agents: rawFiles.installations.agents,
     baseSkills: rawFiles.basicInfo.baseSkills,
+    selectedBaseSkillIds: rawFiles.basicInfo.selectedBaseSkillIds || [],
+    selectedRoleIds: rawFiles.basicInfo.selectedRoleIds || [],
     roles: rawFiles.basicInfo.roles,
     storageDir: store.storageDir,
     useCases: rawFiles.useCases.useCases,
@@ -722,7 +768,7 @@ async function runConfigManager(options) {
       }
 
       if (action === 'installations') {
-        await manageInstallations(question, store);
+        await manageInstallations(question, store, options.sharedConfig, options.forceReinstall);
         continue;
       }
 
@@ -736,8 +782,19 @@ async function runConfigManager(options) {
 
 module.exports = {
   buildOverviewSnapshot,
+  collapseHomePath,
+  expandHomePath,
+  getBasicInfoMenuOptions,
   getDefaultInstallRoot,
+  getInstallationMenuOptions,
+  getUseCaseEditContext,
+  buildDesiredInstalledSkillIds,
+  buildSkillSyncPlan,
+  installGeneratedSkillPackage,
   parseManagerArgs,
   renderHelp,
+  getRoleScopedUseCases,
+  stageGeneratedUseCaseSkillPackage,
+  getUseCaseMenuOptions,
   runConfigManager,
 };

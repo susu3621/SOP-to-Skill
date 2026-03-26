@@ -26,16 +26,14 @@ import './styles.css'
 const locale = 'zh-CN' as const
 
 const allCredentialFieldIds = [
-  'jiraUsername',
-  'jiraPassword',
   'confluenceUsername',
   'confluencePassword',
-  'saleseasyUsername',
-  'saleseasyPassword',
-  'notionUsername',
-  'notionPassword',
-  'zentaoUsername',
-  'zentaoPassword',
+  'jiraUsername',
+  'jiraPassword',
+  'mailHost',
+  'mailUsername',
+  'mailPassword',
+  'mailFrom',
 ]
 
 const onboardingMilestones = [

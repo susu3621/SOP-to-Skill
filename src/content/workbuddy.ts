@@ -182,7 +182,7 @@ export const workbuddySteps: WizardStep[] = [
         id: 'infoSources',
         type: 'textarea',
         label: text('基础信息来源'),
-        placeholder: text('例如：Jira 项目看板、Confluence 项目主页、销售易商机页、例会纪要目录。'),
+        placeholder: text('例如：Jira 项目看板、Confluence 项目主页、邮件归档、例会纪要目录。'),
         required: true,
       },
     ],
