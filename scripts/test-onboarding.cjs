@@ -334,6 +334,7 @@ class OnboardingTester {
     this.headless = options.headless !== false;
     this.buildSkill = options.buildSkill || false;
     this.config = options.config;
+    this.localOnly = options.localOnly || false;
     this.outputDir = options.outputDir || './test-output';
     this.baseURL = options.baseURL || 'http://localhost:1420';
     this.browser = null;
@@ -492,6 +493,7 @@ class OnboardingTester {
     const result = generateSkillArtifacts(
       {
         ...cfg,
+        localOnly: this.localOnly,
         outputDir: this.outputDir,
       },
       config
@@ -571,6 +573,7 @@ async function main() {
     headless,
     buildSkill,
     config: testConfig,
+    localOnly,
     outputDir,
   });
 

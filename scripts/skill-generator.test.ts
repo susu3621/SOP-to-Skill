@@ -11,6 +11,7 @@ function loadSkillGenerator() {
       baseSkills: string[]
       credentials: Record<string, string>
       infoSources: string
+      localOnly?: boolean
       outputDir: string
       reportRules: string
       roleKey: string
@@ -97,5 +98,58 @@ describe('generateSkillArtifacts', () => {
     expect(result.useCaseDir).toBe('project-manager-weekly-report')
     expect(result.skillJsonPath).toBe('test-output/project-manager-weekly-report/skill.json')
     expect(result.skillMdPath).toBe('test-output/project-manager-weekly-report/SKILL.md')
+  })
+
+  it('adds test-environment guidance only for local-only generation', () => {
+    const { generateSkillArtifacts } = loadSkillGenerator()
+
+    const sharedConfig = {
+      agentApps: {
+        workbuddy: { name: 'WorkBuddy' },
+      },
+      baseSkills: {
+        jira: { name: 'Jira' },
+      },
+      useCases: {
+        项目周报: { directory: 'weekly-report' },
+      },
+    }
+
+    const localOnlyResult = generateSkillArtifacts(
+      {
+        agentApps: ['workbuddy'],
+        baseSkills: ['jira'],
+        credentials: {},
+        infoSources: 'Jira 项目看板',
+        localOnly: true,
+        outputDir: './test-output',
+        reportRules: '',
+        roleKey: 'project-manager',
+        role: '项目经理',
+        useCase: '项目周报',
+      },
+      sharedConfig
+    )
+
+    const normalResult = generateSkillArtifacts(
+      {
+        agentApps: ['workbuddy'],
+        baseSkills: ['jira'],
+        credentials: {},
+        infoSources: 'Jira 项目看板',
+        localOnly: false,
+        outputDir: './test-output',
+        reportRules: '',
+        roleKey: 'project-manager',
+        role: '项目经理',
+        useCase: '项目周报',
+      },
+      sharedConfig
+    )
+
+    expect(localOnlyResult.skillMD).toContain('## 测试环境说明')
+    expect(localOnlyResult.skillMD).toContain('/tmp/skills-for-no-engineer')
+    expect(localOnlyResult.skillMD).toContain('不要实际进行发送')
+    expect(normalResult.skillMD).not.toContain('## 测试环境说明')
   })
 })
