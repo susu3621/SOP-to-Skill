@@ -15,6 +15,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+FORWARD_ARGS=("$@")
 
 # Colors
 RED='\033[0;31m'
@@ -38,6 +39,7 @@ Skill Configurator Onboarding Test Script
   --headed          显示浏览器界面
   --headless        无界面模式 (默认)
   --build-skill     测试完成后生成 Skill 配置
+  --local-only      跳过浏览器，仅在本地生成 Skill 配置
   --output <dir>    输出目录 (默认: ./test-output)
   --role <preset>   岗位预设 (见下方列表)
   --tools <preset>  工具预设，可多次使用 (见下方列表)
@@ -66,7 +68,7 @@ Skill Configurator Onboarding Test Script
 
   # 命令行模式
   $0 --role project-manager --tools jira --tools confluence \\
-     --use-case "项目周报" --info "Jira看板" --build-skill
+     --use-case "项目周报" --info "Jira看板" --local-only
 EOF
     exit 0
 }
@@ -122,4 +124,4 @@ cd "$PROJECT_ROOT"
 
 # Run the Node.js script with all arguments
 # The Node.js script handles both interactive and command-line modes
-exec node "$SCRIPT_DIR/test-onboarding.cjs" "$@"
+exec node "$SCRIPT_DIR/test-onboarding.cjs" "${FORWARD_ARGS[@]}"

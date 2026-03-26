@@ -35,6 +35,7 @@ interface RoleConfig {
 
 interface UseCaseConfig {
   name: string
+  directory?: string
   description: string
 }
 

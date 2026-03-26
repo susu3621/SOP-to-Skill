@@ -1,10 +1,6 @@
 {
   "version": "1.0.0",
   "agentApps": {
-    "antigravity": {
-      "name": "Antigravity",
-      "description": "适合承接企业工作流与 AI 协作场景"
-    },
     "workbuddy": {
       "name": "WorkBuddy",
       "description": "企业级 AI 助手"
@@ -149,14 +145,17 @@
   "useCases": {
     "记录日志": {
       "name": "记录日志",
+      "directory": "daily-log",
       "description": "记录每日工作内容和进展，形成项目日志"
     },
     "记录计划": {
       "name": "记录计划",
+      "directory": "planning",
       "description": "制定和更新项目计划，跟踪里程碑和任务"
     },
     "项目周报": {
       "name": "项目周报",
+      "directory": "weekly-report",
       "description": "汇总项目状态、风险和待办，形成标准周报"
     }
   },

@@ -6,6 +6,7 @@ node_modules/
 dist/
 docs/.vitepress/dist/
 src-tauri/target/
+test-output/
 
 # Tauri
 src-tauri/Cargo.lock

@@ -13,7 +13,9 @@
 
 const fs = require('fs');
 const path = require('path');
-const readline = require('readline');
+const { parseOnboardingArgs } = require('./lib/onboarding-options.cjs');
+const { createPromptSession } = require('./lib/prompt-session.cjs');
+const { generateSkillArtifacts, writeSkillArtifacts } = require('./lib/skill-generator.cjs');
 
 // Load shared configuration
 const SHARED_CONFIG_PATH = path.resolve(__dirname, '../src/shared/config.json');
@@ -61,6 +63,7 @@ Options:
   --headed          Run with browser UI visible
   --headless        Run in headless mode (default)
   --build-skill     Generate skill configuration after test
+  --local-only      Skip browser and only generate local skill artifacts
   --config <file>   Load test configuration from JSON file
   --output <dir>    Output directory for results (default: ./test-output)
   --list-presets    List available presets
@@ -73,6 +76,7 @@ Examples:
   node scripts/test-onboarding.cjs                    # Interactive mode
   node scripts/test-onboarding.cjs --headed           # Interactive with browser
   node scripts/test-onboarding.cjs --build-skill      # Generate skill file
+  node scripts/test-onboarding.cjs --local-only --role project-manager
 `);
   process.exit(0);
 }
@@ -106,123 +110,72 @@ if (args.includes('--list-presets')) {
 // Interactive Mode Functions
 // ============================================================
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+const prompts = createPromptSession();
+const { question, questionHidden } = prompts;
 
-function question(prompt, defaultValue = '') {
-  return new Promise((resolve) => {
-    const displayPrompt = defaultValue
-      ? `${prompt} [${defaultValue}]: `
-      : `${prompt}: `;
-    rl.question(displayPrompt, (answer) => {
-      resolve(answer.trim() || defaultValue);
-    });
+async function selectOption(prompt, options) {
+  console.log(`\n${colors.cyan}${prompt}${colors.reset}\n`);
+  options.forEach((opt, idx) => {
+    console.log(`  ${(idx + 1).toString().padStart(2)}) ${opt.label}`);
   });
+  console.log('');
+
+  while (true) {
+    const answer = await question(`请选择 [1-${options.length}]`);
+    const num = parseInt(answer.trim(), 10);
+
+    if (num >= 1 && num <= options.length) {
+      return options[num - 1].value;
+    }
+
+    console.log('无效选择，请重新输入');
+  }
 }
 
-function questionHidden(prompt) {
-  return new Promise((resolve) => {
-    process.stdout.write(`${prompt}: `);
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
+async function multiSelect(prompt, options) {
+  const selected = new Set();
 
-    let password = '';
-    const onData = (char) => {
-      if (char === '\n' || char === '\r' || char === '\u0004') {
-        process.stdin.setRawMode(false);
-        process.stdin.pause();
-        process.stdin.removeListener('data', onData);
-        process.stdout.write('\n');
-        resolve(password);
-      } else if (char === '\u0003') {
-        process.exit();
-      } else if (char === '\u007F') {
-        password = password.slice(0, -1);
+  console.log(`\n${colors.cyan}${prompt}${colors.reset}`);
+  console.log(`${colors.yellow}  (可多选，输入数字选择/取消，输入 0 完成)${colors.reset}\n`);
+
+  options.forEach((opt, idx) => {
+    console.log(`  ${(idx + 1).toString().padStart(2)}) ${opt.label}`);
+  });
+  console.log('');
+
+  while (true) {
+    if (selected.size > 0) {
+      const selectedLabels = options
+        .filter((opt) => selected.has(opt.value))
+        .map((opt) => opt.label);
+      console.log(`${colors.yellow}当前选择: ${selectedLabels.join(', ')}${colors.reset}`);
+    }
+
+    const answer = await question(`选择 [1-${options.length}, 0=完成]`);
+    const num = parseInt(answer.trim(), 10);
+
+    if (num === 0) {
+      if (selected.size === 0) {
+        console.log('请至少选择一个选项');
+        continue;
+      }
+      return Array.from(selected);
+    }
+
+    if (num >= 1 && num <= options.length) {
+      const value = options[num - 1].value;
+      if (selected.has(value)) {
+        selected.delete(value);
+        console.log(`${colors.red}✗${colors.reset} 已取消: ${options[num - 1].label}`);
       } else {
-        password += char;
+        selected.add(value);
+        console.log(`${colors.green}✓${colors.reset} 已选择: ${options[num - 1].label}`);
       }
-    };
-    process.stdin.on('data', onData);
-  });
-}
+      continue;
+    }
 
-function selectOption(prompt, options) {
-  return new Promise((resolve) => {
-    console.log(`\n${colors.cyan}${prompt}${colors.reset}\n`);
-    options.forEach((opt, idx) => {
-      console.log(`  ${(idx + 1).toString().padStart(2)}) ${opt.label}`);
-    });
-    console.log('');
-
-    const ask = () => {
-      rl.question(`请选择 [1-${options.length}]: `, (answer) => {
-        const num = parseInt(answer.trim(), 10);
-        if (num >= 1 && num <= options.length) {
-          resolve(options[num - 1].value);
-        } else {
-          console.log('无效选择，请重新输入');
-          ask();
-        }
-      });
-    };
-    ask();
-  });
-}
-
-function multiSelect(prompt, options) {
-  return new Promise((resolve) => {
-    const selected = new Set();
-
-    console.log(`\n${colors.cyan}${prompt}${colors.reset}`);
-    console.log(`${colors.yellow}  (可多选，输入数字选择/取消，输入 0 完成)${colors.reset}\n`);
-
-    options.forEach((opt, idx) => {
-      console.log(`  ${(idx + 1).toString().padStart(2)}) ${opt.label}`);
-    });
-    console.log('');
-
-    const ask = () => {
-      if (selected.size > 0) {
-        const selectedLabels = options
-          .filter((opt) => selected.has(opt.value))
-          .map((opt) => opt.label);
-        console.log(`${colors.yellow}当前选择: ${selectedLabels.join(', ')}${colors.reset}`);
-      }
-
-      rl.question(`选择 [1-${options.length}, 0=完成]: `, (answer) => {
-        const num = parseInt(answer.trim(), 10);
-
-        if (num === 0) {
-          if (selected.size === 0) {
-            console.log('请至少选择一个选项');
-            ask();
-            return;
-          }
-          resolve(Array.from(selected));
-          return;
-        }
-
-        if (num >= 1 && num <= options.length) {
-          const value = options[num - 1].value;
-          if (selected.has(value)) {
-            selected.delete(value);
-            console.log(`${colors.red}✗${colors.reset} 已取消: ${options[num - 1].label}`);
-          } else {
-            selected.add(value);
-            console.log(`${colors.green}✓${colors.reset} 已选择: ${options[num - 1].label}`);
-          }
-        } else {
-          console.log('无效选择');
-        }
-
-        ask();
-      });
-    };
-    ask();
-  });
+    console.log('无效选择');
+  }
 }
 
 function printStep(step, title) {
@@ -363,11 +316,11 @@ async function interactiveMode() {
   const confirm = await question('确认执行测试? [Y/n]', 'Y');
   if (confirm.toLowerCase() === 'n') {
     console.log(`\n${colors.yellow}已取消${colors.reset}`);
-    rl.close();
+    prompts.close();
     process.exit(0);
   }
 
-  rl.close();
+  prompts.close();
 
   return testConfig;
 }
@@ -536,62 +489,25 @@ class OnboardingTester {
 
   generateSkillConfig() {
     const cfg = this.config;
-
-    const skillConfig = {
-      name: 'onboarding-generated-skill',
-      version: '1.0.0',
-      description: `${cfg.role} - ${cfg.useCase}`,
-      generatedAt: new Date().toISOString(),
-      config: {
-        agentApps: cfg.agentApps,
-        role: cfg.role,
-        baseSkills: cfg.baseSkills,
-        useCase: cfg.useCase,
-        infoSources: cfg.infoSources,
-        reportRules: cfg.reportRules,
+    const result = generateSkillArtifacts(
+      {
+        ...cfg,
+        outputDir: this.outputDir,
       },
-      credentials: Object.keys(cfg.credentials).reduce((acc, key) => {
-        acc[key] = '******';
-        return acc;
-      }, {}),
-    };
+      config
+    );
 
-    const skillMD = `---
-name: ${skillConfig.name}
-description: ${skillConfig.description}
----
-
-# ${cfg.role} - ${cfg.useCase}
-
-## 配置信息
-
-- **岗位**: ${cfg.role}
-- **用例**: ${cfg.useCase}
-- **基础工具**: ${cfg.baseSkills.map((s) => config.baseSkills[s]?.name || s).join('、')}
-- **Agent 应用**: ${cfg.agentApps.map((a) => config.agentApps[a]?.name || a).join('、')}
-
-## 信息来源
-
-${cfg.infoSources}
-
-## 用例规则
-
-${cfg.reportRules || '未设置'}
-
----
-
-*Generated by test-onboarding.cjs at ${new Date().toLocaleString('zh-CN')}*
-`;
-
-    const skillJsonPath = path.join(this.outputDir, 'skill.json');
-    const skillMdPath = path.join(this.outputDir, 'SKILL.md');
-
-    fs.writeFileSync(skillJsonPath, JSON.stringify(skillConfig, null, 2));
-    fs.writeFileSync(skillMdPath, skillMD);
+    writeSkillArtifacts(result);
 
     console.log(`\n🔨 Skill configuration generated:`);
-    console.log(`  ✓ ${skillJsonPath}`);
-    console.log(`  ✓ ${skillMdPath}`);
+    console.log(`  ✓ ${result.skillJsonPath}`);
+    console.log(`  ✓ ${result.skillMdPath}`);
+  }
+
+  ensureOutputDir() {
+    if (!fs.existsSync(this.outputDir)) {
+      fs.mkdirSync(this.outputDir, { recursive: true });
+    }
   }
 }
 
@@ -600,39 +516,18 @@ ${cfg.reportRules || '未设置'}
 // ============================================================
 
 async function main() {
-  const hasOptions = args.some(
-    (arg) =>
-      arg === '--role' ||
-      arg === '--base-skills' ||
-      arg === '--config' ||
-      arg === '--use-case' ||
-      arg === '--list-presets'
-  );
-
   let testConfig;
-  let headless = true;
-  let buildSkill = false;
-  let outputDir = './test-output';
-
-  // Parse common options
-  if (args.includes('--headed')) headless = false;
-  if (args.includes('--headless')) headless = true;
-  if (args.includes('--build-skill')) buildSkill = true;
-
-  const outputIdx = args.indexOf('--output');
-  if (outputIdx >= 0 && args[outputIdx + 1]) {
-    outputDir = args[outputIdx + 1];
-  }
+  const { buildSkill, hasOptions, headless, localOnly, outputDir } = parseOnboardingArgs(args);
 
   if (!hasOptions && args.filter((a) => !a.startsWith('--')).length === 0) {
     // Interactive mode
     testConfig = await interactiveMode();
   } else {
     // Command line mode - use defaults
-    testConfig = {
-      agentApps: config.testDefaults.agentApps,
-      roleKey: config.testDefaults.role,
-      role: config.roles[config.testDefaults.role].name,
+      testConfig = {
+        agentApps: config.testDefaults.agentApps,
+        roleKey: config.testDefaults.role,
+        role: config.roles[config.testDefaults.role].name,
       baseSkills: config.testDefaults.baseSkills,
       useCase: config.testDefaults.useCase,
       infoSources: config.testDefaults.infoSources,
@@ -661,13 +556,14 @@ async function main() {
       }
       console.log('');
     }
-    rl.close();
+    prompts.close();
   }
 
   console.log('\n🧪 Skill Configurator Onboarding E2E Test');
   console.log('========================================\n');
   console.log(`Mode: ${headless ? 'Headless' : 'Headed'}`);
   console.log(`Build Skill: ${buildSkill}`);
+  console.log(`Local Only: ${localOnly}`);
   console.log(`Output: ${outputDir}`);
   console.log('');
 
@@ -677,6 +573,15 @@ async function main() {
     config: testConfig,
     outputDir,
   });
+
+  if (localOnly) {
+    tester.ensureOutputDir();
+    if (buildSkill) {
+      tester.generateSkillConfig();
+    }
+    console.log('\n✅ Local skill generation completed.\n');
+    process.exit(0);
+  }
 
   const success = await tester.run();
   process.exit(success ? 0 : 1);

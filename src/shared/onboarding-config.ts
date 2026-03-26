@@ -34,6 +34,7 @@ export interface BaseSkill {
 
 export interface UseCase {
   name: string;
+  directory?: string;
   description: string;
 }
 
