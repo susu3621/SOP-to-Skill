@@ -222,6 +222,40 @@ describe('generateSkillArtifacts', () => {
     expect(result.production.skillMD).not.toContain('## 测试环境说明')
   })
 
+  it('keeps the legacy local-only path on production ids while adding test guidance', () => {
+    const { generateSkillArtifacts } = loadSkillGenerator()
+
+    const result = generateSkillArtifacts(
+      {
+        agentApps: ['workbuddy'],
+        baseSkills: ['jira'],
+        credentials: {},
+        infoSources: 'Jira 项目看板',
+        localOnly: true,
+        outputDir: './test-output',
+        reportRules: '',
+        roleKey: 'project-manager',
+        role: '项目经理',
+        useCase: '项目周报',
+      },
+      {
+        agentApps: {
+          workbuddy: { name: 'WorkBuddy' },
+        },
+        baseSkills: {
+          jira: { name: 'Jira' },
+        },
+        useCases: {
+          项目周报: { directory: 'weekly-report' },
+        },
+      }
+    )
+
+    expect(result.useCaseDir).toBe('project-manager-weekly-report')
+    expect(result.skillMD).toContain('## 测试环境说明')
+    expect(result.skillMD).toContain('/tmp/skills-for-no-engineer')
+  })
+
   it('rejects contradictory explicit production and local-only flags', () => {
     const { generateSkillArtifacts } = loadSkillGenerator()
 

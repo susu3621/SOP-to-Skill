@@ -4,29 +4,23 @@ const {
   getOnboardingGeneratedSkillIds,
 } = require('./onboarding-skill-set.cjs');
 
-function resolveSkillVariant(cfg, options) {
+function resolveExplicitSkillVariant(options) {
   const explicitVariant = options?.variant;
 
-  if (explicitVariant !== undefined) {
-    if (explicitVariant !== 'production' && explicitVariant !== 'test') {
-      throw new Error(`Unsupported skill variant: ${explicitVariant}`);
-    }
-
-    const expectedLocalOnly = explicitVariant === 'test';
-    if (cfg.localOnly !== undefined && cfg.localOnly !== expectedLocalOnly) {
-      throw new Error(
-        `Conflicting skill generation flags: variant=${explicitVariant} localOnly=${cfg.localOnly}`
-      );
-    }
-
-    return explicitVariant;
+  if (explicitVariant === undefined) {
+    return null;
   }
 
-  return cfg.localOnly ? 'test' : 'production';
+  if (explicitVariant !== 'production' && explicitVariant !== 'test') {
+    throw new Error(`Unsupported skill variant: ${explicitVariant}`);
+  }
+
+  return explicitVariant;
 }
 
 function getSkillOutputDetails(cfg, sharedConfig, options) {
-  const variant = resolveSkillVariant(cfg, options);
+  const explicitVariant = resolveExplicitSkillVariant(options);
+  const variant = explicitVariant || 'production';
   const useCaseConfig = sharedConfig.useCases?.[cfg.useCase];
   const useCaseDir = useCaseConfig?.directory;
   const skillName = `${cfg.role}-${cfg.useCase}`;
@@ -45,7 +39,13 @@ function getSkillOutputDetails(cfg, sharedConfig, options) {
   });
   const skillId = variant === 'test' ? generatedSkillIds.testSkillId : generatedSkillIds.productionSkillId;
   const skillOutputDir = path.join(cfg.outputDir, skillId);
-  const includeLocalOnlyGuidance = cfg.localOnly || variant === 'test';
+  const includeLocalOnlyGuidance = explicitVariant ? variant === 'test' : Boolean(cfg.localOnly);
+
+  if (explicitVariant && cfg.localOnly !== undefined && cfg.localOnly !== includeLocalOnlyGuidance) {
+    throw new Error(
+      `Conflicting skill generation flags: variant=${explicitVariant} localOnly=${cfg.localOnly}`
+    );
+  }
 
   const skillConfig = {
     name: skillName,
