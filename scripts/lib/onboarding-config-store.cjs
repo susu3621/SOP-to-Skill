@@ -1,6 +1,9 @@
 const fs = require('fs');
 const path = require('path');
-const { getDefaultOnboardingGeneratedInstallCandidates } = require('./onboarding-skill-set.cjs');
+const {
+  getDefaultOnboardingGeneratedInstallCandidates,
+  getOnboardingGeneratedSkillIds,
+} = require('./onboarding-skill-set.cjs');
 
 const DEFAULT_USE_CASE_TEMPLATES = [
   {
@@ -216,7 +219,12 @@ function listGeneratedUseCaseSkillIds(sharedConfig, useCases) {
     }
 
     for (const roleId of useCase.applicableRoleIds || []) {
-      generatedSkillIds.add(`${roleId}-${useCaseDirectory}`);
+      const { productionSkillId, testSkillId } = getOnboardingGeneratedSkillIds({
+        roleKey: roleId,
+        useCaseDirectory,
+      });
+      generatedSkillIds.add(productionSkillId);
+      generatedSkillIds.add(testSkillId);
     }
   }
 

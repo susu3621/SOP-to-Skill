@@ -421,7 +421,7 @@ describe('createOnboardingConfigStore', () => {
     expect(() => store.deleteBaseSkill(jiraSkill.id)).toThrow(/仍安装在 agent 上/)
   })
 
-  it('allows installed skill ids to include generated role use-case skills', () => {
+  it('allows installed skill ids to include production and test generated role use-case skills', () => {
     const { createOnboardingConfigStore } = loadStore()
     const store = createOnboardingConfigStore({
       sharedConfig: createSharedConfig(),
@@ -430,13 +430,21 @@ describe('createOnboardingConfigStore', () => {
 
     store.initialize()
 
-    store.setAgentInstalledSkills('codex', ['jira', 'project-manager-weekly-report'])
+    store.setAgentInstalledSkills('codex', [
+      'jira',
+      'project-manager-weekly-report',
+      'test-project-manager-weekly-report',
+    ])
 
     expect(store.readRawFiles().installations.agents).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'codex',
-          installedSkillIds: ['jira', 'project-manager-weekly-report'],
+          installedSkillIds: [
+            'jira',
+            'project-manager-weekly-report',
+            'test-project-manager-weekly-report',
+          ],
         }),
       ])
     )
