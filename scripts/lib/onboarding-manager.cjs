@@ -457,9 +457,12 @@ function buildSkillSyncPlan(input) {
 }
 
 function stageGeneratedUseCaseSkillPackageVariant(input, sharedConfig, variant) {
+  const selectedAgentTypes = Array.isArray(input.selectedAgents) && input.selectedAgents.length > 0
+    ? [...new Set(input.selectedAgents.map((agent) => agent.type).filter(Boolean))]
+    : [input.agent.type];
   const generated = generateSkillArtifacts(
     {
-      agentApps: [input.agent.type],
+      agentApps: selectedAgentTypes,
       baseSkills: (input.selectedBaseSkills || []).map((skill) => skill.id),
       credentials: {},
       infoSources: input.useCase.infoSources,
@@ -778,17 +781,16 @@ async function updateAgentSkills(question, store, sharedConfig, forceReinstall =
   const selectedRoles = selectionContext.selectedRoles;
   const stagedUseCasePackages = new Map();
   const generatedSkillOutputDir = path.join(store.storageDir, 'generated-skills');
-  const representativeAgent = selectedAgents[0];
 
   for (const selectedRole of selectedRoles) {
     const roleUseCases = store.listUseCasesForRole(selectedRole.id);
     for (const useCase of roleUseCases) {
       const staged = stageGeneratedUseCaseSkillPackages(
         {
-          agent: representativeAgent,
           outputDir: generatedSkillOutputDir,
           role: selectedRole,
           selectedBaseSkills,
+          selectedAgents,
           useCase,
         },
         sharedConfig

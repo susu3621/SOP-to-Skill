@@ -69,10 +69,10 @@ function loadManager() {
     }
     installGeneratedSkillPackage: (sourceDir: string, installRoot: string, skillId: string) => string
     stageGeneratedUseCaseSkillPackages: (input: {
-      agent: { type: string }
       outputDir: string
       role: { id: string; name: string }
       selectedBaseSkills: Array<{ id: string; name: string }>
+      selectedAgents: Array<{ id: string; type: string }>
       useCase: {
         description: string
         infoSources: string
@@ -312,10 +312,13 @@ describe('onboarding manager helpers', () => {
     try {
       const staged = stageGeneratedUseCaseSkillPackages(
         {
-          agent: { type: 'workbuddy' },
           outputDir: tempDir,
           role: { id: 'project-manager', name: '项目经理' },
           selectedBaseSkills: [{ id: 'jira', name: 'Jira' }],
+          selectedAgents: [
+            { id: 'codex', type: 'codex' },
+            { id: 'workbuddy', type: 'workbuddy' },
+          ],
           useCase: {
             description: '输出项目周报',
             infoSources: 'Confluence 模板',
@@ -343,6 +346,10 @@ describe('onboarding manager helpers', () => {
 
       const productionSkillMd = fs.readFileSync(path.join(staged.production.sourceDir, 'SKILL.md'), 'utf8')
       const testSkillMd = fs.readFileSync(path.join(staged.test.sourceDir, 'SKILL.md'), 'utf8')
+      expect(productionSkillMd).toContain('codex')
+      expect(productionSkillMd).toContain('WorkBuddy')
+      expect(testSkillMd).toContain('codex')
+      expect(testSkillMd).toContain('WorkBuddy')
       expect(productionSkillMd).not.toContain('最终结果不要进行更新执行，而是打印出来。')
       expect(testSkillMd).toContain('最终结果不要进行更新执行，而是打印出来。')
     } finally {
