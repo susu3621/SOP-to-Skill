@@ -19,6 +19,7 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingInstallPreview {
+    pub install_candidate_skill_ids: Vec<String>,
     pub generated_skill_ids: Vec<GeneratedSkillIds>,
     pub selected_agent_ids: Vec<String>,
     pub selected_install_skill_ids: Vec<String>,
@@ -275,11 +276,8 @@ pub fn build_onboarding_install_preview(
         &state.selected_role_id,
         selected_use_cases,
     );
-    let selected_install_skill_ids = if state.selected_install_skill_ids.is_empty() {
-        managed_skill_ids.clone()
-    } else {
-        normalize_selected_install_skill_ids(&state.selected_install_skill_ids, &managed_skill_ids)
-    };
+    let selected_install_skill_ids =
+        normalize_selected_install_skill_ids(&state.selected_install_skill_ids, &managed_skill_ids);
 
     let plan: OnboardingSyncPlan = build_selected_agent_install_sync_plans(
         agents,
@@ -289,6 +287,7 @@ pub fn build_onboarding_install_preview(
     );
 
     OnboardingInstallPreview {
+        install_candidate_skill_ids: managed_skill_ids,
         generated_skill_ids,
         selected_agent_ids: plan.selected_agent_ids,
         selected_install_skill_ids: plan.selected_install_skill_ids,
@@ -395,6 +394,66 @@ mod tests {
         assert!(preview
             .selected_install_skill_ids
             .contains(&"test-project-manager-weekly-report".to_string()));
+    }
+
+    #[test]
+    fn onboarding_preview_returns_full_install_candidate_set_and_keeps_empty_selection_empty() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![OnboardingRoleUseCaseContent {
+                role_id: "project-manager".to_string(),
+                use_case_id: "weekly-report".to_string(),
+                use_case_name: "项目周报".to_string(),
+                description: "按周报模板输出项目状态".to_string(),
+                info_sources: "Jira 看板".to_string(),
+                rules: "先风险后里程碑".to_string(),
+            }],
+            selected_install_skill_ids: vec![],
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let preview = build_onboarding_install_preview(
+            &state,
+            &[OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            &[OnboardingAgentState {
+                id: "codex".to_string(),
+                installed_skill_ids: vec![
+                    "jira".to_string(),
+                    "project-manager-weekly-report".to_string(),
+                    "test-project-manager-weekly-report".to_string(),
+                    "legacy-package".to_string(),
+                ],
+            }],
+        );
+
+        assert_eq!(
+            preview.install_candidate_skill_ids,
+            vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ]
+        );
+        assert!(preview.selected_install_skill_ids.is_empty());
+        assert_eq!(
+            preview.agent_previews[0].removed_skill_ids,
+            vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ]
+        );
+        assert_eq!(
+            preview.agent_previews[0].unchanged_skill_ids,
+            vec!["legacy-package".to_string()]
+        );
     }
 
     #[test]
