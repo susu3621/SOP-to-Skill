@@ -108,7 +108,11 @@ fn validate_selected_agent_ids(
 
     for agent_id in selected_agent_ids {
         let agent_id_str = agent_id.as_str();
-        if !available_agent_ids.contains(agent_id_str) && !invalid_agent_ids.contains(agent_id) {
+        let supported_backend_agent = skill::parse_target_app_id(agent_id_str).is_ok();
+
+        if (!available_agent_ids.contains(agent_id_str) || !supported_backend_agent)
+            && !invalid_agent_ids.contains(agent_id)
+        {
             invalid_agent_ids.push(agent_id.clone());
         }
     }
@@ -663,6 +667,45 @@ mod tests {
         ));
     }
 
+    #[test]
+    fn onboarding_preview_rejects_selected_agent_ids_even_when_the_payload_includes_unsupported_targets() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["staging".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let result = super::get_onboarding_install_preview(
+            state,
+            vec![OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            vec![
+                OnboardingAgentState {
+                    id: "codex".to_string(),
+                    installed_skill_ids: vec![],
+                },
+                OnboardingAgentState {
+                    id: "staging".to_string(),
+                    installed_skill_ids: vec![],
+                },
+            ],
+        );
+
+        assert!(matches!(
+            result,
+            crate::commands::skill::SkillResult::Error { ref error }
+            if error == "Unsupported agent ids: staging"
+        ));
+    }
+
     #[tokio::test]
     async fn onboarding_sync_rejects_unsupported_agent_ids_at_the_command_boundary() {
         let state = OnboardingState {
@@ -695,6 +738,47 @@ mod tests {
             result,
             crate::commands::skill::SkillResult::Error { ref error }
             if error == "Unsupported agent ids: missing-agent"
+        ));
+    }
+
+    #[tokio::test]
+    async fn onboarding_sync_rejects_selected_agent_ids_even_when_the_payload_includes_unsupported_targets() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["staging".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
+            state,
+            selected_use_cases: vec![OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            agents: vec![
+                OnboardingAgentState {
+                    id: "codex".to_string(),
+                    installed_skill_ids: vec![],
+                },
+                OnboardingAgentState {
+                    id: "staging".to_string(),
+                    installed_skill_ids: vec![],
+                },
+            ],
+            staged_packages: vec![],
+        })
+        .await;
+
+        assert!(matches!(
+            result,
+            crate::commands::skill::SkillResult::Error { ref error }
+            if error == "Unsupported agent ids: staging"
         ));
     }
 
