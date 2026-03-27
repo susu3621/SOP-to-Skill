@@ -4,7 +4,29 @@ const {
   getOnboardingGeneratedSkillIds,
 } = require('./onboarding-skill-set.cjs');
 
-function getSkillOutputDetails(cfg, sharedConfig, variant) {
+function resolveSkillVariant(cfg, options) {
+  const explicitVariant = options?.variant;
+
+  if (explicitVariant !== undefined) {
+    if (explicitVariant !== 'production' && explicitVariant !== 'test') {
+      throw new Error(`Unsupported skill variant: ${explicitVariant}`);
+    }
+
+    const expectedLocalOnly = explicitVariant === 'test';
+    if (cfg.localOnly !== undefined && cfg.localOnly !== expectedLocalOnly) {
+      throw new Error(
+        `Conflicting skill generation flags: variant=${explicitVariant} localOnly=${cfg.localOnly}`
+      );
+    }
+
+    return explicitVariant;
+  }
+
+  return cfg.localOnly ? 'test' : 'production';
+}
+
+function getSkillOutputDetails(cfg, sharedConfig, options) {
+  const variant = resolveSkillVariant(cfg, options);
   const useCaseConfig = sharedConfig.useCases?.[cfg.useCase];
   const useCaseDir = useCaseConfig?.directory;
   const skillName = `${cfg.role}-${cfg.useCase}`;
@@ -87,7 +109,7 @@ ${includeLocalOnlyGuidance ? `## 测试环境说明
 }
 
 function generateSkillArtifacts(cfg, sharedConfig, options = {}) {
-  return getSkillOutputDetails(cfg, sharedConfig, options.variant || 'production');
+  return getSkillOutputDetails(cfg, sharedConfig, options);
 }
 
 function generateOnboardingSkillSetArtifacts(cfg, sharedConfig) {

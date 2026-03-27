@@ -8,6 +8,6 @@ export default defineConfig({
     globals: true,
     setupFiles: './src/test/setup.ts',
     css: true,
-    exclude: ['.worktrees/**', 'node_modules/**', 'dist/**', 'docs/.vitepress/**']
+    exclude: ['.tmp/**', '.worktrees/**', 'node_modules/**', 'dist/**', 'docs/.vitepress/**']
   }
 })

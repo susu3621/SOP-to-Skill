@@ -221,4 +221,69 @@ describe('generateSkillArtifacts', () => {
     expect(result.test.skillMD).toContain('## 测试环境说明')
     expect(result.production.skillMD).not.toContain('## 测试环境说明')
   })
+
+  it('rejects contradictory explicit production and local-only flags', () => {
+    const { generateSkillArtifacts } = loadSkillGenerator()
+
+    expect(() =>
+      generateSkillArtifacts(
+        {
+          agentApps: ['workbuddy'],
+          baseSkills: ['jira'],
+          credentials: {},
+          infoSources: 'Jira 项目看板',
+          localOnly: true,
+          outputDir: './test-output',
+          reportRules: '',
+          roleKey: 'project-manager',
+          role: '项目经理',
+          useCase: '项目周报',
+        },
+        {
+          agentApps: {
+            workbuddy: { name: 'WorkBuddy' },
+          },
+          baseSkills: {
+            jira: { name: 'Jira' },
+          },
+          useCases: {
+            项目周报: { directory: 'weekly-report' },
+          },
+        },
+        { variant: 'production' }
+      )
+    ).toThrow('Conflicting skill generation flags')
+  })
+
+  it('fails fast on unknown variant values', () => {
+    const { generateSkillArtifacts } = loadSkillGenerator()
+
+    expect(() =>
+      generateSkillArtifacts(
+        {
+          agentApps: ['workbuddy'],
+          baseSkills: ['jira'],
+          credentials: {},
+          infoSources: 'Jira 项目看板',
+          outputDir: './test-output',
+          reportRules: '',
+          roleKey: 'project-manager',
+          role: '项目经理',
+          useCase: '项目周报',
+        },
+        {
+          agentApps: {
+            workbuddy: { name: 'WorkBuddy' },
+          },
+          baseSkills: {
+            jira: { name: 'Jira' },
+          },
+          useCases: {
+            项目周报: { directory: 'weekly-report' },
+          },
+        },
+        { variant: 'preview' as 'production' | 'test' }
+      )
+    ).toThrow('Unsupported skill variant: preview')
+  })
 })
