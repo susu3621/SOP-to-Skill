@@ -48,6 +48,8 @@ pub struct OnboardingState {
     #[serde(default)]
     pub selected_install_skill_ids_initialized: bool,
     #[serde(default)]
+    pub selected_install_candidate_skill_ids: Vec<String>,
+    #[serde(default)]
     pub credential_values: HashMap<String, String>,
 }
 

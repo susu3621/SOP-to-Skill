@@ -81,11 +81,73 @@ pub fn prune_deselected_base_skill_credentials(
     state
 }
 
+pub fn resolve_selected_install_skill_ids(
+    state: &OnboardingState,
+    current_candidate_skill_ids: &[String],
+) -> Vec<String> {
+    let current_candidate_skill_ids_set: HashSet<&str> =
+        current_candidate_skill_ids.iter().map(|id| id.as_str()).collect();
+    let previous_candidate_skill_ids: HashSet<&str> = state
+        .selected_install_candidate_skill_ids
+        .iter()
+        .map(|id| id.as_str())
+        .collect();
+
+    if !state.selected_install_skill_ids_initialized
+        && state.selected_install_candidate_skill_ids.is_empty()
+    {
+        return current_candidate_skill_ids.to_vec();
+    }
+
+    if state.selected_install_skill_ids_initialized && state.selected_install_skill_ids.is_empty() {
+        return Vec::new();
+    }
+
+    if previous_candidate_skill_ids.is_empty() {
+        let selected_install_skill_ids: HashSet<&str> = state
+            .selected_install_skill_ids
+            .iter()
+            .map(|id| id.as_str())
+            .collect();
+
+        return current_candidate_skill_ids
+            .iter()
+            .filter(|skill_id| selected_install_skill_ids.contains(skill_id.as_str()))
+            .cloned()
+            .collect();
+    }
+
+    let selected_install_skill_ids: HashSet<&str> = state
+        .selected_install_skill_ids
+        .iter()
+        .map(|id| id.as_str())
+        .collect();
+    let explicitly_deselected_current_candidates: HashSet<&str> = previous_candidate_skill_ids
+        .difference(&selected_install_skill_ids)
+        .copied()
+        .filter(|skill_id| current_candidate_skill_ids_set.contains(skill_id))
+        .collect();
+
+    let mut resolved_skill_ids = Vec::new();
+    let mut seen_skill_ids = HashSet::new();
+
+    for skill_id in current_candidate_skill_ids {
+        let skill_id_str = skill_id.as_str();
+        if seen_skill_ids.insert(skill_id_str)
+            && !explicitly_deselected_current_candidates.contains(skill_id_str)
+        {
+            resolved_skill_ids.push(skill_id.clone());
+        }
+    }
+
+    resolved_skill_ids
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         default_selected_install_skill_ids, generated_skill_ids_for_use_case,
-        prune_deselected_base_skill_credentials,
+        prune_deselected_base_skill_credentials, resolve_selected_install_skill_ids,
     };
     use crate::models::{
         OnboardingBaseSkill, OnboardingRoleUseCaseContent, OnboardingState, OnboardingUseCase,
@@ -165,6 +227,7 @@ mod tests {
                 "project-manager-weekly-report".to_string(),
             ],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: HashMap::from([
                 ("jiraUsername".to_string(), "pm.jira".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
@@ -221,6 +284,48 @@ mod tests {
                 info_sources: "Jira 看板".to_string(),
                 rules: "先风险后里程碑".to_string(),
             }
+        );
+    }
+
+    #[test]
+    fn onboarding_preserves_explicit_deselections_and_selects_new_candidates_after_context_change() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+            ],
+            selected_install_skill_ids_initialized: true,
+            selected_install_candidate_skill_ids: vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ],
+            credential_values: HashMap::new(),
+        };
+
+        let resolved = resolve_selected_install_skill_ids(
+            &state,
+            &[
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+                "project-manager-planning".to_string(),
+                "test-project-manager-planning".to_string(),
+            ],
+        );
+
+        assert_eq!(
+            resolved,
+            vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "project-manager-planning".to_string(),
+                "test-project-manager-planning".to_string(),
+            ]
         );
     }
 }

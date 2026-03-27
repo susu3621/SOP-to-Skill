@@ -6,7 +6,10 @@ use crate::onboarding::{
     generator::{
         stage_generated_use_case_skill_packages, StageOnboardingPackageInput, StagedOnboardingPackages,
     },
-    state::{default_selected_install_skill_ids, generated_skill_ids_for_use_case},
+    state::{
+        default_selected_install_skill_ids, generated_skill_ids_for_use_case,
+        resolve_selected_install_skill_ids,
+    },
     sync::build_selected_agent_install_sync_plans,
 };
 use crate::commands::skill::{self, SkillResult};
@@ -67,36 +70,6 @@ fn build_staged_package_lookup(
     }
 
     lookup
-}
-
-fn normalize_selected_install_skill_ids(
-    selected_install_skill_ids: &[String],
-    managed_skill_ids: &[String],
-) -> Vec<String> {
-    let managed_skill_ids: HashSet<&str> = managed_skill_ids.iter().map(|id| id.as_str()).collect();
-    let mut seen_skill_ids: HashSet<&str> = HashSet::new();
-    let mut normalized_skill_ids = Vec::new();
-
-    for skill_id in selected_install_skill_ids {
-        let skill_id_str = skill_id.as_str();
-
-        if managed_skill_ids.contains(skill_id_str) && seen_skill_ids.insert(skill_id_str) {
-            normalized_skill_ids.push(skill_id.clone());
-        }
-    }
-
-    normalized_skill_ids
-}
-
-fn resolve_selected_install_skill_ids(
-    state: &OnboardingState,
-    managed_skill_ids: &[String],
-) -> Vec<String> {
-    if state.selected_install_skill_ids_initialized || !state.selected_install_skill_ids.is_empty() {
-        normalize_selected_install_skill_ids(&state.selected_install_skill_ids, managed_skill_ids)
-    } else {
-        managed_skill_ids.to_vec()
-    }
 }
 
 fn validate_selected_agent_ids(
@@ -400,6 +373,7 @@ mod tests {
                 }],
             ),
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -454,6 +428,11 @@ mod tests {
             }],
             selected_install_skill_ids: vec![],
             selected_install_skill_ids_initialized: true,
+            selected_install_candidate_skill_ids: vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -508,6 +487,7 @@ mod tests {
             role_use_case_contents: vec![],
             selected_install_skill_ids: vec![],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -554,6 +534,11 @@ mod tests {
                 "project-manager-weekly-report".to_string(),
             ],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -578,7 +563,14 @@ mod tests {
                 test_skill_id: "test-sales-manager-daily-log".to_string(),
             }]
         );
-        assert_eq!(preview.selected_install_skill_ids, vec!["jira".to_string()]);
+        assert_eq!(
+            preview.selected_install_skill_ids,
+            vec![
+                "jira".to_string(),
+                "sales-manager-daily-log".to_string(),
+                "test-sales-manager-daily-log".to_string(),
+            ]
+        );
     }
 
     #[test]
@@ -597,6 +589,11 @@ mod tests {
             }],
             selected_install_skill_ids: vec!["jira".to_string()],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -643,6 +640,7 @@ mod tests {
             role_use_case_contents: vec![],
             selected_install_skill_ids: vec![],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -676,6 +674,7 @@ mod tests {
             role_use_case_contents: vec![],
             selected_install_skill_ids: vec![],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -715,6 +714,7 @@ mod tests {
             role_use_case_contents: vec![],
             selected_install_skill_ids: vec![],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -750,6 +750,7 @@ mod tests {
             role_use_case_contents: vec![],
             selected_install_skill_ids: vec![],
             selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
         };
 
