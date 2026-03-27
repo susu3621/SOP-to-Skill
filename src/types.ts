@@ -120,3 +120,65 @@ export interface InstallWizardState {
   currentStep: number
   variables: Record<string, string>
 }
+
+// ===== Onboarding flow contracts =====
+
+export interface OnboardingGeneratedSkillIds {
+  production_skill_id: string
+  test_skill_id: string
+}
+
+export interface OnboardingEditableUseCaseRecord {
+  role_id: string
+  use_case_id: string
+  use_case_name: string
+  description: string
+  info_sources: string
+  rules: string
+}
+
+export type OnboardingRoleUseCaseContent = OnboardingEditableUseCaseRecord
+
+export interface OnboardingState {
+  selected_agent_ids: string[]
+  selected_role_id: string
+  selected_base_skill_ids: string[]
+  role_use_case_contents: OnboardingEditableUseCaseRecord[]
+  selected_install_skill_ids: string[]
+  selected_install_skill_ids_initialized: boolean
+  selected_install_candidate_skill_ids: string[]
+  credential_values: Record<string, string>
+}
+
+export interface OnboardingInstallCandidateGroup {
+  use_case_id: string
+  use_case_name: string
+  production_skill_id: string
+  test_skill_id: string
+}
+
+export interface OnboardingAgentSyncPreview {
+  agent_id: string
+  added_skill_ids: string[]
+  removed_skill_ids: string[]
+  unchanged_skill_ids: string[]
+}
+
+export interface OnboardingInstallPreview {
+  install_candidate_skill_ids: string[]
+  generated_skill_ids: OnboardingGeneratedSkillIds[]
+  selected_agent_ids: string[]
+  selected_install_skill_ids: string[]
+  agent_previews: OnboardingAgentSyncPreview[]
+}
+
+export interface OnboardingAgentSyncResult extends OnboardingAgentSyncPreview {
+  success: boolean
+  error: string | null
+}
+
+export interface OnboardingBatchSyncResult {
+  selected_agent_ids: string[]
+  selected_install_skill_ids: string[]
+  agent_results: OnboardingAgentSyncResult[]
+}

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import App from './App'
+import App from '../../App'
 import type {
   OnboardingAgentSyncResult,
   OnboardingBatchSyncResult,
@@ -8,10 +8,10 @@ import type {
   OnboardingInstallCandidateGroup,
   OnboardingInstallPreview,
   OnboardingState,
-} from './types'
+} from '../../types'
 
 const fixtures = vi.hoisted(() => {
-  const roleUseCaseContents: OnboardingEditableUseCaseRecord[] = [
+  const editableUseCases: OnboardingEditableUseCaseRecord[] = [
     {
       role_id: 'project-manager',
       use_case_id: 'daily-log',
@@ -70,7 +70,7 @@ const fixtures = vi.hoisted(() => {
     selected_agent_ids: ['codex', 'claude-code'],
     selected_role_id: 'project-manager',
     selected_base_skill_ids: ['jira', 'confluence'],
-    role_use_case_contents: roleUseCaseContents,
+    role_use_case_contents: editableUseCases,
     selected_install_skill_ids: [
       'jira',
       'confluence',
@@ -211,12 +211,40 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: vi.fn(async () => () => {}),
 }))
 
-describe('onboarding shell smoke coverage', () => {
-  it('opens the grouped onboarding shell instead of the legacy 8-step demo', () => {
+describe('OnboardingShell', () => {
+  it('groups agent, role, and base-skill onboarding before any use-case edits', () => {
     render(<App />)
 
     expect(
       screen.getByRole('heading', { name: /Agent、岗位和基础技能/i })
     ).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Codex' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Claude Code' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '项目经理' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
+  })
+
+  it('shows role-scoped editors for every applicable use case and defaults generated packages to checked', () => {
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: '记录日志' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '记录计划' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '项目周报' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '项目周报 生产包' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: '项目周报 测试包' })).toBeChecked()
+  })
+
+  it('removes credential fields for a deselected base skill before the credentials step and surfaces per-agent sync results on completion', () => {
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: '同步结果' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Codex' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Claude Code' })).toBeInTheDocument()
+    expect(screen.getByText('新增技能')).toBeInTheDocument()
+    expect(screen.getByText('移除技能')).toBeInTheDocument()
+    expect(screen.getByText('未变化技能')).toBeInTheDocument()
+    expect(screen.getByText('claude-code sync failed')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
   })
 })
