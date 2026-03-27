@@ -6,6 +6,7 @@
  */
 
 import type { LocalizedText, WizardField, WizardOption, WizardStep } from '../types'
+import type { OnboardingEditableUseCaseRecord } from '../types'
 import config from '../shared/config.json'
 
 // Types for the shared config
@@ -65,6 +66,21 @@ function text(value: string): LocalizedText {
   }
 }
 
+function toUseCaseId(useCaseName: string): string {
+  return typedConfig.useCases[useCaseName]?.directory ?? useCaseName
+}
+
+function getUseCaseDirectoryByName(useCaseName: string): string {
+  return typedConfig.useCases[useCaseName]?.directory ?? useCaseName
+}
+
+function getUseCaseNameById(useCaseId: string): string {
+  const match = Object.entries(typedConfig.useCases).find(
+    ([, useCase]) => (useCase.directory ?? useCase.name) === useCaseId
+  )
+  return match?.[1]?.name ?? useCaseId
+}
+
 // Transform shared config to wizard options
 export const workbuddyAgentApps: WizardOption[] = Object.entries(typedConfig.agentApps).map(
   ([key, app]) => ({
@@ -97,6 +113,123 @@ export const workbuddyUseCases: WizardOption[] = Object.entries(typedConfig.useC
     hint: text(useCase.description),
   })
 )
+
+export interface OnboardingAgentOption {
+  id: string
+  name: string
+  description: string
+}
+
+export interface OnboardingRoleOption {
+  id: string
+  name: string
+  description: string
+}
+
+export interface OnboardingBaseSkillOption {
+  id: string
+  name: string
+  description: string
+  credential_field_ids: string[]
+}
+
+export interface OnboardingUseCaseOption {
+  id: string
+  name: string
+  directory: string
+  description: string
+  applicable_role_ids: string[]
+}
+
+export const onboardingAgents: OnboardingAgentOption[] = Object.entries(typedConfig.agentApps).map(
+  ([id, app]) => ({
+    id,
+    name: app.name,
+    description: app.description,
+  })
+)
+
+export const onboardingSupportedAgentIds = ['workbuddy', 'codex', 'claude-code'] as const
+
+export const onboardingSupportedAgents: OnboardingAgentOption[] = onboardingAgents.filter((agent) =>
+  onboardingSupportedAgentIds.includes(agent.id as (typeof onboardingSupportedAgentIds)[number])
+)
+
+export const onboardingRoles: OnboardingRoleOption[] = Object.entries(typedConfig.roles).map(
+  ([id, role]) => ({
+    id,
+    name: role.name,
+    description: role.description,
+  })
+)
+
+export const onboardingBaseSkills: OnboardingBaseSkillOption[] = Object.entries(
+  typedConfig.baseSkills
+).map(([id, skill]) => ({
+  id,
+  name: skill.name,
+  description: skill.description,
+  credential_field_ids: Object.keys(skill.credentials),
+}))
+
+export const onboardingUseCases: OnboardingUseCaseOption[] = Object.entries(typedConfig.useCases).map(
+  ([useCaseName, useCase]) => ({
+    id: toUseCaseId(useCaseName),
+    name: useCase.name,
+    directory: getUseCaseDirectoryByName(useCaseName),
+    description: useCase.description,
+    applicable_role_ids: Object.entries(typedConfig.roles)
+      .filter(([, role]) => role.useCases.includes(useCaseName))
+      .map(([roleId]) => roleId),
+  })
+)
+
+export function getOnboardingAgentNameById(agentId: string): string {
+  return typedConfig.agentApps[agentId]?.name ?? agentId
+}
+
+export function getRoleNameById(roleId: string): string {
+  return typedConfig.roles[roleId]?.name ?? roleId
+}
+
+export function getBaseSkillNameById(skillId: string): string {
+  return typedConfig.baseSkills[skillId]?.name ?? skillId
+}
+
+export function getApplicableUseCasesForRole(roleId: string): OnboardingUseCaseOption[] {
+  return onboardingUseCases.filter((useCase) => useCase.applicable_role_ids.includes(roleId))
+}
+
+export function buildGeneratedSkillIdsForRoleUseCase(roleId: string, useCaseDirectory: string) {
+  return {
+    production_skill_id: `${roleId}-${useCaseDirectory}`,
+    test_skill_id: `test-${roleId}-${useCaseDirectory}`,
+  }
+}
+
+export function createDefaultRoleUseCaseContents(
+  roleId: string,
+  existing: OnboardingEditableUseCaseRecord[] = []
+): OnboardingEditableUseCaseRecord[] {
+  return getApplicableUseCasesForRole(roleId).map((useCase) => {
+    const existingRecord = existing.find(
+      (record) => record.role_id === roleId && record.use_case_id === useCase.id
+    )
+
+    return {
+      role_id: roleId,
+      use_case_id: useCase.id,
+      use_case_name: useCase.name,
+      description: existingRecord?.description ?? useCase.description,
+      info_sources: existingRecord?.info_sources ?? '',
+      rules: existingRecord?.rules ?? '',
+    }
+  })
+}
+
+export function getUseCaseNameFromId(useCaseId: string): string {
+  return getUseCaseNameById(useCaseId)
+}
 
 // Get use cases for a specific role
 export function getRoleUseCases(roleName: string): WizardOption[] {
@@ -237,7 +370,8 @@ export function getAgentLabels(agentApps: string[]): string[] {
 }
 
 export function getRoleLabel(value?: string): string {
-  return value ?? '未选择'
+  if (!value) return '未选择'
+  return typedConfig.roles[value]?.name ?? value
 }
 
 export function getBaseSkillLabels(baseSkills: string[]): string[] {

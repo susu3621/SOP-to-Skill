@@ -212,11 +212,11 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 describe('onboarding shell smoke coverage', () => {
-  it('opens the grouped onboarding shell instead of the legacy 8-step demo', () => {
+  it('opens the grouped onboarding shell instead of the legacy 8-step demo', async () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: /Agent、岗位和基础技能/i })
+      await screen.findByRole('heading', { name: /Agent、岗位和基础技能/i })
     ).toBeInTheDocument()
   })
 })

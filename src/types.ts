@@ -103,6 +103,7 @@ export interface SkillResult<T> {
 
 // View states for the app
 export type ViewType =
+  | 'onboarding'
   | 'welcome'
   | 'skills-list'
   | 'skill-detail'
@@ -138,6 +139,18 @@ export interface OnboardingEditableUseCaseRecord {
 }
 
 export type OnboardingRoleUseCaseContent = OnboardingEditableUseCaseRecord
+
+export interface OnboardingUseCase {
+  id: string
+  name: string
+  directory: string
+  applicable_role_ids: string[]
+}
+
+export interface OnboardingAgentState {
+  id: string
+  installed_skill_ids: string[]
+}
 
 export interface OnboardingState {
   selected_agent_ids: string[]
@@ -181,4 +194,14 @@ export interface OnboardingBatchSyncResult {
   selected_agent_ids: string[]
   selected_install_skill_ids: string[]
   agent_results: OnboardingAgentSyncResult[]
+}
+
+export interface StagedOnboardingPackage {
+  skill_id: string
+  source_dir: string
+}
+
+export interface StagedOnboardingPackages {
+  production: StagedOnboardingPackage | null
+  test: StagedOnboardingPackage | null
 }

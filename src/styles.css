@@ -605,6 +605,109 @@ textarea {
   font-weight: 600;
 }
 
+.masthead__actions {
+  display: grid;
+  gap: 12px;
+  justify-items: end;
+}
+
+.header-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.onboarding-shell {
+  display: grid;
+  gap: 20px;
+}
+
+.onboarding-section {
+  display: grid;
+  gap: 16px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(22, 48, 41, 0.08);
+}
+
+.onboarding-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.onboarding-section__header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.onboarding-use-cases {
+  display: grid;
+  gap: 16px;
+}
+
+.onboarding-use-case-card {
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.onboarding-use-case-card h3,
+.onboarding-preview-card__title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.onboarding-install-layout {
+  gap: 16px;
+}
+
+.onboarding-install-group {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(22, 48, 41, 0.05);
+}
+
+.onboarding-install-group__title {
+  margin: 0;
+  font-weight: 700;
+}
+
+.onboarding-preview-list {
+  display: grid;
+  gap: 12px;
+}
+
+.summary-card--nested {
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+}
+
+.field-option--compact {
+  padding: 12px 14px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(20, 94, 83, 0.1);
+  color: #145e53;
+  font-size: 0.8rem;
+}
+
 .update-hint {
   color: #e74c3c;
   font-weight: 600;
@@ -690,6 +793,13 @@ textarea {
   border-radius: 12px;
 }
 
+.success {
+  color: #145e53;
+  background: rgba(20, 94, 83, 0.08);
+  padding: 12px 16px;
+  border-radius: 12px;
+}
+
 .progress-label {
   margin: 4px 0 8px;
   font-size: 0.8rem;
@@ -749,5 +859,19 @@ textarea {
 
   .panel {
     padding: 18px;
+  }
+
+  .masthead__title {
+    white-space: normal;
+  }
+
+  .masthead__actions,
+  .header-nav {
+    justify-items: stretch;
+    justify-content: flex-start;
+  }
+
+  .onboarding-section__header {
+    flex-direction: column;
   }
 }

@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import App from '../../App'
 import type {
   OnboardingAgentSyncResult,
@@ -212,11 +213,11 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 describe('OnboardingShell', () => {
-  it('groups agent, role, and base-skill onboarding before any use-case edits', () => {
+  it('groups agent, role, and base-skill onboarding before any use-case edits', async () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: /Agent、岗位和基础技能/i })
+      await screen.findByRole('heading', { name: /Agent、岗位和基础技能/i })
     ).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Codex' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Claude Code' })).toBeInTheDocument()
@@ -225,9 +226,10 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
   })
 
-  it('shows role-scoped editors for every applicable use case and defaults generated packages to checked', () => {
+  it('shows role-scoped editors for every applicable use case and defaults generated packages to checked', async () => {
     render(<App />)
 
+    expect(await screen.findByRole('heading', { name: '记录日志' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '记录日志' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '记录计划' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '项目周报' })).toBeInTheDocument()
@@ -235,15 +237,25 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('checkbox', { name: '项目周报 测试包' })).toBeChecked()
   })
 
-  it('removes credential fields for a deselected base skill before the credentials step and surfaces per-agent sync results on completion', () => {
+  it('removes credential fields for a deselected base skill before sync and surfaces per-agent sync results on completion', async () => {
+    const user = userEvent.setup()
+
     render(<App />)
 
-    expect(screen.getByRole('heading', { name: '同步结果' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: /Agent、岗位和基础技能/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Jira' }))
+
+    expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '开始同步安装' }))
+
+    expect(await screen.findByRole('heading', { name: '同步结果' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Codex' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Claude Code' })).toBeInTheDocument()
-    expect(screen.getByText('新增技能')).toBeInTheDocument()
-    expect(screen.getByText('移除技能')).toBeInTheDocument()
-    expect(screen.getByText('未变化技能')).toBeInTheDocument()
+    expect(screen.getAllByText('新增技能').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('移除技能').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('未变化技能').length).toBeGreaterThan(0)
     expect(screen.getByText('claude-code sync failed')).toBeInTheDocument()
     expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
   })
