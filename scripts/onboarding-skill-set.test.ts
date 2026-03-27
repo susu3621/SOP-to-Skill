@@ -14,8 +14,14 @@ function loadOnboardingSkillSet() {
       testSkillId: string
     }
     getDefaultOnboardingGeneratedInstallCandidates: (input: {
-      roleKey: string
-      useCaseDirectory: string
+      selectedRole: { id: string; name: string } | null
+      sharedConfig: {
+        useCases: Record<string, { directory: string }>
+      }
+      useCases: Array<{
+        applicableRoleIds: string[]
+        name: string
+      }>
     }) => string[]
   }
 }
@@ -35,14 +41,30 @@ describe('onboarding skill set helpers', () => {
     })
   })
 
-  it('includes both generated variants in the default install candidates', () => {
+  it('includes both generated variants for every use case under the selected role', () => {
     const { getDefaultOnboardingGeneratedInstallCandidates } = loadOnboardingSkillSet()
 
     expect(
       getDefaultOnboardingGeneratedInstallCandidates({
-        roleKey: 'project-manager',
-        useCaseDirectory: 'weekly-report',
+        selectedRole: { id: 'project-manager', name: '项目经理' },
+        sharedConfig: {
+          useCases: {
+            项目周报: { directory: 'weekly-report' },
+            项目计划: { directory: 'planning' },
+            日志记录: { directory: 'daily-log' },
+          },
+        },
+        useCases: [
+          { applicableRoleIds: ['project-manager'], name: '项目周报' },
+          { applicableRoleIds: ['project-manager', 'qa-manager'], name: '项目计划' },
+          { applicableRoleIds: ['sales-manager'], name: '日志记录' },
+        ],
       })
-    ).toEqual(['project-manager-weekly-report', 'test-project-manager-weekly-report'])
+    ).toEqual([
+      'project-manager-weekly-report',
+      'test-project-manager-weekly-report',
+      'project-manager-planning',
+      'test-project-manager-planning',
+    ])
   })
 })
