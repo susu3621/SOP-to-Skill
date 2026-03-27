@@ -51,6 +51,9 @@ pub fn prune_deselected_base_skill_credentials(
     selected_base_skill_ids: &[String],
     base_skills: &[OnboardingBaseSkill],
 ) -> OnboardingState {
+    state.selected_install_skill_ids_initialized =
+        state.selected_install_skill_ids_initialized || !state.selected_install_skill_ids.is_empty();
+
     let selected_base_skill_ids: HashSet<String> = selected_base_skill_ids.iter().cloned().collect();
     let base_skill_ids: HashSet<String> = base_skills.iter().map(|skill| skill.id.clone()).collect();
     let removed_base_skill_ids: HashSet<String> = base_skill_ids
@@ -161,6 +164,7 @@ mod tests {
                 "confluence".to_string(),
                 "project-manager-weekly-report".to_string(),
             ],
+            selected_install_skill_ids_initialized: false,
             credential_values: HashMap::from([
                 ("jiraUsername".to_string(), "pm.jira".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
@@ -198,6 +202,7 @@ mod tests {
             pruned.selected_install_skill_ids,
             vec!["jira".to_string(), "project-manager-weekly-report".to_string()]
         );
+        assert!(pruned.selected_install_skill_ids_initialized);
         assert_eq!(
             pruned.credential_values,
             HashMap::from([

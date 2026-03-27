@@ -34,7 +34,7 @@ pub struct OnboardingRoleUseCaseContent {
     pub rules: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingState {
     #[serde(default)]
     pub selected_agent_ids: Vec<String>,
@@ -45,6 +45,8 @@ pub struct OnboardingState {
     pub role_use_case_contents: Vec<OnboardingRoleUseCaseContent>,
     #[serde(default)]
     pub selected_install_skill_ids: Vec<String>,
+    #[serde(default)]
+    pub selected_install_skill_ids_initialized: bool,
     #[serde(default)]
     pub credential_values: HashMap<String, String>,
 }

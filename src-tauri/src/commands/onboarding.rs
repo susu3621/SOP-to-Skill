@@ -88,6 +88,41 @@ fn normalize_selected_install_skill_ids(
     normalized_skill_ids
 }
 
+fn resolve_selected_install_skill_ids(
+    state: &OnboardingState,
+    managed_skill_ids: &[String],
+) -> Vec<String> {
+    if state.selected_install_skill_ids_initialized || !state.selected_install_skill_ids.is_empty() {
+        normalize_selected_install_skill_ids(&state.selected_install_skill_ids, managed_skill_ids)
+    } else {
+        managed_skill_ids.to_vec()
+    }
+}
+
+fn validate_selected_agent_ids(
+    agents: &[OnboardingAgentState],
+    selected_agent_ids: &[String],
+) -> Result<(), String> {
+    let available_agent_ids: HashSet<&str> = agents.iter().map(|agent| agent.id.as_str()).collect();
+    let mut invalid_agent_ids = Vec::new();
+
+    for agent_id in selected_agent_ids {
+        let agent_id_str = agent_id.as_str();
+        if !available_agent_ids.contains(agent_id_str) && !invalid_agent_ids.contains(agent_id) {
+            invalid_agent_ids.push(agent_id.clone());
+        }
+    }
+
+    if invalid_agent_ids.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "Unsupported agent ids: {}",
+            invalid_agent_ids.join(", ")
+        ))
+    }
+}
+
 #[tauri::command]
 pub fn get_onboarding_state() -> SkillResult<OnboardingState> {
     SkillResult::Success(load_onboarding_state())
@@ -107,6 +142,10 @@ pub fn get_onboarding_install_preview(
     selected_use_cases: Vec<OnboardingUseCase>,
     agents: Vec<OnboardingAgentState>,
 ) -> SkillResult<OnboardingInstallPreview> {
+    if let Err(error) = validate_selected_agent_ids(&agents, &state.selected_agent_ids) {
+        return SkillResult::Error { error };
+    }
+
     SkillResult::Success(build_onboarding_install_preview(
         &state,
         &selected_use_cases,
@@ -130,6 +169,10 @@ pub fn stage_onboarding_generated_packages(
 pub async fn sync_onboarding_installation(
     input: OnboardingSyncCommandInput,
 ) -> SkillResult<OnboardingBatchSyncResult> {
+    if let Err(error) = validate_selected_agent_ids(&input.agents, &input.state.selected_agent_ids) {
+        return SkillResult::Error { error };
+    }
+
     let preview = build_onboarding_install_preview(
         &input.state,
         &input.selected_use_cases,
@@ -187,6 +230,7 @@ pub async fn sync_onboarding_installation(
                         "local",
                         &HashMap::new(),
                         true,
+                        None,
                     ) {
                         Ok(_) => {}
                         Err(error) => {
@@ -238,14 +282,7 @@ pub fn load_onboarding_state() -> OnboardingState {
         }
     }
 
-    OnboardingState {
-        selected_agent_ids: Vec::new(),
-        selected_role_id: String::new(),
-        selected_base_skill_ids: Vec::new(),
-        role_use_case_contents: Vec::new(),
-        selected_install_skill_ids: Vec::new(),
-        credential_values: std::collections::HashMap::new(),
-    }
+    OnboardingState::default()
 }
 
 pub fn save_onboarding_state(state: &OnboardingState) -> Result<(), String> {
@@ -276,8 +313,7 @@ pub fn build_onboarding_install_preview(
         &state.selected_role_id,
         selected_use_cases,
     );
-    let selected_install_skill_ids =
-        normalize_selected_install_skill_ids(&state.selected_install_skill_ids, &managed_skill_ids);
+    let selected_install_skill_ids = resolve_selected_install_skill_ids(state, &managed_skill_ids);
 
     let plan: OnboardingSyncPlan = build_selected_agent_install_sync_plans(
         agents,
@@ -333,6 +369,7 @@ mod tests {
         OnboardingAgentState, OnboardingRoleUseCaseContent, OnboardingState, OnboardingUseCase,
     };
     use crate::onboarding::state::default_selected_install_skill_ids;
+    use super::OnboardingSyncCommandInput;
 
     #[test]
     fn onboarding_preview_returns_both_generated_package_ids() {
@@ -358,6 +395,7 @@ mod tests {
                     applicable_role_ids: vec!["project-manager".to_string()],
                 }],
             ),
+            selected_install_skill_ids_initialized: false,
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -397,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn onboarding_preview_returns_full_install_candidate_set_and_keeps_empty_selection_empty() {
+    fn onboarding_preview_returns_full_install_candidate_set_and_keeps_explicit_empty_selection_empty() {
         let state = OnboardingState {
             selected_agent_ids: vec!["codex".to_string()],
             selected_role_id: "project-manager".to_string(),
@@ -411,6 +449,7 @@ mod tests {
                 rules: "先风险后里程碑".to_string(),
             }],
             selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: true,
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -457,6 +496,42 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_preview_defaults_fresh_state_to_all_managed_candidates() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let preview = build_onboarding_install_preview(
+            &state,
+            &[OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            &[OnboardingAgentState {
+                id: "codex".to_string(),
+                installed_skill_ids: vec![],
+            }],
+        );
+
+        assert_eq!(
+            preview.selected_install_skill_ids,
+            vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ]
+        );
+    }
+
+    #[test]
     fn onboarding_preview_prunes_stale_generated_ids_without_forcing_current_generated_ids_back_in() {
         let state = OnboardingState {
             selected_agent_ids: vec!["codex".to_string()],
@@ -474,6 +549,7 @@ mod tests {
                 "jira".to_string(),
                 "project-manager-weekly-report".to_string(),
             ],
+            selected_install_skill_ids_initialized: false,
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -516,6 +592,7 @@ mod tests {
                 rules: "先风险后里程碑".to_string(),
             }],
             selected_install_skill_ids: vec!["jira".to_string()],
+            selected_install_skill_ids_initialized: false,
             credential_values: std::collections::HashMap::new(),
         };
 
@@ -551,6 +628,74 @@ mod tests {
             preview.agent_previews[0].unchanged_skill_ids,
             vec!["jira".to_string(), "legacy-package".to_string()]
         );
+    }
+
+    #[test]
+    fn onboarding_preview_rejects_unsupported_agent_ids_at_the_command_boundary() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["missing-agent".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let result = super::get_onboarding_install_preview(
+            state,
+            vec![OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            vec![OnboardingAgentState {
+                id: "codex".to_string(),
+                installed_skill_ids: vec![],
+            }],
+        );
+
+        assert!(matches!(
+            result,
+            crate::commands::skill::SkillResult::Error { ref error }
+            if error == "Unsupported agent ids: missing-agent"
+        ));
+    }
+
+    #[tokio::test]
+    async fn onboarding_sync_rejects_unsupported_agent_ids_at_the_command_boundary() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["missing-agent".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
+            state,
+            selected_use_cases: vec![OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            agents: vec![OnboardingAgentState {
+                id: "codex".to_string(),
+                installed_skill_ids: vec![],
+            }],
+            staged_packages: vec![],
+        })
+        .await;
+
+        assert!(matches!(
+            result,
+            crate::commands::skill::SkillResult::Error { ref error }
+            if error == "Unsupported agent ids: missing-agent"
+        ));
     }
 
     #[test]

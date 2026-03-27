@@ -1,6 +1,5 @@
 use crate::models::OnboardingRoleUseCaseContent;
 use crate::models::SkillError;
-use std::env;
 use std::fs;
 use std::path::PathBuf;
 
@@ -27,7 +26,7 @@ pub struct StagedOnboardingPackages {
 }
 
 fn get_data_root() -> PathBuf {
-    if let Ok(path) = env::var("SKILL_CONFIGURATOR_DATA_DIR") {
+    if let Ok(path) = std::env::var("SKILL_CONFIGURATOR_DATA_DIR") {
         return PathBuf::from(path);
     }
 
@@ -36,8 +35,18 @@ fn get_data_root() -> PathBuf {
         .join("SkillConfigurator")
 }
 
+fn get_data_root_override(data_root: Option<&PathBuf>) -> PathBuf {
+    data_root.cloned().unwrap_or_else(get_data_root)
+}
+
 pub fn get_onboarding_staging_dir() -> PathBuf {
     get_data_root().join("onboarding").join("generated-skills")
+}
+
+fn get_onboarding_staging_dir_with_data_root(data_root: Option<&PathBuf>) -> PathBuf {
+    get_data_root_override(data_root)
+        .join("onboarding")
+        .join("generated-skills")
 }
 
 fn build_skill_markdown(input: &StageOnboardingPackageInput, skill_id: &str, include_test_guidance: bool) -> String {
@@ -77,8 +86,9 @@ fn stage_variant(
     input: &StageOnboardingPackageInput,
     skill_id: &str,
     include_test_guidance: bool,
+    data_root: Option<&PathBuf>,
 ) -> Result<StagedOnboardingPackage, SkillError> {
-    let source_dir = get_onboarding_staging_dir().join(skill_id);
+    let source_dir = get_onboarding_staging_dir_with_data_root(data_root).join(skill_id);
     fs::create_dir_all(&source_dir).map_err(|error| SkillError::WriteError(error.to_string()))?;
     fs::write(
         source_dir.join("SKILL.md"),
@@ -95,20 +105,32 @@ fn stage_variant(
 pub fn stage_generated_use_case_skill_packages(
     input: &StageOnboardingPackageInput,
 ) -> Result<StagedOnboardingPackages, SkillError> {
+    stage_generated_use_case_skill_packages_with_data_root(input, None)
+}
+
+fn stage_generated_use_case_skill_packages_with_data_root(
+    input: &StageOnboardingPackageInput,
+    data_root: Option<&PathBuf>,
+) -> Result<StagedOnboardingPackages, SkillError> {
+    if input.use_case_directory.trim().is_empty() {
+        return Err(SkillError::WriteError(
+            "Use case directory cannot be empty".to_string(),
+        ));
+    }
+
     let production_skill_id = format!("{}-{}", input.role_id, input.use_case_directory);
     let test_skill_id = format!("test-{}", production_skill_id);
 
     Ok(StagedOnboardingPackages {
-        production: stage_variant(input, &production_skill_id, false)?,
-        test: stage_variant(input, &test_skill_id, true)?,
+        production: stage_variant(input, &production_skill_id, false, data_root)?,
+        test: stage_variant(input, &test_skill_id, true, data_root)?,
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{stage_generated_use_case_skill_packages, StageOnboardingPackageInput};
+    use super::{stage_generated_use_case_skill_packages_with_data_root, StageOnboardingPackageInput};
     use std::fs;
-    use std::env;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_data_dir(prefix: &str) -> PathBuf {
@@ -126,10 +148,8 @@ mod tests {
     #[test]
     fn onboarding_stages_both_generated_package_variants_under_app_data_root() {
         let data_dir = temp_data_dir("onboarding-stage");
-        let previous = env::var_os("SKILL_CONFIGURATOR_DATA_DIR");
-        env::set_var("SKILL_CONFIGURATOR_DATA_DIR", &data_dir);
 
-        let result = stage_generated_use_case_skill_packages(&StageOnboardingPackageInput {
+        let result = stage_generated_use_case_skill_packages_with_data_root(&StageOnboardingPackageInput {
             role_id: "project-manager".to_string(),
             role_name: "项目经理".to_string(),
             selected_agent_ids: vec!["codex".to_string(), "workbuddy".to_string()],
@@ -143,7 +163,7 @@ mod tests {
                 rules: "先风险后里程碑".to_string(),
             },
             use_case_directory: "weekly-report".to_string(),
-        })
+        }, Some(&data_dir))
         .expect("stage packages");
 
         assert_eq!(result.production.skill_id, "project-manager-weekly-report");
@@ -158,10 +178,30 @@ mod tests {
                 .contains("/tmp/skills-for-no-engineer")
         );
 
-        if let Some(previous) = previous {
-            env::set_var("SKILL_CONFIGURATOR_DATA_DIR", previous);
-        } else {
-            env::remove_var("SKILL_CONFIGURATOR_DATA_DIR");
-        }
+    }
+
+    #[test]
+    fn onboarding_rejects_empty_use_case_directory() {
+        let result = stage_generated_use_case_skill_packages_with_data_root(&StageOnboardingPackageInput {
+            role_id: "project-manager".to_string(),
+            role_name: "项目经理".to_string(),
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_base_skill_ids: vec!["jira".to_string()],
+            use_case: crate::models::OnboardingRoleUseCaseContent {
+                role_id: "project-manager".to_string(),
+                use_case_id: "weekly-report".to_string(),
+                use_case_name: "项目周报".to_string(),
+                description: "按周报模板输出项目状态".to_string(),
+                info_sources: "Jira 看板".to_string(),
+                rules: "先风险后里程碑".to_string(),
+            },
+            use_case_directory: String::new(),
+        }, None);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Failed to write output file: Use case directory cannot be empty"
+        );
     }
 }

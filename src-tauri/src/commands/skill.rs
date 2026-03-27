@@ -178,6 +178,7 @@ pub(crate) fn install_directory_package_at_path(
     version: &str,
     variables: &HashMap<String, String>,
     render_skill_markdown: bool,
+    data_root: Option<&Path>,
 ) -> Result<InstalledSkillInfo, SkillError> {
     if output_dir.exists() {
         delete_skill_path(output_dir)?;
@@ -209,7 +210,7 @@ pub(crate) fn install_directory_package_at_path(
         variables: final_vars,
     };
 
-    save_installed_skill(&installed)?;
+    save_installed_skill(&installed, data_root)?;
 
     Ok(InstalledSkillInfo {
         skill_id: installed.skill_id,
@@ -235,8 +236,18 @@ fn load_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Option<Installe
 }
 
 /// Save installed skill metadata
-pub(crate) fn save_installed_skill(skill: &InstalledSkill) -> Result<(), SkillError> {
-    let installed_dir = get_installed_dir().join(skill.app_id.as_str());
+fn installed_dir_for_data_root(data_root: Option<&Path>) -> PathBuf {
+    match data_root {
+        Some(root) => root.join("installed"),
+        None => get_installed_dir(),
+    }
+}
+
+pub(crate) fn save_installed_skill(
+    skill: &InstalledSkill,
+    data_root: Option<&Path>,
+) -> Result<(), SkillError> {
+    let installed_dir = installed_dir_for_data_root(data_root).join(skill.app_id.as_str());
 
     if !installed_dir.exists() {
         fs::create_dir_all(&installed_dir).map_err(|e| {
@@ -370,7 +381,7 @@ pub async fn install_skill(
                     output_path: output_path.to_string_lossy().to_string(),
                     variables: final_vars.clone(),
                 };
-                save_installed_skill(&installed)?;
+                save_installed_skill(&installed, None)?;
                 InstalledSkillInfo {
                     skill_id: installed.skill_id,
                     app_id: target_app_id.as_str().to_string(),
@@ -391,6 +402,7 @@ pub async fn install_skill(
                     &template.version,
                     &final_vars,
                     true,
+                    None,
                 )?
             }
         };
@@ -530,6 +542,7 @@ mod tests {
     fn install_directory_package_copies_scripts_and_renders_paths() {
         let source_dir = temp_dir("install-package-source");
         let output_dir = temp_dir("install-package-output");
+        let data_dir = temp_dir("install-package-data");
 
         fs::create_dir_all(source_dir.join("scripts")).unwrap();
         fs::write(
@@ -548,6 +561,7 @@ mod tests {
             "local",
             &variables,
             true,
+            Some(&data_dir),
         )
         .unwrap();
 
