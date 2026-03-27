@@ -269,8 +269,23 @@ describe('createOnboardingConfigStore', () => {
     expect(store.readRawFiles().basicInfo.selectedRoleIds).toEqual(['project-manager'])
   })
 
-  it('rebuilds selected install ids when the selected role changes', () => {
+  it('preserves an existing selected install subset and prunes stale generated ids on write', () => {
     const { createOnboardingConfigStore } = loadStore()
+    const installationsPath = path.join(storageDir, 'installations.json')
+
+    fs.writeFileSync(
+      installationsPath,
+      JSON.stringify(
+        {
+          agents: [],
+          selectedAgentIds: ['codex'],
+          selectedInstallSkillIds: ['jira', 'project-manager-planning', 'legacy-package'],
+        },
+        null,
+        2
+      )
+    )
+
     const store = createOnboardingConfigStore({
       sharedConfig: createSharedConfig(),
       storageDir,
@@ -278,13 +293,15 @@ describe('createOnboardingConfigStore', () => {
 
     store.initialize()
 
+    expect(store.readRawFiles().installations.selectedInstallSkillIds).toEqual([
+      'jira',
+      'project-manager-planning',
+    ])
+
     store.setSelectedRoles(['qa-manager'])
 
     expect(store.readRawFiles().installations.selectedInstallSkillIds).toEqual([
       'jira',
-      'confluence',
-      'qa-manager-planning',
-      'test-qa-manager-planning',
     ])
   })
 

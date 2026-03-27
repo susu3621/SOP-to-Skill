@@ -290,6 +290,9 @@ function mergeInstallationsWithDefaults(existingInstallations, defaultAgents, de
       }),
       ...(existingInstallations.agents || []).filter((agent) => !defaultIds.has(agent.id)),
     ],
+    selectedInstallSkillIds: Array.isArray(existingInstallations.selectedInstallSkillIds)
+      ? existingInstallations.selectedInstallSkillIds
+      : undefined,
     selectedAgentIds: Array.isArray(existingInstallations.selectedAgentIds)
       ? existingInstallations.selectedAgentIds
       : defaultSelectedAgentIds,
@@ -327,6 +330,18 @@ function createOnboardingConfigStore(options) {
       ...(basicInfo.baseSkills || []).map((skill) => skill.id),
       ...listGeneratedUseCaseSkillIds(sharedConfig, listUseCases()),
     ]);
+    const selectedRole = listSelectedRoles()[0] || null;
+    const validSelectedGeneratedInstallSkillIds = selectedRole
+      ? getDefaultOnboardingGeneratedInstallCandidates({
+          selectedRole,
+          sharedConfig,
+          useCases: listUseCases(),
+        })
+      : [];
+    const validSelectedInstallSkillIds = new Set([
+      ...(basicInfo.selectedBaseSkillIds || []),
+      ...validSelectedGeneratedInstallSkillIds,
+    ]);
     const validAgentIds = new Set(SUPPORTED_INSTALL_TARGETS.map((target) => target.id));
     const selectedInstallSkillIds = buildSelectedInstallSkillIds();
 
@@ -342,7 +357,9 @@ function createOnboardingConfigStore(options) {
         validAgentIds,
         createDefaultSelectedAgentIds(sharedConfig)
       ),
-      selectedInstallSkillIds,
+      selectedInstallSkillIds: Array.isArray(payload.selectedInstallSkillIds)
+        ? [...new Set(payload.selectedInstallSkillIds.filter((skillId) => validSelectedInstallSkillIds.has(skillId)))]
+        : selectedInstallSkillIds,
     };
   }
 
