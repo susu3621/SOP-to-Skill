@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { getDefaultOnboardingGeneratedInstallCandidates } = require('./onboarding-skill-set.cjs');
 
 const DEFAULT_USE_CASE_TEMPLATES = [
   {
@@ -178,6 +179,15 @@ function createDefaultInstallTargets() {
   }));
 }
 
+function createDefaultSelectedAgentIds(sharedConfig) {
+  const validAgentIds = new Set(SUPPORTED_INSTALL_TARGETS.map((target) => target.id));
+  const defaultAgentIds = Array.isArray(sharedConfig.testDefaults?.agentApps)
+    ? sharedConfig.testDefaults.agentApps
+    : [];
+
+  return [...new Set(defaultAgentIds.filter((agentId) => validAgentIds.has(agentId)))];
+}
+
 function normalizeSelectedRoleIds(roleIds, validRoleIds) {
   for (const roleId of roleIds || []) {
     if (validRoleIds.has(roleId)) {
@@ -186,6 +196,14 @@ function normalizeSelectedRoleIds(roleIds, validRoleIds) {
   }
 
   return [];
+}
+
+function normalizeSelectedAgentIds(agentIds, validAgentIds, defaultAgentIds) {
+  if (!Array.isArray(agentIds)) {
+    return defaultAgentIds;
+  }
+
+  return [...new Set(agentIds.filter((agentId) => validAgentIds.has(agentId)))];
 }
 
 function listGeneratedUseCaseSkillIds(sharedConfig, useCases) {
@@ -249,7 +267,7 @@ function mergeUseCasesWithDefaults(existingUseCases, defaultUseCases) {
   };
 }
 
-function mergeInstallationsWithDefaults(existingInstallations, defaultAgents) {
+function mergeInstallationsWithDefaults(existingInstallations, defaultAgents, defaultSelectedAgentIds) {
   const existingById = new Map(
     (existingInstallations.agents || []).map((agent) => [agent.id, agent])
   );
@@ -272,6 +290,9 @@ function mergeInstallationsWithDefaults(existingInstallations, defaultAgents) {
       }),
       ...(existingInstallations.agents || []).filter((agent) => !defaultIds.has(agent.id)),
     ],
+    selectedAgentIds: Array.isArray(existingInstallations.selectedAgentIds)
+      ? existingInstallations.selectedAgentIds
+      : defaultSelectedAgentIds,
   };
 }
 
@@ -283,6 +304,48 @@ function createOnboardingConfigStore(options) {
   const useCasesPath = path.join(storageDir, 'use-cases.json');
   const installationsPath = path.join(storageDir, 'installations.json');
 
+  function buildSelectedInstallSkillIds() {
+    const basicInfo = readBasicInfo();
+    const selectedRole = listSelectedRoles()[0] || null;
+    const generatedInstallSkillIds = getDefaultOnboardingGeneratedInstallCandidates({
+      selectedRole,
+      sharedConfig,
+      useCases: listUseCases(),
+    });
+
+    return [
+      ...new Set([
+        ...(basicInfo.selectedBaseSkillIds || []),
+        ...generatedInstallSkillIds,
+      ]),
+    ];
+  }
+
+  function normalizeInstallations(payload) {
+    const basicInfo = readBasicInfo();
+    const allValidInstallSkillIds = new Set([
+      ...(basicInfo.baseSkills || []).map((skill) => skill.id),
+      ...listGeneratedUseCaseSkillIds(sharedConfig, listUseCases()),
+    ]);
+    const validAgentIds = new Set(SUPPORTED_INSTALL_TARGETS.map((target) => target.id));
+    const selectedInstallSkillIds = buildSelectedInstallSkillIds();
+
+    return {
+      agents: sortByName(
+        (payload.agents || []).map((agent) => ({
+          ...agent,
+          installedSkillIds: [...new Set((agent.installedSkillIds || []).filter((skillId) => allValidInstallSkillIds.has(skillId)))],
+        }))
+      ),
+      selectedAgentIds: normalizeSelectedAgentIds(
+        payload.selectedAgentIds,
+        validAgentIds,
+        createDefaultSelectedAgentIds(sharedConfig)
+      ),
+      selectedInstallSkillIds,
+    };
+  }
+
   function initialize() {
     ensureDirectory(storageDir);
 
@@ -290,6 +353,7 @@ function createOnboardingConfigStore(options) {
     const defaultUseCases = createDefaultUseCases(sharedConfig);
     const defaultInstallations = {
       agents: createDefaultInstallTargets(),
+      selectedAgentIds: createDefaultSelectedAgentIds(sharedConfig),
     };
 
     if (!fs.existsSync(basicInfoPath)) {
@@ -307,9 +371,15 @@ function createOnboardingConfigStore(options) {
     }
 
     if (!fs.existsSync(installationsPath)) {
-      writeJsonFileAtomic(installationsPath, defaultInstallations);
+      writeInstallations(defaultInstallations);
     } else {
-      writeInstallations(mergeInstallationsWithDefaults(readJsonFile(installationsPath), defaultInstallations.agents));
+      writeInstallations(
+        mergeInstallationsWithDefaults(
+          readJsonFile(installationsPath),
+          defaultInstallations.agents,
+          defaultInstallations.selectedAgentIds
+        )
+      );
     }
   }
 
@@ -343,9 +413,7 @@ function createOnboardingConfigStore(options) {
   }
 
   function writeInstallations(payload) {
-    writeJsonFileAtomic(installationsPath, {
-      agents: sortByName(payload.agents),
-    });
+    writeJsonFileAtomic(installationsPath, normalizeInstallations(payload));
   }
 
   function listRoles() {
@@ -402,6 +470,7 @@ function createOnboardingConfigStore(options) {
     basicInfo.roles = basicInfo.roles.filter((item) => item.id !== roleId);
     basicInfo.selectedRoleIds = (basicInfo.selectedRoleIds || []).filter((item) => item !== roleId);
     writeBasicInfo(basicInfo);
+    writeInstallations(readInstallations());
   }
 
   function createBaseSkill(name) {
@@ -438,6 +507,7 @@ function createOnboardingConfigStore(options) {
     basicInfo.baseSkills = basicInfo.baseSkills.filter((item) => item.id !== skillId);
     basicInfo.selectedBaseSkillIds = (basicInfo.selectedBaseSkillIds || []).filter((item) => item !== skillId);
     writeBasicInfo(basicInfo);
+    writeInstallations(readInstallations());
   }
 
   function listSelectedRoles() {
@@ -451,6 +521,7 @@ function createOnboardingConfigStore(options) {
     const validRoleIds = new Set(basicInfo.roles.map((role) => role.id));
     basicInfo.selectedRoleIds = normalizeSelectedRoleIds(roleIds, validRoleIds);
     writeBasicInfo(basicInfo);
+    writeInstallations(readInstallations());
     return listSelectedRoles();
   }
 
@@ -465,6 +536,7 @@ function createOnboardingConfigStore(options) {
     const validSkillIds = new Set(basicInfo.baseSkills.map((skill) => skill.id));
     basicInfo.selectedBaseSkillIds = [...new Set((skillIds || []).filter((skillId) => validSkillIds.has(skillId)))];
     writeBasicInfo(basicInfo);
+    writeInstallations(readInstallations());
     return listSelectedBaseSkills();
   }
 
@@ -494,6 +566,7 @@ function createOnboardingConfigStore(options) {
       existing.rules = input.rules;
       existing.applicableRoleIds = [...input.applicableRoleIds];
       writeUseCases(useCases);
+      writeInstallations(readInstallations());
       return existing;
     }
 
@@ -509,6 +582,7 @@ function createOnboardingConfigStore(options) {
 
     useCases.useCases.push(created);
     writeUseCases(useCases);
+    writeInstallations(readInstallations());
     return created;
   }
 
@@ -516,6 +590,7 @@ function createOnboardingConfigStore(options) {
     const useCases = readUseCases();
     useCases.useCases = useCases.useCases.filter((useCase) => useCase.id !== useCaseId);
     writeUseCases(useCases);
+    writeInstallations(readInstallations());
   }
 
   function createAgent(input) {
