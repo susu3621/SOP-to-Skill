@@ -12,8 +12,9 @@ use crate::onboarding::{
 use crate::commands::skill::{self, SkillResult};
 use crate::template::get_output_dir;
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::collections::HashMap;
+use std::collections::HashSet;
+use std::fs;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -65,6 +66,25 @@ fn build_staged_package_lookup(
     }
 
     lookup
+}
+
+fn normalize_selected_install_skill_ids(
+    selected_install_skill_ids: &[String],
+    managed_skill_ids: &[String],
+) -> Vec<String> {
+    let managed_skill_ids: HashSet<&str> = managed_skill_ids.iter().map(|id| id.as_str()).collect();
+    let mut seen_skill_ids: HashSet<&str> = HashSet::new();
+    let mut normalized_skill_ids = Vec::new();
+
+    for skill_id in selected_install_skill_ids {
+        let skill_id_str = skill_id.as_str();
+
+        if managed_skill_ids.contains(skill_id_str) && seen_skill_ids.insert(skill_id_str) {
+            normalized_skill_ids.push(skill_id.clone());
+        }
+    }
+
+    normalized_skill_ids
 }
 
 #[tauri::command]
@@ -250,26 +270,17 @@ pub fn build_onboarding_install_preview(
         .map(|use_case| generated_skill_ids_for_use_case(&state.selected_role_id, &use_case.directory))
         .collect::<Vec<_>>();
 
-    let mut selected_install_skill_ids = if state.selected_install_skill_ids.is_empty() {
-        default_selected_install_skill_ids(
-            &state.selected_base_skill_ids,
-            &state.selected_role_id,
-            selected_use_cases,
-        )
+    let managed_skill_ids = default_selected_install_skill_ids(
+        &state.selected_base_skill_ids,
+        &state.selected_role_id,
+        selected_use_cases,
+    );
+    let selected_install_skill_ids = if state.selected_install_skill_ids.is_empty() {
+        managed_skill_ids.clone()
     } else {
-        state.selected_install_skill_ids.clone()
+        normalize_selected_install_skill_ids(&state.selected_install_skill_ids, &managed_skill_ids)
     };
 
-    for ids in &generated_skill_ids {
-        if !selected_install_skill_ids.contains(&ids.production_skill_id) {
-            selected_install_skill_ids.push(ids.production_skill_id.clone());
-        }
-        if !selected_install_skill_ids.contains(&ids.test_skill_id) {
-            selected_install_skill_ids.push(ids.test_skill_id.clone());
-        }
-    }
-
-    let managed_skill_ids = selected_install_skill_ids.clone();
     let plan: OnboardingSyncPlan = build_selected_agent_install_sync_plans(
         agents,
         &managed_skill_ids,
@@ -384,6 +395,103 @@ mod tests {
         assert!(preview
             .selected_install_skill_ids
             .contains(&"test-project-manager-weekly-report".to_string()));
+    }
+
+    #[test]
+    fn onboarding_preview_prunes_stale_generated_ids_without_forcing_current_generated_ids_back_in() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "sales-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![OnboardingRoleUseCaseContent {
+                role_id: "sales-manager".to_string(),
+                use_case_id: "daily-log".to_string(),
+                use_case_name: "记录日志".to_string(),
+                description: "记录销售过程".to_string(),
+                info_sources: "CRM".to_string(),
+                rules: "按日同步".to_string(),
+            }],
+            selected_install_skill_ids: vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string(),
+            ],
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let preview = build_onboarding_install_preview(
+            &state,
+            &[OnboardingUseCase {
+                id: "daily-log".to_string(),
+                name: "记录日志".to_string(),
+                directory: "daily-log".to_string(),
+                applicable_role_ids: vec!["sales-manager".to_string()],
+            }],
+            &[OnboardingAgentState {
+                id: "codex".to_string(),
+                installed_skill_ids: vec![],
+            }],
+        );
+
+        assert_eq!(
+            preview.generated_skill_ids,
+            vec![crate::models::GeneratedSkillIds {
+                production_skill_id: "sales-manager-daily-log".to_string(),
+                test_skill_id: "test-sales-manager-daily-log".to_string(),
+            }]
+        );
+        assert_eq!(preview.selected_install_skill_ids, vec!["jira".to_string()]);
+    }
+
+    #[test]
+    fn onboarding_preview_removes_deselected_managed_skills_from_selected_agents() {
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![OnboardingRoleUseCaseContent {
+                role_id: "project-manager".to_string(),
+                use_case_id: "weekly-report".to_string(),
+                use_case_name: "项目周报".to_string(),
+                description: "按周报模板输出项目状态".to_string(),
+                info_sources: "Jira 看板".to_string(),
+                rules: "先风险后里程碑".to_string(),
+            }],
+            selected_install_skill_ids: vec!["jira".to_string()],
+            credential_values: std::collections::HashMap::new(),
+        };
+
+        let preview = build_onboarding_install_preview(
+            &state,
+            &[OnboardingUseCase {
+                id: "weekly-report".to_string(),
+                name: "项目周报".to_string(),
+                directory: "weekly-report".to_string(),
+                applicable_role_ids: vec!["project-manager".to_string()],
+            }],
+            &[OnboardingAgentState {
+                id: "codex".to_string(),
+                installed_skill_ids: vec![
+                    "jira".to_string(),
+                    "project-manager-weekly-report".to_string(),
+                    "test-project-manager-weekly-report".to_string(),
+                    "legacy-package".to_string(),
+                ],
+            }],
+        );
+
+        assert_eq!(preview.selected_install_skill_ids, vec!["jira".to_string()]);
+        assert_eq!(preview.agent_previews.len(), 1);
+        assert_eq!(
+            preview.agent_previews[0].removed_skill_ids,
+            vec![
+                "project-manager-weekly-report".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ]
+        );
+        assert_eq!(
+            preview.agent_previews[0].unchanged_skill_ids,
+            vec!["jira".to_string(), "legacy-package".to_string()]
+        );
     }
 
     #[test]
