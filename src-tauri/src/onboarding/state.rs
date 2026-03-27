@@ -84,7 +84,9 @@ mod tests {
         default_selected_install_skill_ids, generated_skill_ids_for_use_case,
         prune_deselected_base_skill_credentials,
     };
-    use crate::models::{OnboardingBaseSkill, OnboardingState, OnboardingUseCase};
+    use crate::models::{
+        OnboardingBaseSkill, OnboardingRoleUseCaseContent, OnboardingState, OnboardingUseCase,
+    };
     use std::collections::HashMap;
 
     #[test]
@@ -146,6 +148,14 @@ mod tests {
             selected_agent_ids: vec!["codex".to_string(), "workbuddy".to_string()],
             selected_role_id: "project-manager".to_string(),
             selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
+            role_use_case_contents: vec![OnboardingRoleUseCaseContent {
+                role_id: "project-manager".to_string(),
+                use_case_id: "weekly-report".to_string(),
+                use_case_name: "项目周报".to_string(),
+                description: "按周报模板输出项目状态".to_string(),
+                info_sources: "Jira 看板".to_string(),
+                rules: "先风险后里程碑".to_string(),
+            }],
             selected_install_skill_ids: vec![
                 "jira".to_string(),
                 "confluence".to_string(),
@@ -194,6 +204,18 @@ mod tests {
                 ("jiraUsername".to_string(), "pm.jira".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
             ])
+        );
+        assert_eq!(pruned.role_use_case_contents.len(), 1);
+        assert_eq!(
+            pruned.role_use_case_contents[0],
+            OnboardingRoleUseCaseContent {
+                role_id: "project-manager".to_string(),
+                use_case_id: "weekly-report".to_string(),
+                use_case_name: "项目周报".to_string(),
+                description: "按周报模板输出项目状态".to_string(),
+                info_sources: "Jira 看板".to_string(),
+                rules: "先风险后里程碑".to_string(),
+            }
         );
     }
 }

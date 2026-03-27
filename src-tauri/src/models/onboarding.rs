@@ -25,12 +25,24 @@ pub struct OnboardingUseCase {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingRoleUseCaseContent {
+    pub role_id: String,
+    pub use_case_id: String,
+    pub use_case_name: String,
+    pub description: String,
+    pub info_sources: String,
+    pub rules: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingState {
     #[serde(default)]
     pub selected_agent_ids: Vec<String>,
     pub selected_role_id: String,
     #[serde(default)]
     pub selected_base_skill_ids: Vec<String>,
+    #[serde(default)]
+    pub role_use_case_contents: Vec<OnboardingRoleUseCaseContent>,
     #[serde(default)]
     pub selected_install_skill_ids: Vec<String>,
     #[serde(default)]
