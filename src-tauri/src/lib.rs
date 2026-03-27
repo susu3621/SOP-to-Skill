@@ -1,4 +1,5 @@
 mod commands;
+mod onboarding;
 mod models;
 mod template;
 mod tray;
