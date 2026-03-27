@@ -149,7 +149,7 @@ fn template_to_info(template: SkillTemplate, installed: Option<&InstalledSkill>)
 }
 
 /// Get app display name
-fn get_app_name(app_id: &TargetAppId) -> String {
+pub(crate) fn get_app_name(app_id: &TargetAppId) -> String {
     match app_id {
         TargetAppId::ClaudeCode => "Claude Code".to_string(),
         TargetAppId::Codex => "Codex".to_string(),
@@ -157,7 +157,7 @@ fn get_app_name(app_id: &TargetAppId) -> String {
     }
 }
 
-fn parse_target_app_id(app_id: &str) -> Result<TargetAppId, SkillError> {
+pub(crate) fn parse_target_app_id(app_id: &str) -> Result<TargetAppId, SkillError> {
     match app_id {
         "claude-code" => Ok(TargetAppId::ClaudeCode),
         "codex" => Ok(TargetAppId::Codex),
@@ -170,31 +170,55 @@ fn path_for_template(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
 }
 
-fn install_directory_package(
+pub(crate) fn install_directory_package_at_path(
+    skill_id: &str,
+    app_id: &TargetAppId,
     source_dir: &Path,
     output_dir: &Path,
+    version: &str,
     variables: &HashMap<String, String>,
-) -> Result<(), SkillError> {
+    render_skill_markdown: bool,
+) -> Result<InstalledSkillInfo, SkillError> {
     if output_dir.exists() {
         delete_skill_path(output_dir)?;
     }
 
     copy_directory(source_dir, output_dir)?;
 
-    let skill_markdown = output_dir.join("SKILL.md");
-    let content = fs::read_to_string(&skill_markdown)?;
+    let mut final_vars = variables.clone();
+    if render_skill_markdown {
+        let skill_markdown = output_dir.join("SKILL.md");
+        let content = fs::read_to_string(&skill_markdown)?;
 
-    let mut rendered_vars = variables.clone();
-    rendered_vars.insert("skill_dir".to_string(), path_for_template(output_dir));
-    rendered_vars.insert(
-        "script_dir".to_string(),
-        path_for_template(&output_dir.join("scripts")),
-    );
+        final_vars.insert("skill_dir".to_string(), path_for_template(output_dir));
+        final_vars.insert(
+            "script_dir".to_string(),
+            path_for_template(&output_dir.join("scripts")),
+        );
 
-    let rendered = render_template(&content, &rendered_vars)?;
-    write_skill_file(&skill_markdown, &rendered)?;
+        let rendered = render_template(&content, &final_vars)?;
+        write_skill_file(&skill_markdown, &rendered)?;
+    }
 
-    Ok(())
+    let installed = InstalledSkill {
+        skill_id: skill_id.to_string(),
+        app_id: app_id.clone(),
+        installed_version: version.to_string(),
+        installed_at: chrono::Utc::now(),
+        output_path: output_dir.to_string_lossy().to_string(),
+        variables: final_vars,
+    };
+
+    save_installed_skill(&installed)?;
+
+    Ok(InstalledSkillInfo {
+        skill_id: installed.skill_id,
+        app_id: app_id.as_str().to_string(),
+        app_name: get_app_name(app_id),
+        installed_version: installed.installed_version,
+        installed_at: installed.installed_at.to_rfc3339(),
+        output_path: installed.output_path,
+    })
 }
 
 /// Load installed skill metadata
@@ -211,7 +235,7 @@ fn load_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Option<Installe
 }
 
 /// Save installed skill metadata
-fn save_installed_skill(skill: &InstalledSkill) -> Result<(), SkillError> {
+pub(crate) fn save_installed_skill(skill: &InstalledSkill) -> Result<(), SkillError> {
     let installed_dir = get_installed_dir().join(skill.app_id.as_str());
 
     if !installed_dir.exists() {
@@ -231,7 +255,7 @@ fn save_installed_skill(skill: &InstalledSkill) -> Result<(), SkillError> {
 }
 
 /// Delete installed skill metadata
-fn delete_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Result<(), SkillError> {
+pub(crate) fn delete_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Result<(), SkillError> {
     let installed_dir = get_installed_dir().join(app_id.as_str());
     let meta_path = installed_dir.join(format!("{}.json", skill_id));
 
@@ -241,6 +265,15 @@ fn delete_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Result<(), Sk
     }
 
     Ok(())
+}
+
+pub(crate) fn uninstall_skill_at_path(
+    skill_id: &str,
+    app_id: &TargetAppId,
+    output_path: &Path,
+) -> Result<(), SkillError> {
+    delete_skill_path(output_path)?;
+    delete_installed_skill(skill_id, app_id)
 }
 
 /// List all available skills
@@ -323,42 +356,45 @@ pub async fn install_skill(
         final_vars.insert("skillId".to_string(), skill_id.clone());
         final_vars.insert("skillVersion".to_string(), template.version.clone());
 
-        let output_path = match template.install_strategy {
+        let installed_info = match template.install_strategy {
             InstallStrategy::TemplateFile => {
                 let template_content = load_template_file(&skill_id, &target.template_file)?;
                 let rendered = render_template(&template_content, &final_vars)?;
                 let output_path = get_output_path(&target_app_id, &skill_id);
                 write_skill_file(&output_path, &rendered)?;
-                output_path
+                let installed = InstalledSkill {
+                    skill_id: skill_id.clone(),
+                    app_id: target_app_id.clone(),
+                    installed_version: template.version.clone(),
+                    installed_at: chrono::Utc::now(),
+                    output_path: output_path.to_string_lossy().to_string(),
+                    variables: final_vars.clone(),
+                };
+                save_installed_skill(&installed)?;
+                InstalledSkillInfo {
+                    skill_id: installed.skill_id,
+                    app_id: target_app_id.as_str().to_string(),
+                    app_name: get_app_name(&target_app_id),
+                    installed_version: template.version.clone(),
+                    installed_at: installed.installed_at.to_rfc3339(),
+                    output_path: installed.output_path,
+                }
             }
             InstallStrategy::DirectoryPackage => {
                 let source_dir = get_skills_dir().join(&skill_id);
                 let output_dir = get_output_dir(&target_app_id, &skill_id);
-                install_directory_package(&source_dir, &output_dir, &final_vars)?;
-                output_dir
+                install_directory_package_at_path(
+                    &skill_id,
+                    &target_app_id,
+                    &source_dir,
+                    &output_dir,
+                    &template.version,
+                    &final_vars,
+                    true,
+                )?
             }
         };
-
-        // Save installation metadata
-        let installed = InstalledSkill {
-            skill_id: skill_id.clone(),
-            app_id: target_app_id.clone(),
-            installed_version: template.version.clone(),
-            installed_at: chrono::Utc::now(),
-            output_path: output_path.to_string_lossy().to_string(),
-            variables: final_vars,
-        };
-
-        save_installed_skill(&installed)?;
-
-        Ok(InstalledSkillInfo {
-            skill_id: installed.skill_id,
-            app_id: target_app_id.as_str().to_string(),
-            app_name: get_app_name(&target_app_id),
-            installed_version: template.version,
-            installed_at: installed.installed_at.to_rfc3339(),
-            output_path: installed.output_path,
-        })
+        Ok(installed_info)
     };
 
     result().into()
@@ -377,12 +413,8 @@ pub async fn uninstall_skill(skill_id: String, app_id: String) -> SkillResult<()
         let installed = load_installed_skill(&skill_id, &target_app_id)
             .ok_or_else(|| SkillError::NotInstalled(skill_id.clone()))?;
 
-        // Delete output file
         let output_path = PathBuf::from(&installed.output_path);
-        delete_skill_path(&output_path)?;
-
-        // Delete metadata
-        delete_installed_skill(&skill_id, &target_app_id)?;
+        uninstall_skill_at_path(&skill_id, &target_app_id, &output_path)?;
 
         Ok(())
     };
@@ -508,7 +540,16 @@ mod tests {
         fs::write(source_dir.join("scripts/search_jira.py"), "print('ok')").unwrap();
 
         let variables = HashMap::new();
-        install_directory_package(&source_dir, &output_dir, &variables).unwrap();
+        install_directory_package_at_path(
+            "install-package",
+            &TargetAppId::Codex,
+            &source_dir,
+            &output_dir,
+            "local",
+            &variables,
+            true,
+        )
+        .unwrap();
 
         let rendered = fs::read_to_string(output_dir.join("SKILL.md")).unwrap();
         assert!(rendered.contains("scripts/search_jira.py"));

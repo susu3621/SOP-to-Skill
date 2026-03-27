@@ -44,6 +44,12 @@ pub fn run() {
             commands::skill::uninstall_skill,
             commands::skill::list_installed,
             commands::skill::get_target_apps,
+            // Onboarding commands
+            commands::onboarding::get_onboarding_state,
+            commands::onboarding::set_onboarding_state,
+            commands::onboarding::get_onboarding_install_preview,
+            commands::onboarding::stage_onboarding_generated_packages,
+            commands::onboarding::sync_onboarding_installation,
             // Config commands
             commands::config::get_config,
             commands::config::update_config,
