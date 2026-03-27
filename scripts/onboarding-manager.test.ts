@@ -43,20 +43,32 @@ function loadManager() {
       | { status: 'ready'; role: { id: string; name: string } }
     buildDesiredInstalledSkillIds: (input: {
       selectedBaseSkills: Array<{ id: string; name: string }>
-      selectedRoles: Array<{ id: string; name: string }>
-      useCases: Array<{
-        applicableRoleIds: string[]
-        description: string
-        id: string
-        infoSources: string
-        name: string
-        rules: string
-      }>
-    }, sharedConfig: {
-      useCases: Record<string, { directory: string }>
+      selectedGeneratedProductionSkillIds: string[]
+      selectedGeneratedTestSkillIds: string[]
     }) => string[]
+    buildSelectedAgentInstallSyncPlans: (input: {
+      agents: Array<{
+        id: string
+        installedSkillIds: string[]
+        name: string
+        type: string
+      }>
+      managedSkillIds: string[]
+      selectedAgentIds: string[]
+      selectedInstallSkillIds: string[]
+    }) => {
+      agentPlans: Array<{
+        addedSkillIds: string[]
+        agentId: string
+        unchangedSkillIds: string[]
+        removedSkillIds: string[]
+        selectedInstallSkillIds: string[]
+      }>
+      selectedAgentIds: string[]
+      selectedInstallSkillIds: string[]
+    }
     installGeneratedSkillPackage: (sourceDir: string, installRoot: string, skillId: string) => string
-    stageGeneratedUseCaseSkillPackage: (input: {
+    stageGeneratedUseCaseSkillPackages: (input: {
       agent: { type: string }
       outputDir: string
       role: { id: string; name: string }
@@ -71,7 +83,10 @@ function loadManager() {
       agentApps: Record<string, { name: string }>
       baseSkills: Record<string, { name: string }>
       useCases: Record<string, { directory: string }>
-    }) => { skillId: string; sourceDir: string }
+    }) => {
+      production: { skillId: string; sourceDir: string }
+      test: { skillId: string; sourceDir: string }
+    }
     renderHelp: (homeDir?: string) => string
     getRoleScopedUseCases: (
       useCases: Array<{ applicableRoleIds: string[]; id: string; name: string }>,
@@ -204,48 +219,133 @@ describe('onboarding manager helpers', () => {
     expect(getRoleScopedUseCases(useCases, 'qa-manager').map((item) => item.name)).toEqual(['记录计划'])
   })
 
-  it('builds installation ids from selected base skills plus the selected role use cases', () => {
+  it('builds installation ids from selected base skills plus the selected generated production and test ids', () => {
     const { buildDesiredInstalledSkillIds } = loadManager()
 
-    const skillIds = buildDesiredInstalledSkillIds(
-      {
-        selectedBaseSkills: [
-          { id: 'confluence', name: 'Confluence' },
-          { id: 'jira', name: 'Jira' },
-        ],
-        selectedRoles: [{ id: 'project-manager', name: '项目经理' }],
-        useCases: [
-          {
-            applicableRoleIds: ['project-manager', 'qa-manager'],
-            description: '维护项目计划',
-            id: 'planning',
-            infoSources: 'Jira 看板',
-            name: '记录计划',
-            rules: '按里程碑更新',
-          },
-          {
-            applicableRoleIds: ['project-manager'],
-            description: '输出项目周报',
-            id: 'weekly-report',
-            infoSources: 'Confluence 模板',
-            name: '项目周报',
-            rules: '按模板输出',
-          },
-        ],
-      },
-      {
-        useCases: {
-          记录计划: { directory: 'planning' },
-          项目周报: { directory: 'weekly-report' },
-        },
-      }
-    )
+    const skillIds = buildDesiredInstalledSkillIds({
+      selectedBaseSkills: [
+        { id: 'confluence', name: 'Confluence' },
+        { id: 'jira', name: 'Jira' },
+      ],
+      selectedGeneratedProductionSkillIds: [
+        'project-manager-planning',
+        'project-manager-weekly-report',
+      ],
+      selectedGeneratedTestSkillIds: [
+        'test-project-manager-planning',
+        'test-project-manager-weekly-report',
+      ],
+    })
 
     expect(skillIds).toEqual([
       'confluence',
       'jira',
       'project-manager-planning',
       'project-manager-weekly-report',
+      'test-project-manager-planning',
+      'test-project-manager-weekly-report',
+    ])
+  })
+
+  it('stages both production and test generated package directories for a role use case', () => {
+    const { stageGeneratedUseCaseSkillPackages } = loadManager()
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'generated-skill-stage-'))
+
+    try {
+      const staged = stageGeneratedUseCaseSkillPackages(
+        {
+          agent: { type: 'workbuddy' },
+          outputDir: tempDir,
+          role: { id: 'project-manager', name: '项目经理' },
+          selectedBaseSkills: [{ id: 'jira', name: 'Jira' }],
+          useCase: {
+            description: '输出项目周报',
+            infoSources: 'Confluence 模板',
+            name: '项目周报',
+            rules: '按模板输出',
+          },
+        },
+        {
+          agentApps: {
+            workbuddy: { name: 'WorkBuddy' },
+          },
+          baseSkills: {
+            jira: { name: 'Jira' },
+          },
+          useCases: {
+            项目周报: { directory: 'weekly-report' },
+          },
+        }
+      )
+
+      expect(staged.production.skillId).toBe('project-manager-weekly-report')
+      expect(staged.production.sourceDir).toBe(path.join(tempDir, 'project-manager-weekly-report'))
+      expect(staged.test.skillId).toBe('test-project-manager-weekly-report')
+      expect(staged.test.sourceDir).toBe(path.join(tempDir, 'test-project-manager-weekly-report'))
+
+      const productionSkillMd = fs.readFileSync(path.join(staged.production.sourceDir, 'SKILL.md'), 'utf8')
+      const testSkillMd = fs.readFileSync(path.join(staged.test.sourceDir, 'SKILL.md'), 'utf8')
+      expect(productionSkillMd).not.toContain('最终结果不要进行更新执行，而是打印出来。')
+      expect(testSkillMd).toContain('最终结果不要进行更新执行，而是打印出来。')
+    } finally {
+      fs.rmSync(tempDir, { force: true, recursive: true })
+    }
+  })
+
+  it('builds a shared sync plan for all selected agents and preserves unmanaged skills', () => {
+    const { buildSelectedAgentInstallSyncPlans } = loadManager()
+
+    const preview = buildSelectedAgentInstallSyncPlans({
+      agents: [
+        {
+          id: 'codex',
+          installedSkillIds: ['jira', 'project-manager-weekly-report', 'legacy-package'],
+          name: 'Codex',
+          type: 'codex',
+        },
+        {
+          id: 'workbuddy',
+          installedSkillIds: [
+            'confluence',
+            'project-manager-weekly-report',
+            'test-project-manager-weekly-report',
+          ],
+          name: 'WorkBuddy',
+          type: 'workbuddy',
+        },
+        {
+          id: 'claude-code',
+          installedSkillIds: ['jira', 'test-project-manager-weekly-report'],
+          name: 'Claude Code',
+          type: 'claude-code',
+        },
+      ],
+      managedSkillIds: [
+        'jira',
+        'project-manager-weekly-report',
+        'test-project-manager-weekly-report',
+      ],
+      selectedAgentIds: ['codex', 'workbuddy'],
+      selectedInstallSkillIds: ['jira', 'test-project-manager-weekly-report'],
+    })
+
+    expect(preview.selectedAgentIds).toEqual(['codex', 'workbuddy'])
+    expect(preview.selectedInstallSkillIds).toEqual(['jira', 'test-project-manager-weekly-report'])
+    expect(preview.agentPlans).toEqual([
+      {
+        agentId: 'codex',
+        addedSkillIds: ['test-project-manager-weekly-report'],
+        removedSkillIds: ['project-manager-weekly-report'],
+        selectedInstallSkillIds: ['jira', 'test-project-manager-weekly-report'],
+        unchangedSkillIds: ['jira', 'legacy-package'],
+      },
+      {
+        agentId: 'workbuddy',
+        addedSkillIds: ['jira'],
+        removedSkillIds: ['project-manager-weekly-report'],
+        selectedInstallSkillIds: ['jira', 'test-project-manager-weekly-report'],
+        unchangedSkillIds: ['confluence', 'test-project-manager-weekly-report'],
+      },
     ])
   })
 
@@ -301,45 +401,4 @@ describe('onboarding manager helpers', () => {
     }
   })
 
-  it('stages generated use-case skills in local-only mode for CLI installation', () => {
-    const { stageGeneratedUseCaseSkillPackage } = loadManager()
-    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'generated-skill-stage-'))
-
-    try {
-      const staged = stageGeneratedUseCaseSkillPackage(
-        {
-          agent: { type: 'workbuddy' },
-          outputDir: tempDir,
-          role: { id: 'project-manager', name: '项目经理' },
-          selectedBaseSkills: [{ id: 'jira', name: 'Jira' }],
-          useCase: {
-            description: '输出项目周报',
-            infoSources: 'Confluence 模板',
-            name: '项目周报',
-            rules: '按模板输出',
-          },
-        },
-        {
-          agentApps: {
-            workbuddy: { name: 'WorkBuddy' },
-          },
-          baseSkills: {
-            jira: { name: 'Jira' },
-          },
-          useCases: {
-            项目周报: { directory: 'weekly-report' },
-          },
-        }
-      )
-
-      expect(staged.skillId).toBe('project-manager-weekly-report')
-      expect(staged.sourceDir).toBe(path.join(tempDir, 'project-manager-weekly-report'))
-
-      const stagedSkillMd = fs.readFileSync(path.join(staged.sourceDir, 'SKILL.md'), 'utf8')
-      expect(stagedSkillMd).toContain('## 测试环境说明')
-      expect(stagedSkillMd).toContain('最终结果不要进行更新执行，而是打印出来。')
-    } finally {
-      fs.rmSync(tempDir, { force: true, recursive: true })
-    }
-  })
 })

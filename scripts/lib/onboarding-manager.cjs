@@ -285,6 +285,12 @@ function buildSkillNameMap(store) {
   return new Map(store.listBaseSkills().map((skill) => [skill.id, skill.name]));
 }
 
+function writeJsonFileAtomic(filePath, payload) {
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  fs.writeFileSync(tempPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  fs.renameSync(tempPath, filePath);
+}
+
 function getBasicInfoMenuOptions() {
   return [
     { label: '选择岗位', value: 'selectRoles' },
@@ -334,18 +340,64 @@ function getUseCaseDirectory(useCaseName, sharedConfig) {
   return useCaseDirectory;
 }
 
-function buildDesiredInstalledSkillIds(input, sharedConfig) {
-  const selectedBaseSkillIds = (input.selectedBaseSkills || []).map((skill) => skill.id);
-  const selectedRole = (input.selectedRoles || [])[0];
-  if (!selectedRole) {
-    return [...new Set(selectedBaseSkillIds)];
+function buildDesiredInstalledSkillIds(input) {
+  return [
+    ...new Set([
+      ...(input.selectedBaseSkills || []).map((skill) => skill.id),
+      ...(input.selectedGeneratedProductionSkillIds || []),
+      ...(input.selectedGeneratedTestSkillIds || []),
+    ]),
+  ];
+}
+
+function buildSelectedAgentInstallSyncPlans(input) {
+  const agentsById = new Map((input.agents || []).map((agent) => [agent.id, agent]));
+  const selectedAgentIds = [];
+  const seenAgentIds = new Set();
+
+  for (const agentId of input.selectedAgentIds || []) {
+    if (seenAgentIds.has(agentId) || !agentsById.has(agentId)) {
+      continue;
+    }
+
+    seenAgentIds.add(agentId);
+    selectedAgentIds.push(agentId);
   }
 
-  const roleUseCaseSkillIds = (input.useCases || [])
-    .filter((useCase) => useCase.applicableRoleIds.includes(selectedRole.id))
-    .map((useCase) => `${selectedRole.id}-${getUseCaseDirectory(useCase.name, sharedConfig)}`);
+  const managedSkillIdSet = new Set(input.managedSkillIds || []);
+  const selectedInstallSkillIds = [
+    ...new Set((input.selectedInstallSkillIds || []).filter((skillId) => managedSkillIdSet.has(skillId))),
+  ];
+  const selectedInstallSkillIdSet = new Set(selectedInstallSkillIds);
+  const forceReinstall = Boolean(input.forceReinstall);
 
-  return [...new Set([...selectedBaseSkillIds, ...roleUseCaseSkillIds])];
+  return {
+    agentPlans: selectedAgentIds.map((agentId) => {
+      const agent = agentsById.get(agentId);
+      const currentSkillIds = [...new Set(agent.installedSkillIds || [])];
+      const currentSkillIdSet = new Set(currentSkillIds);
+      const addedSkillIds = forceReinstall
+        ? [...selectedInstallSkillIds]
+        : selectedInstallSkillIds.filter((skillId) => !currentSkillIdSet.has(skillId));
+      const removedSkillIds = forceReinstall
+        ? currentSkillIds.filter((skillId) => managedSkillIdSet.has(skillId))
+        : currentSkillIds.filter(
+            (skillId) => managedSkillIdSet.has(skillId) && !selectedInstallSkillIdSet.has(skillId)
+          );
+      const removedSkillIdSet = new Set(removedSkillIds);
+      const unchangedSkillIds = currentSkillIds.filter((skillId) => !removedSkillIdSet.has(skillId));
+
+      return {
+        addedSkillIds,
+        agentId,
+        selectedInstallSkillIds,
+        unchangedSkillIds,
+        removedSkillIds,
+      };
+    }),
+    selectedAgentIds,
+    selectedInstallSkillIds,
+  };
 }
 
 function buildSkillSyncPlan(input) {
@@ -368,21 +420,21 @@ function buildSkillSyncPlan(input) {
   };
 }
 
-function stageGeneratedUseCaseSkillPackage(input, sharedConfig) {
+function stageGeneratedUseCaseSkillPackageVariant(input, sharedConfig, variant) {
   const generated = generateSkillArtifacts(
     {
       agentApps: [input.agent.type],
       baseSkills: (input.selectedBaseSkills || []).map((skill) => skill.id),
       credentials: {},
       infoSources: input.useCase.infoSources,
-      localOnly: true,
       outputDir: input.outputDir,
       reportRules: input.useCase.rules,
       roleKey: input.role.id,
       role: input.role.name,
       useCase: input.useCase.name,
     },
-    sharedConfig
+    sharedConfig,
+    { variant }
   );
 
   writeSkillArtifacts(generated);
@@ -391,6 +443,26 @@ function stageGeneratedUseCaseSkillPackage(input, sharedConfig) {
     skillId: generated.useCaseDir,
     sourceDir: path.dirname(generated.skillMdPath),
   };
+}
+
+function stageGeneratedUseCaseSkillPackage(input, sharedConfig) {
+  return stageGeneratedUseCaseSkillPackageVariant(input, sharedConfig, 'production');
+}
+
+function stageGeneratedUseCaseSkillPackages(input, sharedConfig) {
+  return {
+    production: stageGeneratedUseCaseSkillPackageVariant(input, sharedConfig, 'production'),
+    test: stageGeneratedUseCaseSkillPackageVariant(input, sharedConfig, 'test'),
+  };
+}
+
+function writeSelectedInstallSelection(store, selectedAgentIds, selectedInstallSkillIds) {
+  const installations = store.readRawFiles().installations;
+  writeJsonFileAtomic(path.join(store.storageDir, 'installations.json'), {
+    ...installations,
+    selectedAgentIds: [...new Set(selectedAgentIds)],
+    selectedInstallSkillIds: [...new Set(selectedInstallSkillIds)],
+  });
 }
 
 function installGeneratedSkillPackage(sourceDir, installRoot, skillId) {
@@ -613,41 +685,33 @@ async function deleteAgent(question, store) {
 }
 
 async function updateAgentSkills(question, store, sharedConfig, forceReinstall = false) {
+  const installations = store.readRawFiles().installations;
   const agents = store.listAgents();
-  const selectedAgentId = await chooseNamedItem(question, '请选择安装目标', agents);
-  if (!selectedAgentId) {
-    return;
-  }
+  const selectedAgentIds = Array.isArray(installations.selectedAgentIds)
+    ? installations.selectedAgentIds
+    : [];
+  const selectedAgents = agents.filter((agent) => selectedAgentIds.includes(agent.id));
 
-  const agent = store.getAgent(selectedAgentId);
-  const selectedBaseSkills = store.listSelectedBaseSkills();
-  const selectedRoles = store.listSelectedRoles();
-  const selectedRole = selectedRoles[0] || null;
-  const roleUseCases = selectedRole ? store.listUseCasesForRole(selectedRole.id) : [];
-  const nextSkillIds = buildDesiredInstalledSkillIds(
-    {
-      selectedBaseSkills,
-      selectedRoles,
-      useCases: roleUseCases,
-    },
-    sharedConfig
-  );
-
-  if (nextSkillIds.length === 0) {
-    printWarning('当前没有可同步安装的基础技能或用例技能。');
+  if (selectedAgents.length === 0) {
+    printWarning('当前没有已选择的安装目标。');
     await pause(question);
     return;
   }
 
-  const baseSkillIds = new Set(selectedBaseSkills.map((skill) => skill.id));
+  const selectedBaseSkills = store.listSelectedBaseSkills();
+  const selectedRoles = store.listSelectedRoles();
   const stagedUseCasePackages = new Map();
   const generatedSkillOutputDir = path.join(store.storageDir, 'generated-skills');
+  const generatedProductionSkillIds = [];
+  const generatedTestSkillIds = [];
+  const representativeAgent = selectedAgents[0];
 
-  if (selectedRole) {
+  for (const selectedRole of selectedRoles) {
+    const roleUseCases = store.listUseCasesForRole(selectedRole.id);
     for (const useCase of roleUseCases) {
-      const staged = stageGeneratedUseCaseSkillPackage(
+      const staged = stageGeneratedUseCaseSkillPackages(
         {
-          agent,
+          agent: representativeAgent,
           outputDir: generatedSkillOutputDir,
           role: selectedRole,
           selectedBaseSkills,
@@ -655,47 +719,88 @@ async function updateAgentSkills(question, store, sharedConfig, forceReinstall =
         },
         sharedConfig
       );
-      stagedUseCasePackages.set(staged.skillId, staged);
+      stagedUseCasePackages.set(staged.production.skillId, staged.production);
+      stagedUseCasePackages.set(staged.test.skillId, staged.test);
+      generatedProductionSkillIds.push(staged.production.skillId);
+      generatedTestSkillIds.push(staged.test.skillId);
     }
   }
 
-  const {
-    addedSkillIds,
-    removedSkillIds,
-  } = buildSkillSyncPlan({
-    currentSkillIds: agent.installedSkillIds,
-    desiredSkillIds: nextSkillIds,
-    forceReinstall,
+  const managedSkillIds = buildDesiredInstalledSkillIds({
+    selectedBaseSkills,
+    selectedGeneratedProductionSkillIds: generatedProductionSkillIds,
+    selectedGeneratedTestSkillIds: generatedTestSkillIds,
   });
+  const managedSkillIdSet = new Set(managedSkillIds);
+  const desiredInstallSkillIds = [
+    ...new Set(
+      (installations.selectedInstallSkillIds || []).filter((skillId) => managedSkillIdSet.has(skillId))
+    ),
+  ];
 
-  if (removedSkillIds.length === 0 && addedSkillIds.length === 0) {
-    printWarning('安装列表未发生变化。');
+  if (desiredInstallSkillIds.length === 0) {
+    printWarning('当前没有可同步安装的基础技能或用例技能。');
+    await pause(question);
     return;
   }
 
-  const appliedSkillIds = new Set(agent.installedSkillIds);
+  writeSelectedInstallSelection(
+    store,
+    selectedAgents.map((agent) => agent.id),
+    desiredInstallSkillIds
+  );
 
-  for (const skillId of removedSkillIds) {
-    executeSkillScript('uninstall-skill.sh', [skillId, agent.type, agent.installRoot]);
-    appliedSkillIds.delete(skillId);
-    store.setAgentInstalledSkills(agent.id, Array.from(appliedSkillIds));
-    printSuccess(`已卸载技能: ${skillId}`);
+  const { agentPlans } = buildSelectedAgentInstallSyncPlans({
+    agents,
+    forceReinstall,
+    managedSkillIds,
+    selectedAgentIds: selectedAgents.map((agent) => agent.id),
+    selectedInstallSkillIds: desiredInstallSkillIds,
+  });
+
+  if (agentPlans.length === 0) {
+    printWarning('当前没有可同步安装的目标。');
+    await pause(question);
+    return;
   }
 
-  for (const skillId of addedSkillIds) {
-    if (baseSkillIds.has(skillId)) {
-      executeSkillScript('install-skill.sh', [skillId, agent.type, agent.installRoot]);
-    } else {
-      const stagedPackage = stagedUseCasePackages.get(skillId);
-      if (!stagedPackage) {
-        throw new Error(`未找到待安装的用例技能包: ${skillId}`);
-      }
+  const baseSkillIds = new Set(selectedBaseSkills.map((skill) => skill.id));
 
-      installGeneratedSkillPackage(stagedPackage.sourceDir, agent.installRoot, skillId);
+  for (const plan of agentPlans) {
+    const agent = store.getAgent(plan.agentId);
+    if (!agent) {
+      throw new Error(`未找到 agent: ${plan.agentId}`);
     }
-    appliedSkillIds.add(skillId);
-    store.setAgentInstalledSkills(agent.id, Array.from(appliedSkillIds));
-    printSuccess(`已安装技能: ${skillId}`);
+
+    if (plan.removedSkillIds.length === 0 && plan.addedSkillIds.length === 0) {
+      printWarning(`安装列表未发生变化: ${agent.name}`);
+      continue;
+    }
+
+    const appliedSkillIds = new Set(agent.installedSkillIds);
+
+    for (const skillId of plan.removedSkillIds) {
+      executeSkillScript('uninstall-skill.sh', [skillId, agent.type, agent.installRoot]);
+      appliedSkillIds.delete(skillId);
+      store.setAgentInstalledSkills(agent.id, Array.from(appliedSkillIds));
+      printSuccess(`已卸载技能: ${agent.name} / ${skillId}`);
+    }
+
+    for (const skillId of plan.addedSkillIds) {
+      if (baseSkillIds.has(skillId)) {
+        executeSkillScript('install-skill.sh', [skillId, agent.type, agent.installRoot]);
+      } else {
+        const stagedPackage = stagedUseCasePackages.get(skillId);
+        if (!stagedPackage) {
+          throw new Error(`未找到待安装的用例技能包: ${skillId}`);
+        }
+
+        installGeneratedSkillPackage(stagedPackage.sourceDir, agent.installRoot, skillId);
+      }
+      appliedSkillIds.add(skillId);
+      store.setAgentInstalledSkills(agent.id, Array.from(appliedSkillIds));
+      printSuccess(`已安装技能: ${agent.name} / ${skillId}`);
+    }
   }
 }
 
@@ -786,14 +891,16 @@ module.exports = {
   expandHomePath,
   getBasicInfoMenuOptions,
   getDefaultInstallRoot,
+  buildDesiredInstalledSkillIds,
+  buildSelectedAgentInstallSyncPlans,
   getInstallationMenuOptions,
   getUseCaseEditContext,
-  buildDesiredInstalledSkillIds,
   buildSkillSyncPlan,
   installGeneratedSkillPackage,
   parseManagerArgs,
   renderHelp,
   getRoleScopedUseCases,
+  stageGeneratedUseCaseSkillPackages,
   stageGeneratedUseCaseSkillPackage,
   getUseCaseMenuOptions,
   runConfigManager,
