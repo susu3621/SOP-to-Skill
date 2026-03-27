@@ -92,6 +92,64 @@ function loadManager() {
       useCases: Array<{ applicableRoleIds: string[]; id: string; name: string }>,
       roleId: string
     ) => Array<{ applicableRoleIds: string[]; id: string; name: string }>
+    updateAgentSkills: (
+      question: (prompt: string, defaultValue?: string) => Promise<string>,
+      store: {
+        listAgents: () => Array<{
+          id: string
+          installRoot: string
+          installedSkillIds: string[]
+          name: string
+          type: string
+        }>
+        listSelectedBaseSkills: () => Array<{ id: string; name: string }>
+        listSelectedRoles: () => Array<{ id: string; name: string }>
+        listUseCasesForRole: (roleId: string) => Array<{
+          applicableRoleIds: string[]
+          description: string
+          id: string
+          infoSources: string
+          name: string
+          rules: string
+        }>
+        readRawFiles: () => {
+          basicInfo: {
+            baseSkills: Array<{ id: string; name: string }>
+            roles: Array<{ id: string; name: string }>
+            selectedBaseSkillIds: string[]
+            selectedRoleIds: string[]
+          }
+          installations: {
+            agents: Array<{
+              id: string
+              installRoot: string
+              installedSkillIds: string[]
+              name: string
+              type: string
+            }>
+            selectedAgentIds: string[]
+            selectedInstallSkillIds: string[]
+          }
+          useCases: {
+            useCases: Array<{
+              applicableRoleIds: string[]
+              description: string
+              id: string
+              infoSources: string
+              name: string
+              rules: string
+            }>
+          }
+        }
+        setAgentInstalledSkills: (agentId: string, skillIds: string[]) => void
+      },
+      sharedConfig: {
+        agentApps: Record<string, { name: string }>
+        baseSkills: Record<string, { name: string }>
+        useCases: Record<string, { directory: string }>
+      },
+      forceReinstall?: boolean
+    ) => Promise<void>
     getUseCaseMenuOptions: () => Array<{ label: string; value: string }>
   }
 }
@@ -194,7 +252,7 @@ describe('onboarding manager helpers', () => {
       { label: '返回主菜单', value: 'back' },
     ])
     expect(getInstallationMenuOptions()).toEqual([
-      { label: '选择安装目标并同步已选基础技能', value: 'apply' },
+      { label: '选择共享安装目标和技能并同步', value: 'apply' },
       { label: '返回主菜单', value: 'back' },
     ])
     expect(getUseCaseEditContext([])).toEqual({
@@ -347,6 +405,180 @@ describe('onboarding manager helpers', () => {
         unchangedSkillIds: ['confluence', 'test-project-manager-weekly-report'],
       },
     ])
+  })
+
+  it('updates shared install selection and removes deselected managed skills from every selected agent', async () => {
+    const { updateAgentSkills } = loadManager()
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shared-install-flow-'))
+    const originalHome = process.env.HOME
+    process.env.HOME = path.join(tempDir, 'home')
+
+    try {
+      fs.mkdirSync(tempDir, { recursive: true })
+      fs.writeFileSync(
+        path.join(tempDir, 'installations.json'),
+        JSON.stringify(
+          {
+            agents: [
+              {
+                id: 'claude-code',
+                installRoot: path.join(process.env.HOME as string, '.claude', 'skills'),
+                installedSkillIds: [],
+                name: 'Claude Code',
+                type: 'claude-code',
+              },
+              {
+                id: 'codex',
+                installRoot: path.join(process.env.HOME as string, '.codex', 'skills'),
+                installedSkillIds: [],
+                name: 'Codex',
+                type: 'codex',
+              },
+              {
+                id: 'workbuddy',
+                installRoot: path.join(process.env.HOME as string, '.workbuddy', 'skills'),
+                installedSkillIds: [],
+                name: 'WorkBuddy',
+                type: 'workbuddy',
+              },
+            ],
+            selectedAgentIds: ['codex'],
+            selectedInstallSkillIds: [],
+          },
+          null,
+          2
+        )
+      )
+
+      const { createOnboardingConfigStore } = require('./lib/onboarding-config-store.cjs') as {
+        createOnboardingConfigStore: (options: {
+          sharedConfig: {
+            agentApps: Record<string, { name: string }>
+            baseSkills: Record<string, { name: string }>
+            roles: Record<string, { name: string; useCases?: string[] }>
+            testDefaults?: {
+              agentApps?: string[]
+              baseSkills?: string[]
+              role?: string
+            }
+            useCases: Record<string, { description: string; directory: string; name: string }>
+          }
+          storageDir: string
+        }) => {
+          initialize: () => void
+          readRawFiles: () => {
+            basicInfo: {
+              baseSkills: Array<{ id: string; name: string }>
+              roles: Array<{ id: string; name: string }>
+              selectedBaseSkillIds: string[]
+              selectedRoleIds: string[]
+            }
+            installations: {
+              agents: Array<{
+                id: string
+                installRoot: string
+                installedSkillIds: string[]
+                name: string
+                type: string
+              }>
+              selectedAgentIds: string[]
+              selectedInstallSkillIds: string[]
+            }
+            useCases: {
+              useCases: Array<{
+                applicableRoleIds: string[]
+                description: string
+                id: string
+                infoSources: string
+                name: string
+                rules: string
+              }>
+            }
+          }
+          setAgentInstalledSkills: (agentId: string, skillIds: string[]) => void
+        }
+      }
+
+      const sharedConfig = {
+        agentApps: {
+          'claude-code': { name: 'Claude Code' },
+          codex: { name: 'Codex' },
+          workbuddy: { name: 'WorkBuddy' },
+        },
+        baseSkills: {
+          confluence: { name: 'Confluence' },
+          jira: { name: 'Jira' },
+          mail: { name: 'Mail' },
+        },
+        roles: {
+          'project-manager': { name: '项目经理', useCases: ['记录计划', '项目周报'] },
+          'qa-manager': { name: '质量经理', useCases: ['记录计划'] },
+        },
+        testDefaults: {
+          agentApps: ['codex', 'workbuddy'],
+          baseSkills: ['jira', 'confluence'],
+          role: 'project-manager',
+        },
+        useCases: {
+          记录计划: {
+            description: '维护计划、里程碑和下一步安排。',
+            directory: 'planning',
+            name: '记录计划',
+          },
+          项目周报: {
+            description: '沉淀项目周报，汇总风险、进展与待办。',
+            directory: 'weekly-report',
+            name: '项目周报',
+          },
+        },
+      }
+
+      const store = createOnboardingConfigStore({
+        sharedConfig,
+        storageDir: tempDir,
+      })
+
+      store.initialize()
+
+      const managedSkillIds = [
+        'confluence',
+        'jira',
+        'project-manager-planning',
+        'test-project-manager-planning',
+        'project-manager-weekly-report',
+        'test-project-manager-weekly-report',
+      ]
+      const retainedSkillIds = ['mail']
+
+      store.setAgentInstalledSkills('codex', [...managedSkillIds, ...retainedSkillIds])
+      store.setAgentInstalledSkills('workbuddy', [...managedSkillIds, ...retainedSkillIds])
+
+      const answers = ['3', '0', '0']
+      const question = async () => answers.shift() || ''
+
+      await updateAgentSkills(question, store, sharedConfig)
+
+      expect(store.readRawFiles().installations.selectedAgentIds).toEqual([
+        'codex',
+        'workbuddy',
+      ])
+      expect(store.readRawFiles().installations.selectedInstallSkillIds).toEqual([])
+      expect(store.readRawFiles().installations.agents).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'codex',
+            installedSkillIds: retainedSkillIds,
+          }),
+          expect.objectContaining({
+            id: 'workbuddy',
+            installedSkillIds: retainedSkillIds,
+          }),
+        ])
+      )
+    } finally {
+      process.env.HOME = originalHome
+      fs.rmSync(tempDir, { force: true, recursive: true })
+    }
   })
 
   it('builds a full reinstall plan when force-reinstall is enabled', () => {

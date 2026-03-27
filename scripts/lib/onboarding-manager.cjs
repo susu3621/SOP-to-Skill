@@ -7,6 +7,9 @@ const {
   writeSkillArtifacts,
 } = require('./skill-generator.cjs');
 const {
+  getOnboardingGeneratedSkillIds,
+} = require('./onboarding-skill-set.cjs');
+const {
   createOnboardingConfigStore,
   requireHomeDirectory,
   resolveDefaultStorageDir,
@@ -308,7 +311,7 @@ function getUseCaseMenuOptions() {
 
 function getInstallationMenuOptions() {
   return [
-    { label: '选择安装目标并同步已选基础技能', value: 'apply' },
+    { label: '选择共享安装目标和技能并同步', value: 'apply' },
     { label: '返回主菜单', value: 'back' },
   ];
 }
@@ -338,6 +341,39 @@ function getUseCaseDirectory(useCaseName, sharedConfig) {
   }
 
   return useCaseDirectory;
+}
+
+function collectManagedInstallSelectionContext(store, sharedConfig) {
+  const selectedBaseSkills = store.listSelectedBaseSkills();
+  const selectedRoles = store.listSelectedRoles();
+  const generatedProductionSkillIds = [];
+  const generatedTestSkillIds = [];
+
+  for (const selectedRole of selectedRoles) {
+    const roleUseCases = store.listUseCasesForRole(selectedRole.id);
+    for (const useCase of roleUseCases) {
+      const useCaseDirectory = getUseCaseDirectory(useCase.name, sharedConfig);
+      const generatedSkillIds = getOnboardingGeneratedSkillIds({
+        roleKey: selectedRole.id,
+        useCaseDirectory,
+      });
+
+      generatedProductionSkillIds.push(generatedSkillIds.productionSkillId);
+      generatedTestSkillIds.push(generatedSkillIds.testSkillId);
+    }
+  }
+
+  return {
+    generatedProductionSkillIds,
+    generatedTestSkillIds,
+    managedSkillIds: buildDesiredInstalledSkillIds({
+      selectedBaseSkills,
+      selectedGeneratedProductionSkillIds: generatedProductionSkillIds,
+      selectedGeneratedTestSkillIds: generatedTestSkillIds,
+    }),
+    selectedBaseSkills,
+    selectedRoles,
+  };
 }
 
 function buildDesiredInstalledSkillIds(input) {
@@ -684,7 +720,47 @@ async function deleteAgent(question, store) {
   printSuccess(`已删除 agent: ${current.name}`);
 }
 
+async function selectSharedInstallSelection(question, store, sharedConfig) {
+  const installations = store.readRawFiles().installations;
+  const agents = store.listAgents();
+  const selectionContext = collectManagedInstallSelectionContext(store, sharedConfig);
+  const skillNames = buildSkillNameMap(store);
+
+  const selectedAgentIds = await multiSelect(
+    question,
+    '请选择共享安装目标',
+    agents.map((agent) => ({
+      label: `${agent.name} (${agent.id})`,
+      value: agent.id,
+    })),
+    Array.isArray(installations.selectedAgentIds) ? installations.selectedAgentIds : [],
+    true
+  );
+
+  const selectedInstallSkillIds = await multiSelect(
+    question,
+    '请选择共享安装技能',
+    selectionContext.managedSkillIds.map((skillId) => ({
+      label: skillNames.get(skillId) || skillId,
+      value: skillId,
+    })),
+    Array.isArray(installations.selectedInstallSkillIds)
+      ? installations.selectedInstallSkillIds.filter((skillId) => selectionContext.managedSkillIds.includes(skillId))
+      : [],
+    true
+  );
+
+  writeSelectedInstallSelection(store, selectedAgentIds, selectedInstallSkillIds);
+
+  return {
+    ...selectionContext,
+    selectedAgentIds,
+    selectedInstallSkillIds,
+  };
+}
+
 async function updateAgentSkills(question, store, sharedConfig, forceReinstall = false) {
+  const selectionContext = await selectSharedInstallSelection(question, store, sharedConfig);
   const installations = store.readRawFiles().installations;
   const agents = store.listAgents();
   const selectedAgentIds = Array.isArray(installations.selectedAgentIds)
@@ -698,12 +774,10 @@ async function updateAgentSkills(question, store, sharedConfig, forceReinstall =
     return;
   }
 
-  const selectedBaseSkills = store.listSelectedBaseSkills();
-  const selectedRoles = store.listSelectedRoles();
+  const selectedBaseSkills = selectionContext.selectedBaseSkills;
+  const selectedRoles = selectionContext.selectedRoles;
   const stagedUseCasePackages = new Map();
   const generatedSkillOutputDir = path.join(store.storageDir, 'generated-skills');
-  const generatedProductionSkillIds = [];
-  const generatedTestSkillIds = [];
   const representativeAgent = selectedAgents[0];
 
   for (const selectedRole of selectedRoles) {
@@ -721,28 +795,16 @@ async function updateAgentSkills(question, store, sharedConfig, forceReinstall =
       );
       stagedUseCasePackages.set(staged.production.skillId, staged.production);
       stagedUseCasePackages.set(staged.test.skillId, staged.test);
-      generatedProductionSkillIds.push(staged.production.skillId);
-      generatedTestSkillIds.push(staged.test.skillId);
     }
   }
 
-  const managedSkillIds = buildDesiredInstalledSkillIds({
-    selectedBaseSkills,
-    selectedGeneratedProductionSkillIds: generatedProductionSkillIds,
-    selectedGeneratedTestSkillIds: generatedTestSkillIds,
-  });
+  const managedSkillIds = selectionContext.managedSkillIds;
   const managedSkillIdSet = new Set(managedSkillIds);
   const desiredInstallSkillIds = [
     ...new Set(
       (installations.selectedInstallSkillIds || []).filter((skillId) => managedSkillIdSet.has(skillId))
     ),
   ];
-
-  if (desiredInstallSkillIds.length === 0) {
-    printWarning('当前没有可同步安装的基础技能或用例技能。');
-    await pause(question);
-    return;
-  }
 
   writeSelectedInstallSelection(
     store,
@@ -903,5 +965,6 @@ module.exports = {
   stageGeneratedUseCaseSkillPackages,
   stageGeneratedUseCaseSkillPackage,
   getUseCaseMenuOptions,
+  updateAgentSkills,
   runConfigManager,
 };
