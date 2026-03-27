@@ -350,8 +350,10 @@ function createOnboardingConfigStore(options) {
       ...(basicInfo.selectedBaseSkillIds || []),
       ...validSelectedGeneratedInstallSkillIds,
     ]);
-    const validAgentIds = new Set(SUPPORTED_INSTALL_TARGETS.map((target) => target.id));
+    const persistedAgentIds = new Set((payload.agents || []).map((agent) => agent.id));
     const selectedInstallSkillIds = buildSelectedInstallSkillIds();
+    const defaultSelectedAgentIds = createDefaultSelectedAgentIds(sharedConfig)
+      .filter((agentId) => persistedAgentIds.has(agentId));
 
     return {
       agents: sortByName(
@@ -362,8 +364,8 @@ function createOnboardingConfigStore(options) {
       ),
       selectedAgentIds: normalizeSelectedAgentIds(
         payload.selectedAgentIds,
-        validAgentIds,
-        createDefaultSelectedAgentIds(sharedConfig)
+        persistedAgentIds,
+        defaultSelectedAgentIds
       ),
       selectedInstallSkillIds: Array.isArray(payload.selectedInstallSkillIds)
         ? [...new Set(payload.selectedInstallSkillIds.filter((skillId) => validSelectedInstallSkillIds.has(skillId)))]

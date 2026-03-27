@@ -305,6 +305,52 @@ describe('createOnboardingConfigStore', () => {
     ])
   })
 
+  it('preserves a custom selected agent id when the agent record already exists', () => {
+    const { createOnboardingConfigStore } = loadStore()
+    const installationsPath = path.join(storageDir, 'installations.json')
+
+    fs.writeFileSync(
+      installationsPath,
+      JSON.stringify(
+        {
+          agents: [
+            {
+              id: 'codex',
+              installRoot: '/tmp/codex',
+              installedSkillIds: [],
+              name: 'Codex',
+              type: 'codex',
+            },
+            {
+              id: 'local-codex',
+              installRoot: '/tmp/local-codex',
+              installedSkillIds: [],
+              name: 'Local Codex',
+              type: 'codex',
+            },
+          ],
+          selectedAgentIds: ['local-codex'],
+          selectedInstallSkillIds: ['jira'],
+        },
+        null,
+        2
+      )
+    )
+
+    const store = createOnboardingConfigStore({
+      sharedConfig: createSharedConfig(),
+      storageDir,
+    })
+
+    store.initialize()
+
+    expect(store.readRawFiles().installations.selectedAgentIds).toEqual(['local-codex'])
+
+    store.setSelectedRoles(['qa-manager'])
+
+    expect(store.readRawFiles().installations.selectedAgentIds).toEqual(['local-codex'])
+  })
+
   it('replaces stale base skill entries with the current shared-config list during initialize', () => {
     const { createOnboardingConfigStore } = loadStore()
     const basicInfoPath = path.join(storageDir, 'basic-info.json')
