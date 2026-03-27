@@ -1,11 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const {
+  getOnboardingGeneratedSkillIds,
+} = require('./onboarding-skill-set.cjs');
 
-function generateSkillArtifacts(cfg, sharedConfig) {
+function getSkillOutputDetails(cfg, sharedConfig, variant) {
   const useCaseConfig = sharedConfig.useCases?.[cfg.useCase];
   const useCaseDir = useCaseConfig?.directory;
   const skillName = `${cfg.role}-${cfg.useCase}`;
-  const namespacedUseCaseDir = `${cfg.roleKey}-${useCaseDir}`;
 
   if (!useCaseDir) {
     throw new Error(`Missing directory mapping for use case: ${cfg.useCase}`);
@@ -15,7 +17,13 @@ function generateSkillArtifacts(cfg, sharedConfig) {
     throw new Error(`Missing roleKey for skill generation: ${cfg.role}`);
   }
 
-  const skillOutputDir = path.join(cfg.outputDir, namespacedUseCaseDir);
+  const generatedSkillIds = getOnboardingGeneratedSkillIds({
+    roleKey: cfg.roleKey,
+    useCaseDirectory: useCaseDir,
+  });
+  const skillId = variant === 'test' ? generatedSkillIds.testSkillId : generatedSkillIds.productionSkillId;
+  const skillOutputDir = path.join(cfg.outputDir, skillId);
+  const includeLocalOnlyGuidance = cfg.localOnly || variant === 'test';
 
   const skillConfig = {
     name: skillName,
@@ -58,7 +66,7 @@ ${cfg.infoSources}
 
 ${cfg.reportRules || '未设置'}
 
-${cfg.localOnly ? `## 测试环境说明
+${includeLocalOnlyGuidance ? `## 测试环境说明
 
 - 将产生的结果存储到 \`/tmp/skills-for-no-engineer\`
 - 不要实际进行发送
@@ -74,7 +82,18 @@ ${cfg.localOnly ? `## 测试环境说明
     skillJsonPath: path.join(skillOutputDir, 'skill.json'),
     skillMdPath: path.join(skillOutputDir, 'SKILL.md'),
     skillMD,
-    useCaseDir: namespacedUseCaseDir,
+    useCaseDir: skillId,
+  };
+}
+
+function generateSkillArtifacts(cfg, sharedConfig, options = {}) {
+  return getSkillOutputDetails(cfg, sharedConfig, options.variant || 'production');
+}
+
+function generateOnboardingSkillSetArtifacts(cfg, sharedConfig) {
+  return {
+    production: generateSkillArtifacts(cfg, sharedConfig, { variant: 'production' }),
+    test: generateSkillArtifacts(cfg, sharedConfig, { variant: 'test' }),
   };
 }
 
@@ -85,6 +104,7 @@ function writeSkillArtifacts(result) {
 }
 
 module.exports = {
+  generateOnboardingSkillSetArtifacts,
   generateSkillArtifacts,
   writeSkillArtifacts,
 };

@@ -21,11 +21,43 @@ function loadSkillGenerator() {
       agentApps: Record<string, { name: string }>
       baseSkills: Record<string, { name: string }>
       useCases: Record<string, { directory: string }>
+    }, options?: {
+      variant?: 'production' | 'test'
     }) => {
       skillConfig: { name: string }
       skillJsonPath: string
       skillMdPath: string
       useCaseDir: string
+    }
+    generateOnboardingSkillSetArtifacts: (config: {
+      agentApps: string[]
+      baseSkills: string[]
+      credentials: Record<string, string>
+      infoSources: string
+      outputDir: string
+      reportRules: string
+      roleKey: string
+      role: string
+      useCase: string
+    }, sharedConfig: {
+      agentApps: Record<string, { name: string }>
+      baseSkills: Record<string, { name: string }>
+      useCases: Record<string, { directory: string }>
+    }) => {
+      production: {
+        skillConfig: { name: string }
+        skillJsonPath: string
+        skillMdPath: string
+        skillMD: string
+        useCaseDir: string
+      }
+      test: {
+        skillConfig: { name: string }
+        skillJsonPath: string
+        skillMdPath: string
+        skillMD: string
+        useCaseDir: string
+      }
     }
   }
 }
@@ -100,7 +132,7 @@ describe('generateSkillArtifacts', () => {
     expect(result.skillMdPath).toBe('test-output/project-manager-weekly-report/SKILL.md')
   })
 
-  it('adds test-environment guidance only for local-only generation', () => {
+  it('generates matching production and test packages for the same role/use-case pair', () => {
     const { generateSkillArtifacts } = loadSkillGenerator()
 
     const sharedConfig = {
@@ -115,42 +147,78 @@ describe('generateSkillArtifacts', () => {
       },
     }
 
-    const localOnlyResult = generateSkillArtifacts(
+    const productionResult = generateSkillArtifacts(
       {
         agentApps: ['workbuddy'],
         baseSkills: ['jira'],
         credentials: {},
         infoSources: 'Jira 项目看板',
-        localOnly: true,
         outputDir: './test-output',
         reportRules: '',
         roleKey: 'project-manager',
         role: '项目经理',
         useCase: '项目周报',
       },
-      sharedConfig
+      sharedConfig,
+      { variant: 'production' }
     )
 
-    const normalResult = generateSkillArtifacts(
+    const testResult = generateSkillArtifacts(
       {
         agentApps: ['workbuddy'],
         baseSkills: ['jira'],
         credentials: {},
         infoSources: 'Jira 项目看板',
-        localOnly: false,
         outputDir: './test-output',
         reportRules: '',
         roleKey: 'project-manager',
         role: '项目经理',
         useCase: '项目周报',
       },
-      sharedConfig
+      sharedConfig,
+      { variant: 'test' }
     )
 
-    expect(localOnlyResult.skillMD).toContain('## 测试环境说明')
-    expect(localOnlyResult.skillMD).toContain('/tmp/skills-for-no-engineer')
-    expect(localOnlyResult.skillMD).toContain('不要实际进行发送')
-    expect(localOnlyResult.skillMD).toContain('最终结果不要进行更新执行，而是打印出来。')
-    expect(normalResult.skillMD).not.toContain('## 测试环境说明')
+    expect(productionResult.useCaseDir).toBe('project-manager-weekly-report')
+    expect(testResult.useCaseDir).toBe('test-project-manager-weekly-report')
+    expect(testResult.skillMD).toContain('## 测试环境说明')
+    expect(testResult.skillMD).toContain('/tmp/skills-for-no-engineer')
+    expect(testResult.skillMD).toContain('不要实际进行发送')
+    expect(testResult.skillMD).toContain('最终结果不要进行更新执行，而是打印出来。')
+    expect(productionResult.skillMD).not.toContain('## 测试环境说明')
+  })
+
+  it('returns both generated variants from a single wrapper call', () => {
+    const { generateOnboardingSkillSetArtifacts } = loadSkillGenerator()
+
+    const result = generateOnboardingSkillSetArtifacts(
+      {
+        agentApps: ['workbuddy'],
+        baseSkills: ['jira'],
+        credentials: {},
+        infoSources: 'Jira 项目看板',
+        outputDir: './test-output',
+        reportRules: '',
+        roleKey: 'project-manager',
+        role: '项目经理',
+        useCase: '项目周报',
+      },
+      {
+        agentApps: {
+          workbuddy: { name: 'WorkBuddy' },
+        },
+        baseSkills: {
+          jira: { name: 'Jira' },
+        },
+        useCases: {
+          项目周报: { directory: 'weekly-report' },
+        },
+      }
+    )
+
+    expect(result.production.useCaseDir).toBe('project-manager-weekly-report')
+    expect(result.test.useCaseDir).toBe('test-project-manager-weekly-report')
+    expect(result.test.skillMD).toContain('## 测试环境说明')
+    expect(result.production.skillMD).not.toContain('## 测试环境说明')
   })
 })
