@@ -36,7 +36,7 @@
 - `npm run test`: 运行桌面界面测试
 - `npm run build`: 构建桌面前端静态资源
 - `npm run tauri:dev`: 启动 Tauri 桌面开发模式
-- `npm run tauri:build`: 直接在本机运行 Tauri 构建，只生成当前平台的桌面 bundle；在 macOS 上会产出 `src-tauri/target/release/bundle/macos/` 下的 `.app` / `.tar.gz`
+- `npm run tauri:build`: 直接在本机运行 Tauri 构建，只生成当前平台的桌面 bundle；在 macOS 上会产出 `src-tauri/target/release/bundle/macos/` 下的 `.app`
 - `npm run build:desktop:all`: 触发远程 GitHub Actions 的双平台桌面构建，等待 macOS / Windows 两个平台完成后，把产物下载到 `artifacts/desktop/<run-id>/`
 - `npm run docs:dev`: 启动文档站开发模式
 - `npm run docs:build`: 构建 GitHub Pages 文档
@@ -46,7 +46,7 @@
 `npm run tauri:build` 和 `npm run build:desktop:all` 解决的是不同问题：
 
 - `npm run tauri:build` 适合在当前机器上做本地验证，只依赖本机的 Tauri / Rust 环境，不会去触发 GitHub Actions，也不会收集另一平台的产物。
-- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端。
+- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端。CI 会把 macOS 的 `.app` 重新打包成权限保留的 `.tar.gz` 作为上传 artifact。
 
 `npm run build:desktop:all` 的输出目录约定如下：
 
