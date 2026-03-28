@@ -688,5 +688,16 @@ describe('build desktop all workflow dispatch', () => {
 
     expect(workflow).toContain('tauri-apps/tauri-action@v0.6.2')
     expect(workflow).not.toContain('tauri-apps/tauri-action@v1')
+    expect(workflow).not.toContain('uploadWorkflowArtifacts:')
+  })
+
+  it('exposes a tauri npm script for tauri-action builds', () => {
+    const packageJson = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'),
+    ) as {
+      scripts?: Record<string, string>
+    }
+
+    expect(packageJson.scripts?.tauri).toBe('tauri')
   })
 })
