@@ -100,4 +100,37 @@ describe('build desktop all workflow dispatch', () => {
       ),
     ).toBe(21)
   })
+
+  it('breaks ties on createdAt by choosing the smaller workflow run id', () => {
+    const { selectWorkflowRun } = loadBuildDesktopAll()
+
+    expect(
+      selectWorkflowRun(
+        [
+          {
+            id: 32,
+            workflowName: 'Build Desktop Scaffold',
+            event: 'workflow_dispatch',
+            headBranch: 'feat/desktop-windows-build',
+            headSha: 'target-sha',
+            createdAt: '2026-03-28T10:00:01Z',
+          },
+          {
+            id: 31,
+            workflowName: 'Build Desktop Scaffold',
+            event: 'workflow_dispatch',
+            headBranch: 'feat/desktop-windows-build',
+            headSha: 'target-sha',
+            createdAt: '2026-03-28T10:00:01Z',
+          },
+        ],
+        {
+          branch: 'feat/desktop-windows-build',
+          expectedHeadSha: 'target-sha',
+          triggerTime: '2026-03-28T10:00:00Z',
+          workflowName: 'Build Desktop Scaffold',
+        },
+      ),
+    ).toBe(31)
+  })
 })

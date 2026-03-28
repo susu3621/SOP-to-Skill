@@ -18,7 +18,15 @@ function selectWorkflowRun(runs, { workflowName, branch, expectedHeadSha, trigge
   }
 
   const earliestMatch = matches.reduce((earliest, run) => {
-    return run.createdAt < earliest.createdAt ? run : earliest;
+    if (run.createdAt < earliest.createdAt) {
+      return run;
+    }
+
+    if (run.createdAt > earliest.createdAt) {
+      return earliest;
+    }
+
+    return run.id < earliest.id ? run : earliest;
   });
 
   return earliestMatch.id;
