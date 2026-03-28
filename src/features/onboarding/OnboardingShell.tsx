@@ -1,11 +1,437 @@
+import { useEffect, useMemo, useState } from 'react'
 import { AgentSelectionStep } from './steps/AgentSelectionStep'
 import { CompletionStep } from './steps/CompletionStep'
 import { CredentialsStep } from './steps/CredentialsStep'
 import { InstallSelectionStep } from './steps/InstallSelectionStep'
-import { RoleBaseSkillsStep } from './steps/RoleBaseSkillsStep'
 import { UseCaseConfigStep } from './steps/UseCaseConfigStep'
 import { useOnboarding } from './useOnboarding'
-import type { InstalledSkillInfo } from '../../types'
+import {
+  onboardingBaseSkills,
+  onboardingRoles,
+} from '../../content/workbuddy'
+import type {
+  InstalledSkillInfo,
+  OnboardingEditableUseCaseRecord,
+} from '../../types'
+
+type OnboardingView = 'home' | 'basic' | 'useCases' | 'install'
+type BasicEntryView = 'role' | 'baseSkills'
+
+interface EntryCopy {
+  title: string
+  summary: string
+  description: string
+  items: string[]
+}
+
+const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> = {
+  basic: {
+    title: '基础信息设置',
+    summary: '选择岗位和基础技能',
+    description: '先确认角色和基础技能，再决定后续可配置的用例和安装集合。',
+    items: ['选择岗位', '选择基础技能'],
+  },
+  useCases: {
+    title: '用例配置',
+    summary: '按用例分别编辑内容',
+    description: '先从当前岗位的用例列表中选择一个，再编辑该用例的描述、来源和规则。',
+    items: ['记录计划', '记录日志', '项目周报'],
+  },
+  install: {
+    title: '安装技能',
+    summary: '选择目标并执行安装',
+    description: '先选择要安装到的目标，再确认基础技能和岗位生成技能的安装集合。',
+    items: ['选择安装目标', '确认安装集合', '开始同步安装'],
+  },
+}
+
+const basicInfoEntries: Record<BasicEntryView, EntryCopy> = {
+  role: {
+    title: '选择岗位',
+    summary: '单选岗位',
+    description: '岗位决定了当前可编辑的用例集合，以及岗位生成技能的命名和安装范围。',
+    items: ['项目经理', '产品经理', '研发负责人'],
+  },
+  baseSkills: {
+    title: '选择基础技能',
+    summary: '多选基础技能',
+    description: '基础技能会决定需要补充的凭证字段，也会进入最终的安装集合。',
+    items: ['Jira', 'Confluence', 'Slack'],
+  },
+}
+
+interface ModuleHeaderProps {
+  eyebrow: string
+  title: string
+  description: string
+  installedCount: number
+  onBack: () => void
+  onOpenInstalled: () => void
+}
+
+function ModuleHeader({
+  eyebrow,
+  title,
+  description,
+  installedCount,
+  onBack,
+  onOpenInstalled,
+}: ModuleHeaderProps) {
+  return (
+    <div className="onboarding-section__header">
+      <div className="field-stack onboarding-module-header__copy">
+        <button className="button--ghost onboarding-back-button" type="button" onClick={onBack}>
+          返回首页
+        </button>
+        <div>
+          <span className="panel__eyebrow">{eyebrow}</span>
+          <h2 className="panel__title">{title}</h2>
+          <p className="panel__body">{description}</p>
+        </div>
+      </div>
+      <button className="button--ghost" type="button" onClick={onOpenInstalled}>
+        {`已安装 (${installedCount})`}
+      </button>
+    </div>
+  )
+}
+
+interface EntryCardProps {
+  index: string
+  title: string
+  summary: string
+  active: boolean
+  complete: boolean
+  onClick: () => void
+  onFocus: () => void
+  onHover: () => void
+  onLeave: () => void
+}
+
+interface SaveFeedbackBannerProps {
+  feedback: { kind: 'success' | 'error'; message: string } | null | undefined
+}
+
+function SaveFeedbackBanner({ feedback }: SaveFeedbackBannerProps) {
+  if (!feedback) {
+    return null
+  }
+
+  return <p className={feedback.kind === 'error' ? 'error onboarding-save-banner' : 'success onboarding-save-banner'}>{feedback.message}</p>
+}
+
+function StatusBadge() {
+  return <span className="onboarding-status-badge">已设置</span>
+}
+
+function EntryCard({
+  index,
+  title,
+  summary,
+  active,
+  complete,
+  onClick,
+  onFocus,
+  onHover,
+  onLeave,
+}: EntryCardProps) {
+  return (
+    <button
+      aria-label={title}
+      className="onboarding-entry-card"
+      data-active={active}
+      type="button"
+      onClick={onClick}
+      onBlur={onLeave}
+      onFocus={onFocus}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+    >
+      <span className="onboarding-entry-card__meta">
+        <span className="onboarding-entry-card__index">{index}</span>
+        {complete && <StatusBadge />}
+      </span>
+      <span className="onboarding-entry-card__title">{title}</span>
+      <span aria-hidden="true" className="onboarding-entry-card__summary">
+        {summary}
+      </span>
+    </button>
+  )
+}
+
+interface DetailPanelProps {
+  eyebrow: string
+  title: string
+  description: string
+  items: string[]
+}
+
+function DetailPanel({ eyebrow, title, description, items }: DetailPanelProps) {
+  return (
+    <section aria-live="polite" className="onboarding-detail-panel">
+      <span className="panel__eyebrow">{eyebrow}</span>
+      <h3 className="onboarding-detail-panel__title">{title}</h3>
+      <p className="panel__body">{description}</p>
+      <div className="onboarding-detail-panel__items">
+        {items.map((item, index) => (
+          <article className="summary-card summary-card--nested" key={item}>
+            <p className="onboarding-detail-panel__item-index">{`${index + 1}.`}</p>
+            <h4 className="onboarding-detail-panel__item-title">{item}</h4>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+interface RoleSelectionPanelProps {
+  selectedRoleId: string
+  onSelectRole: (roleId: string) => void
+}
+
+function RoleSelectionPanel({ selectedRoleId, onSelectRole }: RoleSelectionPanelProps) {
+  return (
+    <div className="field">
+      <label>选择岗位</label>
+      <div className="options options--cards">
+        {onboardingRoles.map((role) => (
+          <label className="field-option" key={role.id}>
+            <input
+              aria-label={role.name}
+              checked={selectedRoleId === role.id}
+              name="selected-role"
+              type="radio"
+              onChange={() => onSelectRole(role.id)}
+            />
+            <span>
+              <span>{role.name}</span>
+              <span className="field-option__hint">{role.description}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+interface BaseSkillSelectionPanelProps {
+  selectedBaseSkillIds: string[]
+  onToggleBaseSkill: (skillId: string) => void
+}
+
+function BaseSkillSelectionPanel({
+  selectedBaseSkillIds,
+  onToggleBaseSkill,
+}: BaseSkillSelectionPanelProps) {
+  return (
+    <div className="field">
+      <label>基础技能</label>
+      <div className="options options--cards">
+        {onboardingBaseSkills.map((skill) => (
+          <label className="field-option" key={skill.id}>
+            <input
+              aria-label={skill.name}
+              checked={selectedBaseSkillIds.includes(skill.id)}
+              type="checkbox"
+              onChange={() => onToggleBaseSkill(skill.id)}
+            />
+            <span>
+              <span>{skill.name}</span>
+              <span className="field-option__hint">{skill.description}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+interface UseCaseListProps {
+  activeUseCaseId: string | null
+  configuredById: Record<string, boolean>
+  useCases: OnboardingEditableUseCaseRecord[]
+  onSelect: (useCaseId: string) => void
+}
+
+function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: UseCaseListProps) {
+  return (
+    <div className="onboarding-use-case-list">
+      {useCases.map((useCase, index) => (
+        <button
+          aria-label={useCase.use_case_name}
+          className="onboarding-use-case-list__item"
+          data-active={activeUseCaseId === useCase.use_case_id}
+          key={useCase.use_case_id}
+          type="button"
+          onClick={() => onSelect(useCase.use_case_id)}
+        >
+          <span className="onboarding-use-case-list__index">{`${index + 1}`}</span>
+          <span className="onboarding-use-case-list__copy">
+            <span className="onboarding-use-case-list__title-row">
+              <span className="onboarding-use-case-list__title">{useCase.use_case_name}</span>
+              {configuredById[useCase.use_case_id] && <StatusBadge />}
+            </span>
+            <span className="onboarding-use-case-list__subtitle">{useCase.use_case_id}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+interface BasicEditorPanelProps {
+  basicEntryView: BasicEntryView | null
+  selectedRoleId: string
+  selectedBaseSkillIds: string[]
+  saveFeedback: { kind: 'success' | 'error'; message: string } | null | undefined
+  saveDisabled: boolean
+  saving: boolean
+  onSave: () => void
+  onSelectRole: (roleId: string) => void
+  onToggleBaseSkill: (skillId: string) => void
+}
+
+function BasicEditorPanel({
+  basicEntryView,
+  selectedRoleId,
+  selectedBaseSkillIds,
+  saveFeedback,
+  saveDisabled,
+  saving,
+  onSave,
+  onSelectRole,
+  onToggleBaseSkill,
+}: BasicEditorPanelProps) {
+  if (!basicEntryView) {
+    return (
+      <p className="hint-callout">
+        先选择一个二级入口，再进入对应的基础信息编辑界面。
+      </p>
+    )
+  }
+
+  return (
+    <section className="summary-card onboarding-subeditor-panel">
+      <SaveFeedbackBanner feedback={saveFeedback} />
+      <h3>{basicInfoEntries[basicEntryView].title}</h3>
+      <p>{basicInfoEntries[basicEntryView].description}</p>
+      {basicEntryView === 'role' ? (
+        <RoleSelectionPanel selectedRoleId={selectedRoleId} onSelectRole={onSelectRole} />
+      ) : (
+        <BaseSkillSelectionPanel
+          selectedBaseSkillIds={selectedBaseSkillIds}
+          onToggleBaseSkill={onToggleBaseSkill}
+        />
+      )}
+      <div className="button-row">
+        <button className="button" disabled={saveDisabled} type="button" onClick={onSave}>
+          {saving ? '保存中...' : '保存设置'}
+        </button>
+      </div>
+    </section>
+  )
+}
+
+interface InstallModuleProps {
+  credentialFields: ReturnType<typeof useOnboarding>['credentialFields']
+  installCandidateGroups: ReturnType<typeof useOnboarding>['installCandidateGroups']
+  installedCount: number
+  onOpenInstalled: () => void
+  onBack: () => void
+  preview: ReturnType<typeof useOnboarding>['preview']
+  previewError: string | null
+  selectedAgentIds: string[]
+  selectedBaseSkillIds: string[]
+  saveDisabled: boolean
+  saveFeedback: { kind: 'success' | 'error'; message: string } | null | undefined
+  saving: boolean
+  syncError: string | null
+  syncing: boolean
+  syncResult: ReturnType<typeof useOnboarding>['syncResult']
+  onSave: () => void
+  onStartSync: () => void
+  onToggleAgent: (agentId: string) => void
+  onToggleInstallSkill: (skillId: string) => void
+  credentialValues: Record<string, string>
+  onUpdateCredential: (fieldId: string, value: string) => void
+}
+
+function InstallModule({
+  credentialFields,
+  installCandidateGroups,
+  installedCount,
+  onOpenInstalled,
+  onBack,
+  preview,
+  previewError,
+  selectedAgentIds,
+  selectedBaseSkillIds,
+  saveDisabled,
+  saveFeedback,
+  saving,
+  syncError,
+  syncing,
+  syncResult,
+  onSave,
+  onStartSync,
+  onToggleAgent,
+  onToggleInstallSkill,
+  credentialValues,
+  onUpdateCredential,
+}: InstallModuleProps) {
+  return (
+    <div className="onboarding-shell">
+      <section className="onboarding-section">
+        <ModuleHeader
+          description="先选择安装目标，再确认基础技能和岗位生成技能的安装集合，最后执行同步安装。"
+          eyebrow="安装技能"
+          installedCount={installedCount}
+          title="安装技能"
+          onBack={onBack}
+          onOpenInstalled={onOpenInstalled}
+        />
+        <SaveFeedbackBanner feedback={saveFeedback} />
+        <div className="field-stack">
+          <AgentSelectionStep selectedAgentIds={selectedAgentIds} onToggleAgent={onToggleAgent} />
+          {previewError && <p className="error">{previewError}</p>}
+          <InstallSelectionStep
+            agentPreviews={preview.agent_previews}
+            installCandidateGroups={installCandidateGroups}
+            selectedAgentIds={selectedAgentIds}
+            selectedBaseSkillIds={selectedBaseSkillIds}
+            selectedInstallSkillIds={preview.selected_install_skill_ids}
+            onToggleInstallSkill={onToggleInstallSkill}
+          />
+          <section className="summary-card onboarding-subeditor-panel">
+            <h3>账号凭证</h3>
+            <p>只显示当前仍被选择的基础技能所需的凭证字段。</p>
+            <CredentialsStep
+              credentialFields={credentialFields}
+              credentialValues={credentialValues}
+              onUpdateCredential={onUpdateCredential}
+            />
+          </section>
+          <div className="button-row">
+            <button className="button--ghost" disabled={saveDisabled} type="button" onClick={onSave}>
+              {saving ? '保存中...' : '保存设置'}
+            </button>
+            <button
+              className="button"
+              type="button"
+              onClick={onStartSync}
+              disabled={syncing || selectedAgentIds.length === 0}
+            >
+              {syncing ? '同步中...' : '开始同步安装'}
+            </button>
+          </div>
+          <section className="summary-card onboarding-subeditor-panel">
+            <CompletionStep syncError={syncError} syncResult={syncResult} />
+          </section>
+        </div>
+      </section>
+    </div>
+  )
+}
 
 interface OnboardingShellProps {
   installedSkills: InstalledSkillInfo[]
@@ -14,11 +440,16 @@ interface OnboardingShellProps {
 
 export function OnboardingShell({ installedSkills, onOpenInstalled }: OnboardingShellProps) {
   const {
+    completion,
     credentialFields,
+    dirty,
     installCandidateGroups,
     loading,
     preview,
     previewError,
+    saveFeedbacks,
+    saveState,
+    savingScope,
     state,
     syncError,
     syncing,
@@ -26,95 +457,274 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     startSync,
     toggleAgent,
     toggleBaseSkill,
+    getUseCaseSaveScope,
     toggleInstallSkill,
     updateCredentialValue,
     updateUseCaseContent,
     selectRole,
   } = useOnboarding(installedSkills)
 
+  const [view, setView] = useState<OnboardingView>('home')
+  const [hoveredHomeEntry, setHoveredHomeEntry] = useState<Exclude<OnboardingView, 'home'> | null>(null)
+  const [basicEntryView, setBasicEntryView] = useState<BasicEntryView | null>(null)
+  const [hoveredBasicEntry, setHoveredBasicEntry] = useState<BasicEntryView | null>(null)
+  const [selectedUseCaseId, setSelectedUseCaseId] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!selectedUseCaseId || !state.role_use_case_contents.some((item) => item.use_case_id === selectedUseCaseId)) {
+      setSelectedUseCaseId(state.role_use_case_contents[0]?.use_case_id ?? null)
+    }
+  }, [selectedUseCaseId, state.role_use_case_contents])
+
+  const activeUseCase = useMemo(
+    () =>
+      state.role_use_case_contents.find((useCase) => useCase.use_case_id === selectedUseCaseId) ??
+      state.role_use_case_contents[0] ??
+      null,
+    [selectedUseCaseId, state.role_use_case_contents]
+  )
+  const activeBasicScope: 'role' | 'baseSkills' | null =
+    basicEntryView === 'role' || basicEntryView === 'baseSkills' ? basicEntryView : null
+  const activeUseCaseScope = activeUseCase ? getUseCaseSaveScope(activeUseCase.use_case_id) : null
+
   if (loading) {
     return <p className="muted">正在加载 onboarding 配置...</p>
   }
 
-  return (
-    <div className="onboarding-shell">
-      <section className="onboarding-section">
-        <div className="onboarding-section__header">
-          <div>
-            <span className="panel__eyebrow">Onboarding</span>
-            <h2 className="panel__title">Agent、岗位和基础技能</h2>
-            <p className="panel__body">
-              先统一选择要同步的 Agent、岗位和基础技能。后续的岗位用例、安装集合和凭证都会基于这份共享选择。
-            </p>
+  if (view === 'home') {
+    const detail = hoveredHomeEntry ? onboardingHomeEntries[hoveredHomeEntry] : null
+
+    return (
+      <div className="onboarding-shell">
+        <section className="onboarding-section">
+          <div className="onboarding-section__header">
+            <div>
+              <span className="panel__eyebrow">Onboarding</span>
+              <h2 className="panel__title">开始设置</h2>
+              <p className="panel__body">
+                先从三个模块中选择一个入口。首页只负责导航，详细说明放到下方详情区，避免重新回到长流程页面。
+              </p>
+            </div>
+            <button className="button--ghost" type="button" onClick={onOpenInstalled}>
+              {`已安装 (${installedSkills.length})`}
+            </button>
           </div>
-          <button className="button--ghost" type="button" onClick={onOpenInstalled}>
-            {`已安装 (${installedSkills.length})`}
-          </button>
-        </div>
-        <div className="field-stack">
-          <AgentSelectionStep
-            selectedAgentIds={state.selected_agent_ids}
-            onToggleAgent={toggleAgent}
+
+          <div className="onboarding-entry-grid">
+            <EntryCard
+              active={hoveredHomeEntry === 'basic'}
+              complete={completion.basic}
+              index="01"
+              summary={onboardingHomeEntries.basic.summary}
+              title={onboardingHomeEntries.basic.title}
+              onClick={() => {
+                setView('basic')
+                setBasicEntryView(null)
+                setHoveredBasicEntry(null)
+              }}
+              onFocus={() => setHoveredHomeEntry('basic')}
+              onHover={() => setHoveredHomeEntry('basic')}
+              onLeave={() => setHoveredHomeEntry(null)}
+            />
+            <EntryCard
+              active={hoveredHomeEntry === 'useCases'}
+              complete={completion.useCases}
+              index="02"
+              summary={onboardingHomeEntries.useCases.summary}
+              title={onboardingHomeEntries.useCases.title}
+              onClick={() => setView('useCases')}
+              onFocus={() => setHoveredHomeEntry('useCases')}
+              onHover={() => setHoveredHomeEntry('useCases')}
+              onLeave={() => setHoveredHomeEntry(null)}
+            />
+            <EntryCard
+              active={hoveredHomeEntry === 'install'}
+              complete={completion.install}
+              index="03"
+              summary={onboardingHomeEntries.install.summary}
+              title={onboardingHomeEntries.install.title}
+              onClick={() => setView('install')}
+              onFocus={() => setHoveredHomeEntry('install')}
+              onHover={() => setHoveredHomeEntry('install')}
+              onLeave={() => setHoveredHomeEntry(null)}
+            />
+          </div>
+
+          {detail && (
+            <DetailPanel
+              description={detail.description}
+              eyebrow="模块说明"
+              items={detail.items}
+              title={detail.title}
+            />
+          )}
+        </section>
+      </div>
+    )
+  }
+
+  if (view === 'basic') {
+    const detail = hoveredBasicEntry ? basicInfoEntries[hoveredBasicEntry] : null
+
+    return (
+      <div className="onboarding-shell">
+        <section className="onboarding-section">
+          <ModuleHeader
+            description="基础信息设置只负责岗位和基础技能，不混入用例编辑或安装执行。"
+            eyebrow="基础信息设置"
+            installedCount={installedSkills.length}
+            title="基础信息设置"
+            onBack={() => setView('home')}
+            onOpenInstalled={onOpenInstalled}
           />
-          <RoleBaseSkillsStep
-            selectedRoleId={state.selected_role_id}
+
+          <div className="onboarding-entry-grid onboarding-entry-grid--nested">
+            <EntryCard
+              active={hoveredBasicEntry === 'role'}
+              complete={completion.role}
+              index="1"
+              summary={basicInfoEntries.role.summary}
+              title={basicInfoEntries.role.title}
+              onClick={() => {
+                setBasicEntryView('role')
+                setHoveredBasicEntry('role')
+              }}
+              onFocus={() => setHoveredBasicEntry('role')}
+              onHover={() => setHoveredBasicEntry('role')}
+              onLeave={() => setHoveredBasicEntry(null)}
+            />
+            <EntryCard
+              active={hoveredBasicEntry === 'baseSkills'}
+              complete={completion.baseSkills}
+              index="2"
+              summary={basicInfoEntries.baseSkills.summary}
+              title={basicInfoEntries.baseSkills.title}
+              onClick={() => {
+                setBasicEntryView('baseSkills')
+                setHoveredBasicEntry('baseSkills')
+              }}
+              onFocus={() => setHoveredBasicEntry('baseSkills')}
+              onHover={() => setHoveredBasicEntry('baseSkills')}
+              onLeave={() => setHoveredBasicEntry(null)}
+            />
+          </div>
+
+          {detail && (
+            <DetailPanel
+              description={detail.description}
+              eyebrow="二级入口说明"
+              items={detail.items}
+              title={detail.title}
+            />
+          )}
+
+          <BasicEditorPanel
+            basicEntryView={basicEntryView}
+            saveDisabled={!activeBasicScope || !dirty[activeBasicScope] || savingScope === activeBasicScope}
+            saveFeedback={activeBasicScope ? saveFeedbacks[activeBasicScope] : null}
+            saving={activeBasicScope ? savingScope === activeBasicScope : false}
             selectedBaseSkillIds={state.selected_base_skill_ids}
+            selectedRoleId={state.selected_role_id}
+            onSave={() => {
+              if (activeBasicScope) {
+                void saveState(activeBasicScope)
+              }
+            }}
             onSelectRole={selectRole}
             onToggleBaseSkill={toggleBaseSkill}
           />
-        </div>
-      </section>
+        </section>
+      </div>
+    )
+  }
 
-      <section className="onboarding-section">
-        <span className="panel__eyebrow">岗位用例</span>
-        <p className="panel__body">当前岗位下的所有适用用例都会被同时编辑和生成。</p>
-        <UseCaseConfigStep
-          useCases={state.role_use_case_contents}
-          onUpdate={updateUseCaseContent}
-        />
-      </section>
+  if (view === 'useCases') {
+    return (
+      <div className="onboarding-shell">
+        <section className="onboarding-section">
+          <ModuleHeader
+            description="先从当前岗位的用例列表中选择一个，再单独编辑该用例的描述、信息来源和规则。"
+            eyebrow="用例配置"
+            installedCount={installedSkills.length}
+            title="用例配置"
+            onBack={() => setView('home')}
+            onOpenInstalled={onOpenInstalled}
+          />
 
-      <section className="onboarding-section">
-        <span className="panel__eyebrow">安装选择</span>
-        <h2 className="panel__title">共享安装集合</h2>
-        <p className="panel__body">
-          这一步决定所有已选 Agent 最终要保留哪些基础技能、生产包和测试包。不勾选意味着同步时删除。
-        </p>
-        {previewError && <p className="error">{previewError}</p>}
-        <InstallSelectionStep
-          agentPreviews={preview.agent_previews}
-          installCandidateGroups={installCandidateGroups}
-          selectedAgentIds={state.selected_agent_ids}
-          selectedBaseSkillIds={state.selected_base_skill_ids}
-          selectedInstallSkillIds={preview.selected_install_skill_ids}
-          onToggleInstallSkill={toggleInstallSkill}
-        />
-      </section>
+          <div className="onboarding-module-grid">
+            <section className="summary-card onboarding-module-grid__sidebar">
+              <h3>可配置用例</h3>
+              <p>当前岗位下可用的用例入口。</p>
+              <UseCaseList
+                activeUseCaseId={activeUseCase?.use_case_id ?? null}
+                configuredById={completion.useCaseIds}
+                useCases={state.role_use_case_contents}
+                onSelect={setSelectedUseCaseId}
+              />
+            </section>
 
-      <section className="onboarding-section">
-        <span className="panel__eyebrow">凭证</span>
-        <h2 className="panel__title">账号凭证</h2>
-        <p className="panel__body">只显示当前仍被选择的基础技能所需的凭证字段。</p>
-        <CredentialsStep
-          credentialFields={credentialFields}
-          credentialValues={state.credential_values}
-          onUpdateCredential={updateCredentialValue}
-        />
-        <div className="button-row">
-          <button
-            className="button"
-            type="button"
-            onClick={startSync}
-            disabled={syncing || state.selected_agent_ids.length === 0}
-          >
-            {syncing ? '同步中...' : '开始同步安装'}
-          </button>
-        </div>
-      </section>
+            <section className="summary-card onboarding-module-grid__content">
+              {activeUseCase ? (
+                <div className="onboarding-subeditor-panel">
+                  <SaveFeedbackBanner
+                    feedback={activeUseCaseScope ? saveFeedbacks[activeUseCaseScope] : null}
+                  />
+                  <UseCaseConfigStep
+                    useCases={[activeUseCase]}
+                    onUpdate={updateUseCaseContent}
+                  />
+                  <div className="button-row">
+                    <button
+                      className="button"
+                      disabled={
+                        !activeUseCaseScope ||
+                        !dirty.useCases[activeUseCase.use_case_id] ||
+                        savingScope === activeUseCaseScope
+                      }
+                      type="button"
+                      onClick={() => {
+                        if (activeUseCaseScope) {
+                          void saveState(activeUseCaseScope)
+                        }
+                      }}
+                    >
+                      {savingScope === activeUseCaseScope ? '保存中...' : '保存设置'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p className="hint-callout">当前岗位没有可配置的用例。</p>
+              )}
+            </section>
+          </div>
+        </section>
+      </div>
+    )
+  }
 
-      <section className="onboarding-section">
-        <CompletionStep syncError={syncError} syncResult={syncResult} />
-      </section>
-    </div>
+  return (
+    <InstallModule
+      credentialFields={credentialFields}
+      credentialValues={state.credential_values}
+      installCandidateGroups={installCandidateGroups}
+      installedCount={installedSkills.length}
+      preview={preview}
+      previewError={previewError}
+      saveDisabled={!dirty.install || savingScope === 'install'}
+      saveFeedback={saveFeedbacks.install}
+      saving={savingScope === 'install'}
+      selectedAgentIds={state.selected_agent_ids}
+      selectedBaseSkillIds={state.selected_base_skill_ids}
+      syncError={syncError}
+      syncing={syncing}
+      syncResult={syncResult}
+      onBack={() => setView('home')}
+      onOpenInstalled={onOpenInstalled}
+      onSave={() => void saveState('install')}
+      onStartSync={startSync}
+      onToggleAgent={toggleAgent}
+      onToggleInstallSkill={toggleInstallSkill}
+      onUpdateCredential={updateCredentialValue}
+    />
   )
 }

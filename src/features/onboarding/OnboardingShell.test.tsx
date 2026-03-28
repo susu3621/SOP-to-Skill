@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../../App'
 import type {
@@ -179,8 +179,24 @@ const fixtures = vi.hoisted(() => {
   }
 })
 
+const mockControls = vi.hoisted(() => ({
+  saveError: null as string | null,
+}))
+
+const invokeMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(async (command: string) => {
+  invoke: invokeMock,
+}))
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: vi.fn(async () => () => {}),
+}))
+
+beforeEach(() => {
+  mockControls.saveError = null
+  invokeMock.mockReset()
+  invokeMock.mockImplementation(async (command: string, payload?: { state?: OnboardingState }) => {
     switch (command) {
       case 'list_skills':
         return { success: [] }
@@ -195,7 +211,9 @@ vi.mock('@tauri-apps/api/core', () => ({
       case 'get_onboarding_state':
         return { success: fixtures.onboardingState }
       case 'set_onboarding_state':
-        return { success: fixtures.onboardingState }
+        return mockControls.saveError
+          ? { error: mockControls.saveError }
+          : { success: payload?.state ?? fixtures.onboardingState }
       case 'get_onboarding_install_preview':
         return { success: fixtures.onboardingPreview }
       case 'stage_onboarding_generated_packages':
@@ -205,48 +223,139 @@ vi.mock('@tauri-apps/api/core', () => ({
       default:
         return { success: null }
     }
-  }),
-}))
+  })
+})
 
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(async () => () => {}),
-}))
+function getSetStateCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'set_onboarding_state')
+}
 
 describe('OnboardingShell', () => {
-  it('groups agent, role, and base-skill onboarding before any use-case edits', async () => {
-    render(<App />)
-
-    expect(
-      await screen.findByRole('heading', { name: /Agent、岗位和基础技能/i })
-    ).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Codex' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Claude Code' })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: '项目经理' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
-  })
-
-  it('shows role-scoped editors for every applicable use case and defaults generated packages to checked', async () => {
-    render(<App />)
-
-    expect(await screen.findByRole('heading', { name: '记录日志' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '记录日志' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '记录计划' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '项目周报' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: '项目周报 生产包' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: '项目周报 测试包' })).toBeChecked()
-  })
-
-  it('removes credential fields for a deselected base skill before sync and surfaces per-agent sync results on completion', async () => {
+  it('shows saved status badges and hides module detail until the user hovers a card', async () => {
     const user = userEvent.setup()
 
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: /Agent、岗位和基础技能/i })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    const basicCard = screen.getByRole('button', { name: '基础信息设置' })
+    const useCaseCard = screen.getByRole('button', { name: '用例配置' })
+    const installCard = screen.getByRole('button', { name: '安装技能' })
+
+    expect(within(basicCard).getByText('已设置')).toBeInTheDocument()
+    expect(within(useCaseCard).getByText('已设置')).toBeInTheDocument()
+    expect(within(installCard).getByText('已设置')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '基础信息设置' })).not.toBeInTheDocument()
+
+    await user.hover(useCaseCard)
+
+    expect(screen.getByText('按用例分别编辑内容')).toBeInTheDocument()
+    expect(screen.getByText('记录计划')).toBeInTheDocument()
+    expect(screen.getByText('记录日志')).toBeInTheDocument()
+    expect(screen.getByText('项目周报')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+
+    await user.unhover(useCaseCard)
+
+    expect(screen.queryByRole('heading', { name: '用例配置' })).not.toBeInTheDocument()
+  })
+
+  it('does not persist role changes until save and shows a success banner after saving', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
+    await user.click(await screen.findByRole('button', { name: '选择岗位' }))
+
+    await user.click(screen.getByRole('radio', { name: '产品经理' }))
+
+    expect(getSetStateCalls()).toHaveLength(0)
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    expect(await screen.findByText('保存成功')).toBeInTheDocument()
+  })
+
+  it('shows a failure banner when saving base skill changes fails', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
+    await user.click(await screen.findByRole('button', { name: '选择基础技能' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Confluence' }))
+
+    expect(getSetStateCalls()).toHaveLength(0)
+
+    mockControls.saveError = '保存失败：网络异常'
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    expect(await screen.findByText('保存失败：网络异常')).toBeInTheDocument()
+  })
+
+  it('shows a use-case list first, marks configured items, and saves only on demand', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+
+    expect(await screen.findByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    const planningItem = screen.getByRole('button', { name: '记录计划' })
+    const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
+    const weeklyReportItem = screen.getByRole('button', { name: '项目周报' })
+
+    expect(within(planningItem).getByText('已设置')).toBeInTheDocument()
+    expect(within(dailyLogItem).getByText('已设置')).toBeInTheDocument()
+    expect(within(weeklyReportItem).getByText('已设置')).toBeInTheDocument()
+
+    const descriptionInput = screen.getByLabelText('用例描述')
+    await user.clear(descriptionInput)
+    await user.type(descriptionInput, '更新后的记录计划说明')
+
+    expect(getSetStateCalls()).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    expect(await screen.findByText('保存成功')).toBeInTheDocument()
+  })
+
+  it('requires an explicit save on the install page before syncing and keeps sync results inside the module', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '安装技能' }))
+
+    expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Codex' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Claude Code' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('checkbox', { name: 'Jira' }))
 
-    expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
+    expect(getSetStateCalls()).toHaveLength(0)
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '开始同步安装' }))
+
+    expect(screen.getByText('请先保存当前安装设置。')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    expect(await screen.findByText('保存成功')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '开始同步安装' }))
 

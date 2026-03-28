@@ -212,11 +212,15 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 describe('onboarding shell smoke coverage', () => {
-  it('opens the grouped onboarding shell instead of the legacy 8-step demo', async () => {
+  it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
     render(<App />)
 
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '基础信息设置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '用例配置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '安装技能' })).toBeInTheDocument()
     expect(
-      await screen.findByRole('heading', { name: /Agent、岗位和基础技能/i })
-    ).toBeInTheDocument()
+      screen.queryByRole('heading', { name: /Agent、岗位和基础技能/i })
+    ).not.toBeInTheDocument()
   })
 })

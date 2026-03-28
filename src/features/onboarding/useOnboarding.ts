@@ -25,6 +25,28 @@ import type {
   StagedOnboardingPackages,
 } from '../../types'
 
+interface SaveFeedback {
+  kind: 'success' | 'error'
+  message: string
+}
+
+interface OnboardingDirtyState {
+  role: boolean
+  baseSkills: boolean
+  install: boolean
+  any: boolean
+  useCases: Record<string, boolean>
+}
+
+interface OnboardingCompletionState {
+  basic: boolean
+  role: boolean
+  baseSkills: boolean
+  useCases: boolean
+  install: boolean
+  useCaseIds: Record<string, boolean>
+}
+
 function unique(values: string[]) {
   return Array.from(new Set(values))
 }
@@ -43,6 +65,68 @@ function buildManagedSkillIds(roleId: string, baseSkillIds: string[]) {
   })
 
   return unique([...selectedBaseSkillIds, ...generatedSkillIds])
+}
+
+function areSameStringSets(left: string[], right: string[]) {
+  const normalizedLeft = unique(left).sort()
+  const normalizedRight = unique(right).sort()
+
+  if (normalizedLeft.length !== normalizedRight.length) {
+    return false
+  }
+
+  return normalizedLeft.every((value, index) => value === normalizedRight[index])
+}
+
+function areSameStringRecords(left: Record<string, string>, right: Record<string, string>) {
+  const leftEntries = Object.entries(left).sort(([leftKey], [rightKey]) =>
+    leftKey.localeCompare(rightKey)
+  )
+  const rightEntries = Object.entries(right).sort(([leftKey], [rightKey]) =>
+    leftKey.localeCompare(rightKey)
+  )
+
+  if (leftEntries.length !== rightEntries.length) {
+    return false
+  }
+
+  return leftEntries.every(
+    ([key, value], index) => key === rightEntries[index]?.[0] && value === rightEntries[index]?.[1]
+  )
+}
+
+function areSameUseCaseRecord(
+  left: OnboardingEditableUseCaseRecord | undefined,
+  right: OnboardingEditableUseCaseRecord | undefined
+) {
+  if (!left || !right) {
+    return left === right
+  }
+
+  return (
+    left.role_id === right.role_id &&
+    left.use_case_id === right.use_case_id &&
+    left.use_case_name === right.use_case_name &&
+    left.description === right.description &&
+    left.info_sources === right.info_sources &&
+    left.rules === right.rules
+  )
+}
+
+function isConfiguredText(value: string) {
+  return value.trim().length > 0
+}
+
+function isUseCaseConfigured(record: OnboardingEditableUseCaseRecord) {
+  return (
+    isConfiguredText(record.description) &&
+    isConfiguredText(record.info_sources) &&
+    isConfiguredText(record.rules)
+  )
+}
+
+function getUseCaseSaveScope(useCaseId: string) {
+  return `useCase:${useCaseId}`
 }
 
 function resolveSelectedInstallSkillIds(state: OnboardingState, managedSkillIds: string[]) {
@@ -192,12 +276,15 @@ function reconcileInstallSelection(
 
 export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const [state, setState] = useState<OnboardingState>(() => createEmptyState())
+  const [savedState, setSavedState] = useState<OnboardingState>(() => createEmptyState())
   const [loading, setLoading] = useState(true)
   const [previewError, setPreviewError] = useState<string | null>(null)
   const [syncError, setSyncError] = useState<string | null>(null)
   const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState<OnboardingBatchSyncResult | null>(null)
   const [backendPreview, setBackendPreview] = useState<OnboardingInstallPreview | null>(null)
+  const [saveFeedbacks, setSaveFeedbacks] = useState<Record<string, SaveFeedback>>({})
+  const [savingScope, setSavingScope] = useState<string | null>(null)
 
   const selectedUseCases = useMemo(() => buildSelectedUseCases(), [])
   const agentStates = useMemo(() => buildAgentStates(installedSkills), [installedSkills])
@@ -208,6 +295,14 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const resolvedSelectedInstallSkillIds = useMemo(
     () => resolveSelectedInstallSkillIds(state, managedSkillIds),
     [managedSkillIds, state]
+  )
+  const savedManagedSkillIds = useMemo(
+    () => buildManagedSkillIds(savedState.selected_role_id, savedState.selected_base_skill_ids),
+    [savedState.selected_base_skill_ids, savedState.selected_role_id]
+  )
+  const savedResolvedSelectedInstallSkillIds = useMemo(
+    () => resolveSelectedInstallSkillIds(savedState, savedManagedSkillIds),
+    [savedManagedSkillIds, savedState]
   )
   const installCandidateGroups = useMemo(
     () => buildInstallCandidateGroups(state.selected_role_id),
@@ -263,21 +358,76 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     state.selected_agent_ids,
   ])
 
-  const persistState = useCallback(async (nextState: OnboardingState) => {
-    await invoke<SkillResult<OnboardingState>>('set_onboarding_state', { state: nextState })
-  }, [])
+  const dirty = useMemo<OnboardingDirtyState>(() => {
+    const savedUseCaseMap = new Map(
+      savedState.role_use_case_contents.map((record) => [record.use_case_id, record])
+    )
+    const useCases = Object.fromEntries(
+      state.role_use_case_contents.map((record) => [
+        record.use_case_id,
+        !areSameUseCaseRecord(record, savedUseCaseMap.get(record.use_case_id)),
+      ])
+    )
+    const role = state.selected_role_id !== savedState.selected_role_id
+    const baseSkills = !areSameStringSets(
+      state.selected_base_skill_ids,
+      savedState.selected_base_skill_ids
+    )
+    const install =
+      !areSameStringSets(state.selected_agent_ids, savedState.selected_agent_ids) ||
+      !areSameStringSets(
+        resolvedSelectedInstallSkillIds,
+        savedResolvedSelectedInstallSkillIds
+      ) ||
+      !areSameStringRecords(state.credential_values, savedState.credential_values)
+
+    return {
+      role,
+      baseSkills,
+      install,
+      any: role || baseSkills || install || Object.values(useCases).some(Boolean),
+      useCases,
+    }
+  }, [
+    resolvedSelectedInstallSkillIds,
+    savedResolvedSelectedInstallSkillIds,
+    savedState,
+    state,
+  ])
+
+  const completion = useMemo<OnboardingCompletionState>(() => {
+    const role = isConfiguredText(savedState.selected_role_id)
+    const baseSkills = savedState.selected_base_skill_ids.length > 0
+    const useCaseIds = Object.fromEntries(
+      savedState.role_use_case_contents.map((record) => [record.use_case_id, isUseCaseConfigured(record)])
+    )
+    const useCases =
+      savedState.role_use_case_contents.length > 0 &&
+      savedState.role_use_case_contents.every(isUseCaseConfigured)
+    const install =
+      savedState.selected_agent_ids.length > 0 &&
+      savedResolvedSelectedInstallSkillIds.length > 0
+
+    return {
+      basic: role && baseSkills,
+      role,
+      baseSkills,
+      useCases,
+      install,
+      useCaseIds,
+    }
+  }, [savedResolvedSelectedInstallSkillIds, savedState])
 
   const updateState = useCallback(
-    async (updater: (current: OnboardingState) => OnboardingState) => {
+    (updater: (current: OnboardingState) => OnboardingState) => {
       setState((current) => {
-        const nextState = normalizeState(updater(current))
-        void persistState(nextState)
-        return nextState
+        return normalizeState(updater(current))
       })
+      setSaveFeedbacks({})
       setSyncResult(null)
       setSyncError(null)
     },
-    [persistState]
+    []
   )
 
   useEffect(() => {
@@ -289,7 +439,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
       try {
         const result = await invoke<SkillResult<OnboardingState>>('get_onboarding_state')
         if (!cancelled && result.success) {
-          setState(normalizeState(result.success))
+          const nextState = normalizeState(result.success)
+          setState(nextState)
+          setSavedState(nextState)
+          setSaveFeedbacks({})
+        } else if (!cancelled && result.error) {
+          setPreviewError(result.error)
         }
       } catch (error) {
         if (!cancelled) {
@@ -345,9 +500,56 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     }
   }, [agentStates, selectedUseCases, state])
 
+  const saveState = useCallback(
+    async (scope: string) => {
+      const nextState = normalizeState(state)
+      setSavingScope(scope)
+      setSyncError(null)
+
+      try {
+        const result = await invoke<SkillResult<OnboardingState>>('set_onboarding_state', {
+          state: nextState,
+        })
+
+        if (result.success) {
+          const normalizedState = normalizeState(result.success)
+          setState(normalizedState)
+          setSavedState(normalizedState)
+          setSaveFeedbacks((current) => ({
+            ...current,
+            [scope]: {
+              kind: 'success',
+              message: '保存成功',
+            },
+          }))
+          return
+        }
+
+        setSaveFeedbacks((current) => ({
+          ...current,
+          [scope]: {
+            kind: 'error',
+            message: result.error ?? '保存失败',
+          },
+        }))
+      } catch (error) {
+        setSaveFeedbacks((current) => ({
+          ...current,
+          [scope]: {
+            kind: 'error',
+            message: String(error),
+          },
+        }))
+      } finally {
+        setSavingScope((current) => (current === scope ? null : current))
+      }
+    },
+    [state]
+  )
+
   const toggleAgent = useCallback(
-    async (agentId: string) => {
-      await updateState((current) => ({
+    (agentId: string) => {
+      updateState((current) => ({
         ...current,
         selected_agent_ids: current.selected_agent_ids.includes(agentId)
           ? current.selected_agent_ids.filter((selectedAgentId) => selectedAgentId !== agentId)
@@ -358,8 +560,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   )
 
   const selectRole = useCallback(
-    async (roleId: string) => {
-      await updateState((current) => {
+    (roleId: string) => {
+      updateState((current) => {
         const nextSelection = reconcileInstallSelection(current, roleId, current.selected_base_skill_ids)
 
         return {
@@ -374,8 +576,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   )
 
   const toggleBaseSkill = useCallback(
-    async (skillId: string) => {
-      await updateState((current) => {
+    (skillId: string) => {
+      updateState((current) => {
         const nextBaseSkillIds = current.selected_base_skill_ids.includes(skillId)
           ? current.selected_base_skill_ids.filter((selectedSkillId) => selectedSkillId !== skillId)
           : [...current.selected_base_skill_ids, skillId]
@@ -400,12 +602,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   )
 
   const updateUseCaseContent = useCallback(
-    async (
+    (
       useCaseId: string,
       field: keyof Pick<OnboardingEditableUseCaseRecord, 'description' | 'info_sources' | 'rules'>,
       value: string
     ) => {
-      await updateState((current) => ({
+      updateState((current) => ({
         ...current,
         role_use_case_contents: current.role_use_case_contents.map((record) =>
           record.use_case_id === useCaseId ? { ...record, [field]: value } : record
@@ -416,8 +618,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   )
 
   const toggleInstallSkill = useCallback(
-    async (skillId: string) => {
-      await updateState((current) => {
+    (skillId: string) => {
+      updateState((current) => {
         const currentManagedSkillIds = buildManagedSkillIds(
           current.selected_role_id,
           current.selected_base_skill_ids
@@ -459,8 +661,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   )
 
   const updateCredentialValue = useCallback(
-    async (fieldId: string, value: string) => {
-      await updateState((current) => ({
+    (fieldId: string, value: string) => {
+      updateState((current) => ({
         ...current,
         credential_values: {
           ...current.credential_values,
@@ -472,6 +674,18 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   )
 
   const startSync = useCallback(async () => {
+    if (dirty.install) {
+      setSyncResult(null)
+      setSyncError('请先保存当前安装设置。')
+      return
+    }
+
+    if (dirty.any) {
+      setSyncResult(null)
+      setSyncError('请先保存其他页面的设置。')
+      return
+    }
+
     setSyncing(true)
     setSyncError(null)
 
@@ -526,15 +740,21 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     } finally {
       setSyncing(false)
     }
-  }, [agentStates, selectedUseCases, state])
+  }, [agentStates, dirty.any, dirty.install, selectedUseCases, state])
 
   return {
+    completion,
     credentialFields,
+    dirty,
     installCandidateGroups,
     loading,
     preview,
     previewError,
+    saveFeedbacks,
+    saveState,
     selectedUseCases,
+    savedState,
+    savingScope,
     state,
     syncError,
     syncing,
@@ -546,5 +766,6 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     updateCredentialValue,
     updateUseCaseContent,
     selectRole,
+    getUseCaseSaveScope,
   }
 }

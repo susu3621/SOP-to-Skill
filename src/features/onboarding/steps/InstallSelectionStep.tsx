@@ -53,7 +53,6 @@ export function InstallSelectionStep({
           {selectedBaseSkillIds.map((skillId) => (
             <label className="field-option field-option--compact" key={skillId}>
               <input
-                aria-label={`安装 ${getBaseSkillNameById(skillId)}`}
                 checked={selectedInstallSkillIds.includes(skillId)}
                 type="checkbox"
                 onChange={() => onToggleInstallSkill(skillId)}
@@ -72,7 +71,6 @@ export function InstallSelectionStep({
               <p className="onboarding-install-group__title">{group.use_case_name}</p>
               <label className="field-option field-option--compact">
                 <input
-                  aria-label={`${group.use_case_name} 生产包`}
                   checked={selectedInstallSkillIds.includes(group.production_skill_id)}
                   type="checkbox"
                   onChange={() => onToggleInstallSkill(group.production_skill_id)}
@@ -81,7 +79,6 @@ export function InstallSelectionStep({
               </label>
               <label className="field-option field-option--compact">
                 <input
-                  aria-label={`${group.use_case_name} 测试包`}
                   checked={selectedInstallSkillIds.includes(group.test_skill_id)}
                   type="checkbox"
                   onChange={() => onToggleInstallSkill(group.test_skill_id)}
