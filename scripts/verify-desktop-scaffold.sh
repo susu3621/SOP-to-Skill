@@ -7,6 +7,7 @@ test -f scripts/build-desktop-all.cjs
 ! rg -n '"targets"' src-tauri/tauri.conf.json
 rg -n 'desktop-macos' .github/workflows/build-desktop.yml
 rg -n 'desktop-windows' .github/workflows/build-desktop.yml
+rg -n 'tauri-apps/tauri-action@v0\.6\.2' .github/workflows/build-desktop.yml
 rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
 rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
 ! rg -n 'uploadWorkflowArtifacts:\s*true' .github/workflows/build-desktop.yml

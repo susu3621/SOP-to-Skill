@@ -679,4 +679,14 @@ describe('build desktop all workflow dispatch', () => {
 
     expect(script).toContain("! rg -n '\"targets\"' src-tauri/tauri.conf.json")
   })
+
+  it('pins the desktop workflow to a published tauri action version', () => {
+    const workflow = fs.readFileSync(
+      path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
+      'utf8',
+    )
+
+    expect(workflow).toContain('tauri-apps/tauri-action@v0.6.2')
+    expect(workflow).not.toContain('tauri-apps/tauri-action@v1')
+  })
 })
