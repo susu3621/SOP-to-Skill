@@ -29,7 +29,7 @@ jobs:
         include:
           - os: macos-latest
             artifact_name: desktop-macos
-            bundle_path: src-tauri/target/release/bundle/macos/**
+            bundle_path: src-tauri/target/release/bundle/macos/desktop-macos.tar.gz
           - os: windows-latest
             artifact_name: desktop-windows
             bundle_path: src-tauri/target/release/bundle/nsis/**
@@ -46,6 +46,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           uploadWorkflowArtifacts: false
+      - if: matrix.os == 'macos-latest'
+        name: Package macOS artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -name '*.app' -print -quit)"
+          test -n "$app_path"
+          tar -C src-tauri/target/release/bundle/macos -czf src-tauri/target/release/bundle/macos/desktop-macos.tar.gz "$(basename "$app_path")"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
