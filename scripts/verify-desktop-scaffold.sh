@@ -4,6 +4,7 @@ set -euo pipefail
 test -f src-tauri/tauri.macos.conf.json
 test -f src-tauri/tauri.windows.conf.json
 test -f scripts/build-desktop-all.cjs
+! rg -n '"targets"' src-tauri/tauri.conf.json
 rg -n 'desktop-macos' .github/workflows/build-desktop.yml
 rg -n 'desktop-windows' .github/workflows/build-desktop.yml
 rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml

@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import fs from 'node:fs'
 import path from 'node:path'
 import { createRequire } from 'node:module'
 import { vi } from 'vitest'
@@ -310,7 +311,7 @@ describe('build desktop all workflow dispatch', () => {
     ).rejects.toThrow(/remote branch/i)
   })
 
-  it('fails when the workflow file is missing on the remote branch', async () => {
+  it('fails when the remote branch does not point at the current local HEAD', async () => {
     const { runBuildDesktopAll } = loadBuildDesktopAll()
 
     await expect(
@@ -322,6 +323,23 @@ describe('build desktop all workflow dispatch', () => {
           getCurrentBranch: () => 'feat/desktop-windows-build',
           getHeadSha: () => 'local-sha',
           getRemoteBranchSha: () => 'remote-sha',
+        },
+      }),
+    ).rejects.toThrow(/origin\/feat\/desktop-windows-build/i)
+  })
+
+  it('fails when the workflow file is missing on the remote branch', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+
+    await expect(
+      runBuildDesktopAll({
+        system: {
+          ensureTool() {},
+          assertGitHubAuth() {},
+          getRepoRoot: () => '/repo',
+          getCurrentBranch: () => 'feat/desktop-windows-build',
+          getHeadSha: () => 'local-sha',
+          getRemoteBranchSha: () => 'local-sha',
           remoteWorkflowExists: () => false,
         },
       }),
@@ -332,6 +350,7 @@ describe('build desktop all workflow dispatch', () => {
     const { runBuildDesktopAll } = loadBuildDesktopAll()
     const downloads: Array<{ artifactName: string; outputDir: string }> = []
     const writes: Array<{ path: string; value: unknown }> = []
+    let listCalls = 0
 
     await runBuildDesktopAll({
       system: {
@@ -340,20 +359,28 @@ describe('build desktop all workflow dispatch', () => {
         assertGitHubAuth() {},
         getRepoRoot: () => '/repo',
         getCurrentBranch: () => 'feat/desktop-windows-build',
-        getHeadSha: () => 'local-sha',
+        getHeadSha: () => 'remote-sha',
         getRemoteBranchSha: () => 'remote-sha',
         remoteWorkflowExists: () => true,
         triggerWorkflow() {},
-        listWorkflowRuns: () => [
-          {
-            id: 42,
-            workflowName: 'Build Desktop Scaffold',
-            event: 'workflow_dispatch',
-            headBranch: 'feat/desktop-windows-build',
-            headSha: 'remote-sha',
-            createdAt: '2026-03-28T10:00:01Z',
-          },
-        ],
+        listWorkflowRuns: () => {
+          listCalls += 1
+
+          if (listCalls === 1) {
+            return []
+          }
+
+          return [
+            {
+              id: 42,
+              workflowName: 'Build Desktop Scaffold',
+              event: 'workflow_dispatch',
+              headBranch: 'feat/desktop-windows-build',
+              headSha: 'remote-sha',
+              createdAt: '2026-03-28T10:00:01Z',
+            },
+          ]
+        },
         waitForRunCompletion: () => ({
           conclusion: 'success',
           status: 'completed',
@@ -387,7 +414,7 @@ describe('build desktop all workflow dispatch', () => {
         assertGitHubAuth() {},
         getRepoRoot: () => '/repo',
         getCurrentBranch: () => 'feat/desktop-windows-build',
-        getHeadSha: () => 'local-sha',
+        getHeadSha: () => 'remote-sha',
         getRemoteBranchSha: () => 'remote-sha',
         remoteWorkflowExists: () => true,
         triggerWorkflow: () => 'https://github.com/acme/repo/actions/runs/77',
@@ -409,7 +436,7 @@ describe('build desktop all workflow dispatch', () => {
     })
 
     expect(waitedRunId).toBe(77)
-    expect(listCalls).toBe(0)
+    expect(listCalls).toBe(1)
   })
 
   it('polls workflow runs until the dispatched run appears', async () => {
@@ -425,7 +452,7 @@ describe('build desktop all workflow dispatch', () => {
         assertGitHubAuth() {},
         getRepoRoot: () => '/repo',
         getCurrentBranch: () => 'feat/desktop-windows-build',
-        getHeadSha: () => 'local-sha',
+        getHeadSha: () => 'remote-sha',
         getRemoteBranchSha: () => 'remote-sha',
         remoteWorkflowExists: () => true,
         triggerWorkflow: () => 'workflow dispatched',
@@ -464,7 +491,136 @@ describe('build desktop all workflow dispatch', () => {
     })
 
     expect(listCalls).toBe(2)
-    expect(sleeps).toEqual([1000])
+    expect(sleeps).toEqual([])
+    expect(waitedRunId).toBe(42)
+  })
+
+  it('ignores matching workflow runs that already existed before dispatch', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+    const sleeps: number[] = []
+    let listCalls = 0
+    let waitedRunId: number | undefined
+
+    await runBuildDesktopAll({
+      system: {
+        now: () => '2026-03-28T10:00:00Z',
+        ensureTool() {},
+        assertGitHubAuth() {},
+        getRepoRoot: () => '/repo',
+        getCurrentBranch: () => 'feat/desktop-windows-build',
+        getHeadSha: () => 'remote-sha',
+        getRemoteBranchSha: () => 'remote-sha',
+        remoteWorkflowExists: () => true,
+        triggerWorkflow: () => 'workflow dispatched',
+        listWorkflowRuns: () => {
+          listCalls += 1
+
+          if (listCalls === 1) {
+            return [
+              {
+                id: 41,
+                workflowName: 'Build Desktop Scaffold',
+                event: 'workflow_dispatch',
+                headBranch: 'feat/desktop-windows-build',
+                headSha: 'remote-sha',
+                createdAt: '2026-03-28T09:59:59Z',
+              },
+            ]
+          }
+
+          return [
+            {
+              id: 41,
+              workflowName: 'Build Desktop Scaffold',
+              event: 'workflow_dispatch',
+              headBranch: 'feat/desktop-windows-build',
+              headSha: 'remote-sha',
+              createdAt: '2026-03-28T09:59:59Z',
+            },
+            {
+              id: 42,
+              workflowName: 'Build Desktop Scaffold',
+              event: 'workflow_dispatch',
+              headBranch: 'feat/desktop-windows-build',
+              headSha: 'remote-sha',
+              createdAt: '2026-03-28T09:59:58Z',
+            },
+          ]
+        },
+        sleep(milliseconds: number) {
+          sleeps.push(milliseconds)
+        },
+        waitForRunCompletion: ({ runId }) => {
+          waitedRunId = runId
+          return {
+            conclusion: 'success',
+            status: 'completed',
+          }
+        },
+        ensureDir() {},
+        downloadArtifact() {},
+        writeJson() {},
+      },
+    })
+
+    expect(listCalls).toBe(2)
+    expect(sleeps).toEqual([])
+    expect(waitedRunId).toBe(42)
+  })
+
+  it('keeps polling long enough for a delayed workflow run to appear', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+    const sleeps: number[] = []
+    let listCalls = 0
+    let waitedRunId: number | undefined
+
+    await runBuildDesktopAll({
+      system: {
+        now: () => '2026-03-28T10:00:00Z',
+        ensureTool() {},
+        assertGitHubAuth() {},
+        getRepoRoot: () => '/repo',
+        getCurrentBranch: () => 'feat/desktop-windows-build',
+        getHeadSha: () => 'remote-sha',
+        getRemoteBranchSha: () => 'remote-sha',
+        remoteWorkflowExists: () => true,
+        triggerWorkflow: () => 'workflow dispatched',
+        listWorkflowRuns: () => {
+          listCalls += 1
+
+          if (listCalls <= 12) {
+            return []
+          }
+
+          return [
+            {
+              id: 42,
+              workflowName: 'Build Desktop Scaffold',
+              event: 'workflow_dispatch',
+              headBranch: 'feat/desktop-windows-build',
+              headSha: 'remote-sha',
+              createdAt: '2026-03-28T10:00:01Z',
+            },
+          ]
+        },
+        sleep(milliseconds: number) {
+          sleeps.push(milliseconds)
+        },
+        waitForRunCompletion: ({ runId }) => {
+          waitedRunId = runId
+          return {
+            conclusion: 'success',
+            status: 'completed',
+          }
+        },
+        ensureDir() {},
+        downloadArtifact() {},
+        writeJson() {},
+      },
+    })
+
+    expect(listCalls).toBe(13)
+    expect(sleeps).toHaveLength(11)
     expect(waitedRunId).toBe(42)
   })
 
@@ -516,5 +672,11 @@ describe('build desktop all workflow dispatch', () => {
       ['run', 'view', '42', '--json', 'status,conclusion'],
       { encoding: 'utf8', stdio: 'pipe' },
     )
+  })
+
+  it('keeps the scaffold verifier checking that shared tauri config does not define bundle targets', () => {
+    const script = fs.readFileSync(path.join(process.cwd(), 'scripts/verify-desktop-scaffold.sh'), 'utf8')
+
+    expect(script).toContain("! rg -n '\"targets\"' src-tauri/tauri.conf.json")
   })
 })

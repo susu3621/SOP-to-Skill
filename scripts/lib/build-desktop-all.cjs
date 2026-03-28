@@ -4,18 +4,26 @@ const path = require('node:path');
 
 const WORKFLOW_FILE = 'build-desktop.yml';
 const WORKFLOW_NAME = 'Build Desktop Scaffold';
+const RUN_DISCOVERY_ATTEMPTS = 30;
+const RUN_DISCOVERY_INTERVAL_MS = 1000;
+const RUN_DISCOVERY_CLOCK_SKEW_MS = 5000;
 
 function buildWorkflowRunArgs({ workflowFile, branch }) {
   return ['workflow', 'run', workflowFile, '--ref', branch];
 }
 
-function selectWorkflowRun(runs, { workflowName, branch, expectedHeadSha, triggerTime }) {
+function selectWorkflowRun(
+  runs,
+  { workflowName, branch, expectedHeadSha, triggerTime, ignoredRunIds = [] },
+) {
+  const ignoredRunIdsSet = new Set(ignoredRunIds);
   const matches = runs.filter((run) => {
     return (
       run.workflowName === workflowName &&
       run.event === 'workflow_dispatch' &&
       run.headBranch === branch &&
       run.headSha === expectedHeadSha &&
+      !ignoredRunIdsSet.has(run.id) &&
       run.createdAt >= triggerTime
     );
   });
@@ -96,10 +104,24 @@ async function runBuildDesktopAll({ system = createNodeSystem() } = {}) {
     throw new Error(`Remote branch not found: ${branch}`);
   }
 
+  if (remoteHeadSha !== localHeadSha) {
+    throw new Error(
+      `Push ${branch} so origin/${branch} matches local HEAD ${localHeadSha} before running build:desktop:all`,
+    );
+  }
+
   if (!system.remoteWorkflowExists({ branch, workflowFile: WORKFLOW_FILE })) {
     throw new Error(`Workflow ${WORKFLOW_FILE} is missing on origin/${branch}`);
   }
 
+  const existingRunIds =
+    typeof system.listWorkflowRuns === 'function'
+      ? getMatchingWorkflowRunIds(system.listWorkflowRuns(), {
+          workflowName: WORKFLOW_NAME,
+          branch,
+          expectedHeadSha: remoteHeadSha,
+        })
+      : [];
   const triggerTime = system.now();
   const triggerOutput = system.triggerWorkflow({ workflowFile: WORKFLOW_FILE, branch });
 
@@ -110,6 +132,7 @@ async function runBuildDesktopAll({ system = createNodeSystem() } = {}) {
       branch,
       expectedHeadSha: remoteHeadSha,
       triggerTime,
+      ignoredRunIds: existingRunIds,
     }));
 
   const result = await system.waitForRunCompletion({ runId });
@@ -292,32 +315,48 @@ function runCommandText(command, args, options) {
   return (runCommand(command, args, options).stdout || '').trim();
 }
 
+function getMatchingWorkflowRunIds(runs, { workflowName, branch, expectedHeadSha }) {
+  return runs
+    .filter((run) => {
+      return (
+        run.workflowName === workflowName &&
+        run.event === 'workflow_dispatch' &&
+        run.headBranch === branch &&
+        run.headSha === expectedHeadSha
+      );
+    })
+    .map((run) => run.id);
+}
+
 async function findDispatchedRunId(
   system,
-  { workflowName, branch, expectedHeadSha, triggerTime },
+  { workflowName, branch, expectedHeadSha, triggerTime, ignoredRunIds = [] },
 ) {
-  const retryCount = 10;
+  const earliestAllowedTriggerTime = new Date(
+    new Date(triggerTime).getTime() - RUN_DISCOVERY_CLOCK_SKEW_MS,
+  ).toISOString();
 
-  for (let attempt = 0; attempt < retryCount; attempt += 1) {
+  for (let attempt = 0; attempt < RUN_DISCOVERY_ATTEMPTS; attempt += 1) {
     try {
       return selectWorkflowRun(system.listWorkflowRuns(), {
         workflowName,
         branch,
         expectedHeadSha,
-        triggerTime,
+        triggerTime: earliestAllowedTriggerTime,
+        ignoredRunIds,
       });
     } catch (error) {
       if (
         !(error instanceof Error) ||
         !error.message.startsWith('No workflow run matched') ||
-        attempt === retryCount - 1
+        attempt === RUN_DISCOVERY_ATTEMPTS - 1
       ) {
         throw error;
       }
     }
 
     if (typeof system.sleep === 'function') {
-      await system.sleep(1000);
+      await system.sleep(RUN_DISCOVERY_INTERVAL_MS);
     }
   }
 
