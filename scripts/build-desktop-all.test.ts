@@ -54,6 +54,38 @@ function loadBuildDesktopAll() {
         workflowName: string
       },
     ) => number
+    runBuildDesktopAll: (input?: {
+      system?: {
+        assertGitHubAuth?: () => void
+        now?: () => string
+        downloadArtifact?: (input: {
+          artifactName: string
+          outputDir: string
+          runId: number
+        }) => void
+        ensureDir?: (dir: string) => void
+        ensureTool?: (tool: string) => void
+        getCurrentBranch?: () => string
+        getHeadSha?: () => string
+        getRemoteBranchSha?: (branch: string) => string | null
+        getRepoRoot?: () => string
+        listWorkflowRuns?: () => Array<{
+          createdAt: string
+          event: string
+          headBranch: string
+          headSha: string
+          id: number
+          workflowName: string
+        }>
+        remoteWorkflowExists?: (input: { branch: string; workflowFile: string }) => boolean
+        triggerWorkflow?: (input: { branch: string; workflowFile: string }) => void
+        waitForRunCompletion?: (input: { runId: number }) => {
+          artifacts: Array<{ name: string }>
+          conclusion: string
+        }
+        writeJson?: (path: string, value: unknown) => void
+      }
+    }) => Promise<void>
   }
 }
 
@@ -214,5 +246,118 @@ describe('build desktop all workflow dispatch', () => {
         windows: { name: 'desktop-windows', path: windowsDir },
       },
     })
+  })
+
+  it('fails fast when gh is not available', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+
+    await expect(
+      runBuildDesktopAll({
+        system: {
+          ensureTool(tool: string) {
+            if (tool === 'gh') {
+              throw new Error('Missing required tool: gh')
+            }
+          },
+        },
+      }),
+    ).rejects.toThrow('Missing required tool: gh')
+  })
+
+  it('fails when GitHub CLI is not authenticated', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+
+    await expect(
+      runBuildDesktopAll({
+        system: {
+          ensureTool() {},
+          assertGitHubAuth() {
+            throw new Error('GitHub CLI is not authenticated')
+          },
+        },
+      }),
+    ).rejects.toThrow('GitHub CLI is not authenticated')
+  })
+
+  it('fails when the remote branch is missing', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+
+    await expect(
+      runBuildDesktopAll({
+        system: {
+          ensureTool() {},
+          assertGitHubAuth() {},
+          getRepoRoot: () => '/repo',
+          getCurrentBranch: () => 'feat/desktop-windows-build',
+          getHeadSha: () => 'local-sha',
+          getRemoteBranchSha: () => null,
+        },
+      }),
+    ).rejects.toThrow(/remote branch/i)
+  })
+
+  it('fails when the workflow file is missing on the remote branch', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+
+    await expect(
+      runBuildDesktopAll({
+        system: {
+          ensureTool() {},
+          assertGitHubAuth() {},
+          getRepoRoot: () => '/repo',
+          getCurrentBranch: () => 'feat/desktop-windows-build',
+          getHeadSha: () => 'local-sha',
+          getRemoteBranchSha: () => 'remote-sha',
+          remoteWorkflowExists: () => false,
+        },
+      }),
+    ).rejects.toThrow(/build-desktop\.yml/)
+  })
+
+  it('runs the happy path and downloads both explicit artifacts into separate directories', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+    const downloads: Array<{ artifactName: string; outputDir: string }> = []
+    const writes: Array<{ path: string; value: unknown }> = []
+
+    await runBuildDesktopAll({
+      system: {
+        now: () => '2026-03-28T10:00:00Z',
+        ensureTool() {},
+        assertGitHubAuth() {},
+        getRepoRoot: () => '/repo',
+        getCurrentBranch: () => 'feat/desktop-windows-build',
+        getHeadSha: () => 'local-sha',
+        getRemoteBranchSha: () => 'remote-sha',
+        remoteWorkflowExists: () => true,
+        triggerWorkflow() {},
+        listWorkflowRuns: () => [
+          {
+            id: 42,
+            workflowName: 'Build Desktop Scaffold',
+            event: 'workflow_dispatch',
+            headBranch: 'feat/desktop-windows-build',
+            headSha: 'remote-sha',
+            createdAt: '2026-03-28T10:00:01Z',
+          },
+        ],
+        waitForRunCompletion: () => ({
+          conclusion: 'success',
+          artifacts: [{ name: 'desktop-macos' }, { name: 'desktop-windows' }],
+        }),
+        ensureDir() {},
+        downloadArtifact(input: { artifactName: string; outputDir: string }) {
+          downloads.push(input)
+        },
+        writeJson(path: string, value: unknown) {
+          writes.push({ path, value })
+        },
+      },
+    })
+
+    expect(downloads).toEqual([
+      { artifactName: 'desktop-macos', outputDir: '/repo/artifacts/desktop/42/macos' },
+      { artifactName: 'desktop-windows', outputDir: '/repo/artifacts/desktop/42/windows' },
+    ])
+    expect(writes[0]?.path).toBe('/repo/artifacts/desktop/42/manifest.json')
   })
 })

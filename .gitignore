@@ -4,6 +4,7 @@ node_modules/
 
 # Build outputs
 dist/
+artifacts/desktop/
 docs/.vitepress/dist/
 src-tauri/target/
 test-output/
