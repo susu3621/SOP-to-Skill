@@ -67,4 +67,37 @@ describe('build desktop all workflow dispatch', () => {
       ),
     ).toBe(12)
   })
+
+  it('selects the earliest qualifying run regardless of caller-provided order', () => {
+    const { selectWorkflowRun } = loadBuildDesktopAll()
+
+    expect(
+      selectWorkflowRun(
+        [
+          {
+            id: 22,
+            workflowName: 'Build Desktop Scaffold',
+            event: 'workflow_dispatch',
+            headBranch: 'feat/desktop-windows-build',
+            headSha: 'target-sha',
+            createdAt: '2026-03-28T10:00:02Z',
+          },
+          {
+            id: 21,
+            workflowName: 'Build Desktop Scaffold',
+            event: 'workflow_dispatch',
+            headBranch: 'feat/desktop-windows-build',
+            headSha: 'target-sha',
+            createdAt: '2026-03-28T10:00:01Z',
+          },
+        ],
+        {
+          branch: 'feat/desktop-windows-build',
+          expectedHeadSha: 'target-sha',
+          triggerTime: '2026-03-28T10:00:00Z',
+          workflowName: 'Build Desktop Scaffold',
+        },
+      ),
+    ).toBe(21)
+  })
 })

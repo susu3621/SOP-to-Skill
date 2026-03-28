@@ -3,7 +3,7 @@ function buildWorkflowRunArgs({ workflowFile, branch }) {
 }
 
 function selectWorkflowRun(runs, { workflowName, branch, expectedHeadSha, triggerTime }) {
-  const match = runs.find((run) => {
+  const matches = runs.filter((run) => {
     return (
       run.workflowName === workflowName &&
       run.event === 'workflow_dispatch' &&
@@ -13,11 +13,15 @@ function selectWorkflowRun(runs, { workflowName, branch, expectedHeadSha, trigge
     );
   });
 
-  if (!match) {
+  if (matches.length === 0) {
     throw new Error(`No workflow run matched ${workflowName} for ${branch} @ ${expectedHeadSha}`);
   }
 
-  return match.id;
+  const earliestMatch = matches.reduce((earliest, run) => {
+    return run.createdAt < earliest.createdAt ? run : earliest;
+  });
+
+  return earliestMatch.id;
 }
 
 module.exports = {
