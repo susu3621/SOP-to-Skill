@@ -33,7 +33,6 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app", "nsis"],
     "category": "DeveloperTool",
     "shortDescription": "Guided desktop shell for configuring skills.",
     "longDescription": "A desktop configurator scaffold that guides non-technical users through step-by-step skill setup flows.",

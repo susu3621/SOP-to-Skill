@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+test -f src-tauri/tauri.macos.conf.json
+test -f src-tauri/tauri.windows.conf.json
+test -f scripts/build-desktop-all.cjs
+rg -n 'desktop-macos' .github/workflows/build-desktop.yml
+rg -n 'desktop-windows' .github/workflows/build-desktop.yml
+! rg -n 'uploadWorkflowArtifacts:\s*true' .github/workflows/build-desktop.yml
+
 test -f index.html
 test -f src/main.tsx
 test -f src/App.tsx

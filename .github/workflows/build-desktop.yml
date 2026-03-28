@@ -2,9 +2,6 @@ name: Build Desktop Scaffold
 
 on:
   push:
-    branches:
-      - main
-      - feature/workbuddy-desktop-scaffold
   workflow_dispatch:
 
 permissions:
@@ -29,9 +26,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - macos-latest
-          - windows-latest
+        include:
+          - os: macos-latest
+            artifact_name: desktop-macos
+            bundle_path: src-tauri/target/release/bundle/macos/**
+          - os: windows-latest
+            artifact_name: desktop-windows
+            bundle_path: src-tauri/target/release/bundle/nsis/**
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -44,4 +45,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          uploadWorkflowArtifacts: true
+          uploadWorkflowArtifacts: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.bundle_path }}
+          if-no-files-found: error
