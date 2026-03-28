@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import path from 'node:path'
 import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
@@ -166,12 +167,13 @@ describe('build desktop all workflow dispatch', () => {
 
   it('builds the default artifact layout under artifacts/desktop/<run-id>', () => {
     const { buildArtifactLayout } = loadBuildDesktopAll()
+    const baseDir = path.join('/repo', 'artifacts', 'desktop', '42')
 
     expect(buildArtifactLayout({ repoRoot: '/repo', runId: 42 })).toEqual({
-      baseDir: '/repo/artifacts/desktop/42',
-      macosDir: '/repo/artifacts/desktop/42/macos',
-      windowsDir: '/repo/artifacts/desktop/42/windows',
-      manifestPath: '/repo/artifacts/desktop/42/manifest.json',
+      baseDir,
+      macosDir: path.join(baseDir, 'macos'),
+      windowsDir: path.join(baseDir, 'windows'),
+      manifestPath: path.join(baseDir, 'manifest.json'),
     })
   })
 
@@ -183,6 +185,9 @@ describe('build desktop all workflow dispatch', () => {
 
   it('writes a manifest with both the matched remote build sha and the local head sha', () => {
     const { buildManifest } = loadBuildDesktopAll()
+    const baseDir = path.join('/repo', 'artifacts', 'desktop', '42')
+    const macosDir = path.join(baseDir, 'macos')
+    const windowsDir = path.join(baseDir, 'windows')
 
     expect(
       buildManifest({
@@ -193,8 +198,8 @@ describe('build desktop all workflow dispatch', () => {
         localHeadSha: 'local-sha',
         downloadedAt: '2026-03-28T10:05:00Z',
         layout: {
-          macosDir: '/repo/artifacts/desktop/42/macos',
-          windowsDir: '/repo/artifacts/desktop/42/windows',
+          macosDir,
+          windowsDir,
         },
       }),
     ).toMatchObject({
@@ -205,8 +210,8 @@ describe('build desktop all workflow dispatch', () => {
       localHeadSha: 'local-sha',
       downloadedAt: '2026-03-28T10:05:00Z',
       artifacts: {
-        macos: { name: 'desktop-macos', path: '/repo/artifacts/desktop/42/macos' },
-        windows: { name: 'desktop-windows', path: '/repo/artifacts/desktop/42/windows' },
+        macos: { name: 'desktop-macos', path: macosDir },
+        windows: { name: 'desktop-windows', path: windowsDir },
       },
     })
   })
