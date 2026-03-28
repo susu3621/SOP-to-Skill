@@ -203,6 +203,7 @@ describe('build desktop all workflow dispatch', () => {
       branch: 'feat/desktop-windows-build',
       buildCommitSha: 'remote-sha',
       localHeadSha: 'local-sha',
+      downloadedAt: '2026-03-28T10:05:00Z',
       artifacts: {
         macos: { name: 'desktop-macos', path: '/repo/artifacts/desktop/42/macos' },
         windows: { name: 'desktop-windows', path: '/repo/artifacts/desktop/42/windows' },
