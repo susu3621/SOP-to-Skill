@@ -2,8 +2,13 @@
 
 import path from 'node:path'
 import { createRequire } from 'node:module'
+import { vi } from 'vitest'
 
 const require = createRequire(import.meta.url)
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 function loadBuildDesktopAll() {
   return require('./lib/build-desktop-all.cjs') as {
@@ -38,6 +43,13 @@ function loadBuildDesktopAll() {
       workflowFile: string
     }
     buildWorkflowRunArgs: (input: { branch: string; workflowFile: string }) => string[]
+    createNodeSystem: () => {
+      remoteWorkflowExists: (input: { branch: string; workflowFile: string }) => boolean
+      waitForRunCompletion: (input: { runId: number }) => Promise<{
+        artifacts?: Array<{ name: string }>
+        conclusion: string
+      }>
+    }
     selectWorkflowRun: (
       runs: Array<{
         createdAt: string
@@ -78,10 +90,12 @@ function loadBuildDesktopAll() {
           workflowName: string
         }>
         remoteWorkflowExists?: (input: { branch: string; workflowFile: string }) => boolean
-        triggerWorkflow?: (input: { branch: string; workflowFile: string }) => void
+        sleep?: (milliseconds: number) => Promise<void> | void
+        triggerWorkflow?: (input: { branch: string; workflowFile: string }) => string | void
         waitForRunCompletion?: (input: { runId: number }) => {
-          artifacts: Array<{ name: string }>
+          artifacts?: Array<{ name: string }>
           conclusion: string
+          status?: string
         }
         writeJson?: (path: string, value: unknown) => void
       }
@@ -342,7 +356,7 @@ describe('build desktop all workflow dispatch', () => {
         ],
         waitForRunCompletion: () => ({
           conclusion: 'success',
-          artifacts: [{ name: 'desktop-macos' }, { name: 'desktop-windows' }],
+          status: 'completed',
         }),
         ensureDir() {},
         downloadArtifact(input: { artifactName: string; outputDir: string }) {
@@ -359,5 +373,148 @@ describe('build desktop all workflow dispatch', () => {
       { artifactName: 'desktop-windows', outputDir: '/repo/artifacts/desktop/42/windows' },
     ])
     expect(writes[0]?.path).toBe('/repo/artifacts/desktop/42/manifest.json')
+  })
+
+  it('uses the dispatched run url when gh returns one', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+    let listCalls = 0
+    let waitedRunId: number | undefined
+
+    await runBuildDesktopAll({
+      system: {
+        now: () => '2026-03-28T10:00:00Z',
+        ensureTool() {},
+        assertGitHubAuth() {},
+        getRepoRoot: () => '/repo',
+        getCurrentBranch: () => 'feat/desktop-windows-build',
+        getHeadSha: () => 'local-sha',
+        getRemoteBranchSha: () => 'remote-sha',
+        remoteWorkflowExists: () => true,
+        triggerWorkflow: () => 'https://github.com/acme/repo/actions/runs/77',
+        listWorkflowRuns: () => {
+          listCalls += 1
+          return []
+        },
+        waitForRunCompletion: ({ runId }) => {
+          waitedRunId = runId
+          return {
+            conclusion: 'success',
+            status: 'completed',
+          }
+        },
+        ensureDir() {},
+        downloadArtifact() {},
+        writeJson() {},
+      },
+    })
+
+    expect(waitedRunId).toBe(77)
+    expect(listCalls).toBe(0)
+  })
+
+  it('polls workflow runs until the dispatched run appears', async () => {
+    const { runBuildDesktopAll } = loadBuildDesktopAll()
+    const sleeps: number[] = []
+    let listCalls = 0
+    let waitedRunId: number | undefined
+
+    await runBuildDesktopAll({
+      system: {
+        now: () => '2026-03-28T10:00:00Z',
+        ensureTool() {},
+        assertGitHubAuth() {},
+        getRepoRoot: () => '/repo',
+        getCurrentBranch: () => 'feat/desktop-windows-build',
+        getHeadSha: () => 'local-sha',
+        getRemoteBranchSha: () => 'remote-sha',
+        remoteWorkflowExists: () => true,
+        triggerWorkflow: () => 'workflow dispatched',
+        listWorkflowRuns: () => {
+          listCalls += 1
+
+          if (listCalls === 1) {
+            return []
+          }
+
+          return [
+            {
+              id: 42,
+              workflowName: 'Build Desktop Scaffold',
+              event: 'workflow_dispatch',
+              headBranch: 'feat/desktop-windows-build',
+              headSha: 'remote-sha',
+              createdAt: '2026-03-28T10:00:01Z',
+            },
+          ]
+        },
+        sleep(milliseconds: number) {
+          sleeps.push(milliseconds)
+        },
+        waitForRunCompletion: ({ runId }) => {
+          waitedRunId = runId
+          return {
+            conclusion: 'success',
+            status: 'completed',
+          }
+        },
+        ensureDir() {},
+        downloadArtifact() {},
+        writeJson() {},
+      },
+    })
+
+    expect(listCalls).toBe(2)
+    expect(sleeps).toEqual([1000])
+    expect(waitedRunId).toBe(42)
+  })
+
+  it('checks the workflow on the remote ref via gh workflow view', () => {
+    const { createNodeSystem } = loadBuildDesktopAll()
+    const childProcess = require('node:child_process') as typeof import('node:child_process')
+    const spawnSync = vi.spyOn(childProcess, 'spawnSync').mockReturnValue({
+      error: undefined,
+      status: 0,
+      stdout: 'name: Build Desktop Scaffold\n',
+      stderr: '',
+    } as ReturnType<typeof childProcess.spawnSync>)
+
+    const system = createNodeSystem()
+
+    expect(
+      system.remoteWorkflowExists({
+        branch: 'feat/desktop-windows-build',
+        workflowFile: 'build-desktop.yml',
+      }),
+    ).toBe(true)
+    expect(spawnSync).toHaveBeenCalledWith(
+      'gh',
+      ['workflow', 'view', 'build-desktop.yml', '--ref', 'feat/desktop-windows-build', '--yaml'],
+      { encoding: 'utf8', stdio: 'pipe' },
+    )
+  })
+
+  it('waits for completion without requesting unsupported artifact metadata', async () => {
+    const { createNodeSystem } = loadBuildDesktopAll()
+    const childProcess = require('node:child_process') as typeof import('node:child_process')
+    const spawnSync = vi.spyOn(childProcess, 'spawnSync').mockReturnValue({
+      error: undefined,
+      status: 0,
+      stdout: JSON.stringify({
+        status: 'completed',
+        conclusion: 'success',
+      }),
+      stderr: '',
+    } as ReturnType<typeof childProcess.spawnSync>)
+
+    const system = createNodeSystem()
+
+    await expect(system.waitForRunCompletion({ runId: 42 })).resolves.toEqual({
+      conclusion: 'success',
+    })
+    expect(spawnSync).toHaveBeenCalledWith(
+      'gh',
+      ['run', 'view', '42', '--json', 'status,conclusion'],
+      { encoding: 'utf8', stdio: 'pipe' },
+    )
   })
 })

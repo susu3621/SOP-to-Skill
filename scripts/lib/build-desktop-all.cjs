@@ -101,21 +101,25 @@ async function runBuildDesktopAll({ system = createNodeSystem() } = {}) {
   }
 
   const triggerTime = system.now();
-  system.triggerWorkflow({ workflowFile: WORKFLOW_FILE, branch });
+  const triggerOutput = system.triggerWorkflow({ workflowFile: WORKFLOW_FILE, branch });
 
-  const runId = selectWorkflowRun(system.listWorkflowRuns(), {
-    workflowName: WORKFLOW_NAME,
-    branch,
-    expectedHeadSha: remoteHeadSha,
-    triggerTime,
-  });
+  const runId =
+    extractRunIdFromText(triggerOutput) ||
+    (await findDispatchedRunId(system, {
+      workflowName: WORKFLOW_NAME,
+      branch,
+      expectedHeadSha: remoteHeadSha,
+      triggerTime,
+    }));
 
   const result = await system.waitForRunCompletion({ runId });
   if (result.conclusion !== 'success') {
     throw new Error(`Workflow run ${runId} finished with ${result.conclusion}`);
   }
 
-  assertRequiredArtifacts(result.artifacts);
+  if (Array.isArray(result.artifacts)) {
+    assertRequiredArtifacts(result.artifacts);
+  }
 
   const layout = buildArtifactLayout({ repoRoot, runId });
   system.ensureDir(layout.macosDir);
@@ -184,13 +188,15 @@ function createNodeSystem() {
       return output.split(/\s+/)[0] || null;
     },
     remoteWorkflowExists({ branch, workflowFile }) {
-      const result = runCommand('git', ['show', `origin/${branch}:.github/workflows/${workflowFile}`], {
-        allowFailure: true,
-      });
+      const result = runCommand(
+        'gh',
+        ['workflow', 'view', workflowFile, '--ref', branch, '--yaml'],
+        { allowFailure: true },
+      );
       return result.status === 0;
     },
     triggerWorkflow({ workflowFile, branch }) {
-      runCommandText('gh', buildWorkflowRunArgs({ workflowFile, branch }));
+      return runCommandOutput('gh', buildWorkflowRunArgs({ workflowFile, branch }));
     },
     listWorkflowRuns() {
       const output = runCommandText('gh', [
@@ -219,21 +225,21 @@ function createNodeSystem() {
           'view',
           String(runId),
           '--json',
-          'status,conclusion,artifacts',
+          'status,conclusion',
         ]);
         const run = JSON.parse(output);
 
         if (run.status === 'completed') {
           return {
             conclusion: run.conclusion,
-            artifacts: Array.isArray(run.artifacts)
-              ? run.artifacts.map((artifact) => ({ name: artifact.name }))
-              : [],
           };
         }
 
         await delay(5000);
       }
+    },
+    sleep(milliseconds) {
+      return delay(milliseconds);
     },
     ensureDir(dir) {
       fs.mkdirSync(dir, { recursive: true });
@@ -277,8 +283,58 @@ function runCommand(command, args, { allowFailure = false } = {}) {
   return result;
 }
 
+function runCommandOutput(command, args, options) {
+  const result = runCommand(command, args, options);
+  return `${result.stdout || ''}${result.stderr || ''}`.trim();
+}
+
 function runCommandText(command, args, options) {
   return (runCommand(command, args, options).stdout || '').trim();
+}
+
+async function findDispatchedRunId(
+  system,
+  { workflowName, branch, expectedHeadSha, triggerTime },
+) {
+  const retryCount = 10;
+
+  for (let attempt = 0; attempt < retryCount; attempt += 1) {
+    try {
+      return selectWorkflowRun(system.listWorkflowRuns(), {
+        workflowName,
+        branch,
+        expectedHeadSha,
+        triggerTime,
+      });
+    } catch (error) {
+      if (
+        !(error instanceof Error) ||
+        !error.message.startsWith('No workflow run matched') ||
+        attempt === retryCount - 1
+      ) {
+        throw error;
+      }
+    }
+
+    if (typeof system.sleep === 'function') {
+      await system.sleep(1000);
+    }
+  }
+
+  throw new Error(`No workflow run matched ${workflowName} for ${branch} @ ${expectedHeadSha}`);
+}
+
+function extractRunIdFromText(output) {
+  if (typeof output !== 'string') {
+    return null;
+  }
+
+  const match = output.match(/\/actions\/runs\/(\d+)/);
+  if (!match) {
+    return null;
+  }
+
+  return Number(match[1]);
 }
 
 function delay(milliseconds) {
