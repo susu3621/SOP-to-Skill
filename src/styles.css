@@ -165,7 +165,7 @@ textarea {
 .page-content__scroll {
   flex: 1;
   overflow-y: auto;
-  padding-right: 8px;
+  padding: 32px;
 }
 
 /* Page transition animations */
@@ -683,7 +683,7 @@ textarea {
   gap: 10px;
   align-content: start;
   min-height: 180px;
-  padding: 20px;
+  padding: 32px;
   border: 1px solid rgba(22, 48, 41, 0.12);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.72);
