@@ -39,10 +39,6 @@ fn get_data_root_override(data_root: Option<&PathBuf>) -> PathBuf {
     data_root.cloned().unwrap_or_else(get_data_root)
 }
 
-pub fn get_onboarding_staging_dir() -> PathBuf {
-    get_data_root().join("onboarding").join("generated-skills")
-}
-
 fn get_onboarding_staging_dir_with_data_root(data_root: Option<&PathBuf>) -> PathBuf {
     get_data_root_override(data_root)
         .join("onboarding")

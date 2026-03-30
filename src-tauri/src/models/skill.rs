@@ -30,6 +30,7 @@ impl TargetAppId {
         }
     }
 
+    #[cfg(any(target_os = "windows", test))]
     pub fn output_path_windows(&self, skill_id: &str) -> String {
         match self {
             TargetAppId::ClaudeCode => {
@@ -125,13 +126,6 @@ fn default_install_strategy() -> InstallStrategy {
     InstallStrategy::TemplateFile
 }
 
-/// GitHub source configuration
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GitHubSource {
-    pub url: String,
-    pub path: String,
-}
-
 /// Template source type
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "kebab-case")]
@@ -176,16 +170,6 @@ pub enum UpdateStatus {
     UpToDate,
     UpdateAvailable { latest_version: String },
     Unknown,
-}
-
-/// Skill with its current state
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SkillWithState {
-    #[serde(flatten)]
-    pub template: SkillTemplate,
-    pub is_installed: bool,
-    pub installed_version: Option<String>,
-    pub update_status: UpdateStatus,
 }
 
 /// Global application configuration

@@ -7,6 +7,7 @@ pub struct GeneratedSkillIds {
     pub test_skill_id: String,
 }
 
+#[cfg(test)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingBaseSkill {
     pub id: String,

@@ -12,7 +12,12 @@ rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
 rg -n 'bundle/dmg/\*\.dmg' .github/workflows/build-desktop.yml
 rg -n 'bundle/nsis/\*\.exe' .github/workflows/build-desktop.yml
 ! rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
-! rg -n 'uploadWorkflowArtifacts:' .github/workflows/build-desktop.yml
+rg -n 'uploadWorkflowArtifacts:\s*false' .github/workflows/build-desktop.yml
+rg -n 'releaseDraft:\s*true' .github/workflows/build-desktop.yml
+rg -n 'tagName:' .github/workflows/build-desktop.yml
+rg -n 'APPLE_CERTIFICATE' .github/workflows/build-desktop.yml
+rg -n 'APPLE_API_ISSUER' .github/workflows/build-desktop.yml
+rg -n 'APPLE_API_KEY_PATH' .github/workflows/build-desktop.yml
 
 test -f index.html
 test -f src/main.tsx

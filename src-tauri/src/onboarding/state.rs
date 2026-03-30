@@ -1,7 +1,8 @@
-use crate::models::{
-    GeneratedSkillIds, OnboardingBaseSkill, OnboardingState, OnboardingUseCase,
-};
+use crate::models::{GeneratedSkillIds, OnboardingState, OnboardingUseCase};
 use std::collections::HashSet;
+
+#[cfg(test)]
+use crate::models::OnboardingBaseSkill;
 
 fn push_unique(values: &mut Vec<String>, value: String) {
     if !values.contains(&value) {
@@ -46,6 +47,7 @@ pub fn default_selected_install_skill_ids(
     selected_install_skill_ids
 }
 
+#[cfg(test)]
 pub fn prune_deselected_base_skill_credentials(
     mut state: OnboardingState,
     selected_base_skill_ids: &[String],

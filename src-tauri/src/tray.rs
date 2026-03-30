@@ -65,18 +65,3 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::err
 
     Ok(())
 }
-
-/// Update tray icon to show update indicator
-pub fn set_update_indicator<R: Runtime>(
-    _app: &AppHandle<R>,
-    has_updates: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // In a real implementation, we would switch to a different icon
-    // For now, we just log the state
-    if has_updates {
-        tracing::info!("Updates available - tray indicator would show badge");
-    } else {
-        tracing::info!("No updates - tray indicator normal");
-    }
-    Ok(())
-}

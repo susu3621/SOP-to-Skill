@@ -119,11 +119,6 @@ pub fn write_skill_file(
     Ok(())
 }
 
-/// Delete a skill file
-pub fn delete_skill_file(output_path: &PathBuf) -> Result<(), SkillError> {
-    delete_skill_path(output_path)
-}
-
 /// Delete a skill path, whether it is a file or a directory
 pub fn delete_skill_path(output_path: &Path) -> Result<(), SkillError> {
     if output_path.exists() {

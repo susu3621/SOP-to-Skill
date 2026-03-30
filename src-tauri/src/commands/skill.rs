@@ -9,20 +9,13 @@ use serde::Serialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tokio::sync::Mutex;
-
-use crate::models::AppConfig;
 
 /// Application state for skill management
-pub struct SkillState {
-    pub config: Mutex<AppConfig>,
-}
+pub struct SkillState;
 
 impl Default for SkillState {
     fn default() -> Self {
-        Self {
-            config: Mutex::new(AppConfig::default()),
-        }
+        Self
     }
 }
 

@@ -308,6 +308,7 @@ pub fn build_onboarding_install_preview(
     }
 }
 
+#[cfg(test)]
 pub fn apply_onboarding_sync_plan<F>(
     plan: OnboardingSyncPlan,
     mut apply_agent: F,

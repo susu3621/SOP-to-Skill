@@ -680,7 +680,7 @@ describe('build desktop all workflow dispatch', () => {
     expect(script).toContain("! rg -n '\"targets\"' src-tauri/tauri.conf.json")
   })
 
-  it('pins the desktop workflow to a published tauri action version', () => {
+  it('pins the desktop workflow to a published tauri action version with release and signing support', () => {
     const workflow = fs.readFileSync(
       path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
       'utf8',
@@ -688,7 +688,12 @@ describe('build desktop all workflow dispatch', () => {
 
     expect(workflow).toContain('tauri-apps/tauri-action@v0.6.2')
     expect(workflow).not.toContain('tauri-apps/tauri-action@v1')
-    expect(workflow).not.toContain('uploadWorkflowArtifacts:')
+    expect(workflow).toContain('uploadWorkflowArtifacts: false')
+    expect(workflow).toContain('releaseDraft: true')
+    expect(workflow).toContain('tagName:')
+    expect(workflow).toContain('APPLE_CERTIFICATE')
+    expect(workflow).toContain('APPLE_API_ISSUER')
+    expect(workflow).toContain('APPLE_API_KEY_PATH')
   })
 
   it('exposes a tauri npm script for tauri-action builds', () => {
