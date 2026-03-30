@@ -6,6 +6,9 @@ import { InstallSelectionStep } from './steps/InstallSelectionStep'
 import { UseCaseConfigStep } from './steps/UseCaseConfigStep'
 import { useOnboarding } from './useOnboarding'
 import {
+  getBaseSkillNameById,
+  getOnboardingAgentNameById,
+  getRoleNameById,
   onboardingBaseSkills,
   onboardingRoles,
 } from '../../content/workbuddy'
@@ -166,6 +169,11 @@ interface DetailPanelProps {
   items: string[]
 }
 
+interface HomeSummaryGroup {
+  label: string
+  values: string[]
+}
+
 function DetailPanel({ eyebrow, title, description, items }: DetailPanelProps) {
   return (
     <section aria-live="polite" className="onboarding-detail-panel">
@@ -180,6 +188,37 @@ function DetailPanel({ eyebrow, title, description, items }: DetailPanelProps) {
           </li>
         ))}
       </ol>
+    </section>
+  )
+}
+
+function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
+  return (
+    <section
+      aria-labelledby="onboarding-home-summary-title"
+      className="onboarding-home-summary"
+    >
+      <h3 className="onboarding-home-summary__title" id="onboarding-home-summary-title">
+        已设置内容
+      </h3>
+      <div className="onboarding-home-summary__grid">
+        {groups.map((group) => (
+          <section className="onboarding-home-summary__group" key={group.label}>
+            <p className="onboarding-home-summary__label">{group.label}</p>
+            {group.values.length > 0 ? (
+              <div className="onboarding-home-summary__values">
+                {group.values.map((value) => (
+                  <span className="onboarding-home-summary__value" key={`${group.label}-${value}`}>
+                    {value}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="onboarding-home-summary__empty">未设置</p>
+            )}
+          </section>
+        ))}
+      </div>
     </section>
   )
 }
@@ -486,6 +525,35 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   const activeBasicScope: 'role' | 'baseSkills' | null =
     basicEntryView === 'role' || basicEntryView === 'baseSkills' ? basicEntryView : null
   const activeUseCaseScope = activeUseCase ? getUseCaseSaveScope(activeUseCase.use_case_id) : null
+  const homeSummaryGroups = useMemo<HomeSummaryGroup[]>(
+    () => [
+      {
+        label: '已选岗位',
+        values: state.selected_role_id ? [getRoleNameById(state.selected_role_id)] : [],
+      },
+      {
+        label: '基础技能',
+        values: state.selected_base_skill_ids.map((skillId) => getBaseSkillNameById(skillId)),
+      },
+      {
+        label: '已配置用例',
+        values: state.role_use_case_contents
+          .filter((useCase) => completion.useCaseIds[useCase.use_case_id])
+          .map((useCase) => useCase.use_case_name),
+      },
+      {
+        label: '安装目标',
+        values: state.selected_agent_ids.map((agentId) => getOnboardingAgentNameById(agentId)),
+      },
+      {
+        label: '安装技能',
+        values: state.selected_install_skill_ids.map((skillId) =>
+          state.selected_base_skill_ids.includes(skillId) ? getBaseSkillNameById(skillId) : skillId
+        ),
+      },
+    ],
+    [completion.useCaseIds, state]
+  )
 
   if (loading) {
     return <p className="muted">正在加载 onboarding 配置...</p>
@@ -558,6 +626,8 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
               title={detail.title}
             />
           )}
+
+          <HomeSummarySection groups={homeSummaryGroups} />
         </section>
       </div>
     )

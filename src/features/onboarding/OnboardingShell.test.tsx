@@ -181,6 +181,7 @@ const fixtures = vi.hoisted(() => {
 
 const mockControls = vi.hoisted(() => ({
   saveError: null as string | null,
+  stateOverride: null as OnboardingState | null,
 }))
 
 const invokeMock = vi.hoisted(() => vi.fn())
@@ -195,8 +196,10 @@ vi.mock('@tauri-apps/api/event', () => ({
 
 beforeEach(() => {
   mockControls.saveError = null
+  mockControls.stateOverride = null
   invokeMock.mockReset()
   invokeMock.mockImplementation(async (command: string, payload?: { state?: OnboardingState }) => {
+    const currentState = mockControls.stateOverride ?? fixtures.onboardingState
     switch (command) {
       case 'list_skills':
         return { success: [] }
@@ -209,13 +212,13 @@ beforeEach(() => {
       case 'get_config':
         return { success: { preferred_locale: 'zh-CN' } }
       case 'get_onboarding_state':
-        return { success: fixtures.onboardingState }
+        return { success: currentState }
       case 'set_onboarding_state':
         return mockControls.saveError
           ? { error: mockControls.saveError }
-          : { success: payload?.state ?? fixtures.onboardingState }
+          : { success: payload?.state ?? currentState }
       case 'get_onboarding_install_preview':
-        return { success: fixtures.onboardingPreview }
+        return { success: { ...fixtures.onboardingPreview, selected_install_skill_ids: currentState.selected_install_skill_ids, selected_agent_ids: currentState.selected_agent_ids } }
       case 'stage_onboarding_generated_packages':
         return { success: { production: null, test: null } }
       case 'sync_onboarding_installation':
@@ -248,15 +251,79 @@ describe('OnboardingShell', () => {
 
     await user.hover(useCaseCard)
 
-    expect(screen.getByText('按用例分别编辑内容')).toBeInTheDocument()
-    expect(screen.getByText('记录计划')).toBeInTheDocument()
-    expect(screen.getByText('记录日志')).toBeInTheDocument()
-    expect(screen.getByText('项目周报')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    const detailPanel = document.querySelector('.onboarding-detail-panel')
+    expect(detailPanel).not.toBeNull()
+    expect(
+      within(detailPanel as HTMLElement).getByText(
+        '先从当前岗位的用例列表中选择一个，再编辑该用例的描述、来源和规则。'
+      )
+    ).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('记录计划')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('记录日志')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('项目周报')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByRole('heading', { name: '用例配置' })).toBeInTheDocument()
 
     await user.unhover(useCaseCard)
 
     expect(screen.queryByRole('heading', { name: '用例配置' })).not.toBeInTheDocument()
+  })
+
+  it('lists configured onboarding details on the home screen', async () => {
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    const summary = screen.getByRole('region', { name: '已设置内容' })
+    const baseSkillsGroup = within(summary)
+      .getByText('基础技能')
+      .closest('.onboarding-home-summary__group') as HTMLElement
+    const useCasesGroup = within(summary)
+      .getByText('已配置用例')
+      .closest('.onboarding-home-summary__group') as HTMLElement
+    const installTargetsGroup = within(summary)
+      .getByText('安装目标')
+      .closest('.onboarding-home-summary__group') as HTMLElement
+    const installSkillsGroup = within(summary)
+      .getByText('安装技能')
+      .closest('.onboarding-home-summary__group') as HTMLElement
+
+    expect(within(summary).getByText('已选岗位')).toBeInTheDocument()
+    expect(within(summary).getByText('项目经理')).toBeInTheDocument()
+    expect(within(summary).getByText('基础技能')).toBeInTheDocument()
+    expect(within(baseSkillsGroup).getByText('Jira')).toBeInTheDocument()
+    expect(within(baseSkillsGroup).getByText('Confluence')).toBeInTheDocument()
+    expect(within(summary).getByText('已配置用例')).toBeInTheDocument()
+    expect(within(useCasesGroup).getByText('记录计划')).toBeInTheDocument()
+    expect(within(useCasesGroup).getByText('项目周报')).toBeInTheDocument()
+    expect(within(summary).getByText('安装目标')).toBeInTheDocument()
+    expect(within(installTargetsGroup).getByText('Codex')).toBeInTheDocument()
+    expect(within(installTargetsGroup).getByText('Claude Code')).toBeInTheDocument()
+    expect(within(summary).getByText('安装技能')).toBeInTheDocument()
+    expect(within(installSkillsGroup).getByText('test-project-manager-weekly-report')).toBeInTheDocument()
+  })
+
+  it('shows 未设置 for empty summary groups when no values are selected', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      role_use_case_contents: fixtures.onboardingState.role_use_case_contents.map((useCase) => ({
+        ...useCase,
+        description: '',
+        info_sources: '',
+        rules: '',
+      })),
+      selected_agent_ids: [],
+      selected_install_skill_ids: [],
+      selected_install_skill_ids_initialized: true,
+    }
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    const summary = screen.getByRole('region', { name: '已设置内容' })
+    expect(within(summary).getByText('基础技能')).toBeInTheDocument()
+    expect(within(summary).getAllByText('未设置').length).toBeGreaterThanOrEqual(4)
   })
 
   it('renders secondary-entry guidance as text instead of nested boxed cards', async () => {

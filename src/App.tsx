@@ -169,9 +169,6 @@ function App() {
               <button className="button--ghost" type="button" onClick={() => setView('installed')}>
                 已安装
               </button>
-              <button className="button--ghost" type="button" onClick={() => setView('settings')}>
-                设置
-              </button>
             </div>
           </div>
         </header>
