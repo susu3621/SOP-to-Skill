@@ -41,7 +41,7 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
-      - if: matrix.os == 'macos-latest'
+      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'
         name: Validate macOS signing secrets
         shell: bash
         env:
@@ -71,7 +71,7 @@ jobs:
             printf 'Missing required macOS signing/notarization secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest'
+      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'
         name: Write App Store Connect API key
         shell: bash
         env:
@@ -102,16 +102,19 @@ jobs:
             Automated desktop installer build from `${{ github.ref_name }}` at `${{ github.sha }}`.
           releaseDraft: true
           prerelease: true
-      - if: github.event_name != 'workflow_dispatch'
+      - if: github.event_name != 'workflow_dispatch' && matrix.os == 'macos-latest'
+        name: Build macOS desktop bundle on push with ad-hoc signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
-          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
-          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
+          APPLE_SIGNING_IDENTITY: '-'
+        with:
+          uploadWorkflowArtifacts: false
+      - if: github.event_name != 'workflow_dispatch' && matrix.os != 'macos-latest'
+        name: Build desktop bundle on push without release signing
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           uploadWorkflowArtifacts: false
       - uses: actions/upload-artifact@v4

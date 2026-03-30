@@ -23,6 +23,8 @@ rg -n 'bundle/nsis/\*\.exe' .github/workflows/build-desktop.yml
 rg -n 'uploadWorkflowArtifacts:\s*false' .github/workflows/build-desktop.yml
 rg -n 'releaseDraft:\s*true' .github/workflows/build-desktop.yml
 rg -n 'tagName:' .github/workflows/build-desktop.yml
+rg -n "if: matrix\.os == 'macos-latest' && github\.event_name == 'workflow_dispatch'" .github/workflows/build-desktop.yml
+rg -n "APPLE_SIGNING_IDENTITY: '-'" .github/workflows/build-desktop.yml
 rg -n 'APPLE_CERTIFICATE' .github/workflows/build-desktop.yml
 rg -n 'APPLE_API_ISSUER' .github/workflows/build-desktop.yml
 rg -n 'APPLE_API_KEY_PATH' .github/workflows/build-desktop.yml

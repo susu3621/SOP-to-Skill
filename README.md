@@ -54,7 +54,9 @@
 - `artifacts/desktop/<run-id>/macos/`: 存放 macOS `.dmg` 安装包
 - `artifacts/desktop/<run-id>/windows/`: 存放 Windows `.exe` 安装包
 
-如果要让 GitHub 上下载的 macOS 安装包能正常打开，而不是被 Gatekeeper 判定为“已损坏”，仓库需要在 Actions secrets 中提供以下 Apple 签名与公证配置：
+普通 `push` 触发的 macOS GitHub Actions 构建会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`）完成 smoke build，这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有手动触发 `workflow_dispatch` 时，workflow 才会要求完整的 Apple 签名与公证配置，并额外创建 draft GitHub Release。
+
+如果要让 `workflow_dispatch` 产出的 macOS 安装包能作为对外分发的签名/公证版本，仓库需要在 Actions secrets 中提供以下 Apple 配置：
 
 - `APPLE_CERTIFICATE`
 - `APPLE_CERTIFICATE_PASSWORD`

@@ -702,6 +702,16 @@ describe('build desktop all workflow dispatch', () => {
     expect(workflow).toContain('APPLE_API_KEY_PATH')
   })
 
+  it('keeps push macOS builds on ad-hoc signing while gating notarization secrets behind workflow_dispatch', () => {
+    const workflow = fs.readFileSync(
+      path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
+      'utf8',
+    )
+
+    expect(workflow).toContain("if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'")
+    expect(workflow).toContain("APPLE_SIGNING_IDENTITY: '-'")
+  })
+
   it('exposes a tauri npm script for tauri-action builds', () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'),
