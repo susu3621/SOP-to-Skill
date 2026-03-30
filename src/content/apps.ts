@@ -6,9 +6,9 @@ export const targetApps: TargetApp[] = [
     name: 'WorkBuddy',
     status: 'available',
     description: {
-      'zh-CN': '首版完整路径。用问答向导收集信息，再展示模拟配置结果。',
+      'zh-CN': '首版完整路径。用问答向导收集信息，再展示配置结果。',
       'en-US':
-        'The only fully open path in version one, using a guided questionnaire and simulated result page.'
+        'The only fully open path in version one, using a guided questionnaire and configuration result page.'
     },
     highlight: {
       'zh-CN': '当前可配置',

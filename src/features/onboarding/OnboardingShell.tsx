@@ -169,17 +169,17 @@ interface DetailPanelProps {
 function DetailPanel({ eyebrow, title, description, items }: DetailPanelProps) {
   return (
     <section aria-live="polite" className="onboarding-detail-panel">
-      <span className="panel__eyebrow">{eyebrow}</span>
+      <p className="onboarding-detail-panel__eyebrow">{eyebrow}</p>
       <h3 className="onboarding-detail-panel__title">{title}</h3>
       <p className="panel__body">{description}</p>
-      <div className="onboarding-detail-panel__items">
+      <ol className="onboarding-detail-panel__items">
         {items.map((item, index) => (
-          <article className="summary-card summary-card--nested" key={item}>
-            <p className="onboarding-detail-panel__item-index">{`${index + 1}.`}</p>
-            <h4 className="onboarding-detail-panel__item-title">{item}</h4>
-          </article>
+          <li className="onboarding-detail-panel__item" key={item}>
+            <span className="onboarding-detail-panel__item-index">{`${index + 1}.`}</span>
+            <span className="onboarding-detail-panel__item-title">{item}</span>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   )
 }

@@ -259,6 +259,28 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('heading', { name: '用例配置' })).not.toBeInTheDocument()
   })
 
+  it('renders secondary-entry guidance as text instead of nested boxed cards', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
+    const roleEntry = await screen.findByRole('button', { name: '选择岗位' })
+
+    await user.click(roleEntry)
+
+    const detailPanel = document.querySelector('.onboarding-detail-panel')
+    expect(detailPanel).not.toBeNull()
+    const detailHeading = within(detailPanel as HTMLElement).getByRole('heading', { name: '选择岗位' })
+    expect(detailHeading.closest('.summary-card')).toBeNull()
+    expect(within(detailPanel as HTMLElement).getByText('项目经理')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('产品经理')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('研发负责人')).toBeInTheDocument()
+    expect(document.querySelector('.summary-card--nested')).toBeNull()
+  })
+
   it('does not persist role changes until save and shows a success banner after saving', async () => {
     const user = userEvent.setup()
 

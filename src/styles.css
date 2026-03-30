@@ -583,11 +583,9 @@ textarea {
 
 .hint-callout {
   margin: 0;
-  padding: 14px 16px;
-  border-left: 4px solid rgba(20, 94, 83, 0.42);
-  border-radius: 16px;
-  background: rgba(20, 94, 83, 0.08);
+  padding: 0;
   color: rgba(22, 48, 41, 0.78);
+  font-size: 0.92rem;
 }
 
 /* New styles for Skill Template System */
@@ -707,10 +705,14 @@ textarea {
 .onboarding-detail-panel {
   display: grid;
   gap: 14px;
-  padding: 20px;
-  border: 1px solid rgba(22, 48, 41, 0.08);
-  border-radius: 22px;
-  background: rgba(255, 255, 255, 0.58);
+  padding: 4px 0 0;
+}
+
+.onboarding-detail-panel__eyebrow {
+  margin: 0;
+  color: rgba(22, 48, 41, 0.56);
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 
 .onboarding-detail-panel__title {
@@ -720,8 +722,16 @@ textarea {
 
 .onboarding-detail-panel__items {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onboarding-detail-panel__item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
 .onboarding-detail-panel__item-index {
@@ -732,7 +742,7 @@ textarea {
 }
 
 .onboarding-detail-panel__item-title {
-  margin: 6px 0 0;
+  margin: 0;
   font-size: 1rem;
 }
 
@@ -883,11 +893,6 @@ textarea {
 .onboarding-preview-list {
   display: grid;
   gap: 12px;
-}
-
-.summary-card--nested {
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: none;
 }
 
 .field-option--compact {

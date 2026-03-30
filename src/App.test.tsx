@@ -216,6 +216,8 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
+    expect(screen.queryByText('界面 Demo，暂不接入真实发送能力')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '基础信息设置' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '用例配置' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '安装技能' })).toBeInTheDocument()

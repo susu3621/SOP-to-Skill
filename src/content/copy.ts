@@ -30,32 +30,30 @@ export const pageCopy = {
     'en-US': 'Choose the tool you want to configure first'
   },
   selectionBody: {
-    'zh-CN': '本轮只开放 WorkBuddy 流程，其他入口先保留为可见占位。',
+    'zh-CN': '当前优先开放 WorkBuddy 配置流程，其他入口会逐步补齐。',
     'en-US':
-      'This release only opens the WorkBuddy path while the others stay visible as future integrations.'
+      'This release prioritizes the WorkBuddy setup flow while the other entries are filled in step by step.'
   },
   wizardTitle: {
-    'zh-CN': 'WorkBuddy 周报发送引导',
-    'en-US': 'WorkBuddy weekly report onboarding'
+    'zh-CN': 'WorkBuddy 配置向导',
+    'en-US': 'WorkBuddy setup wizard'
   },
   summaryTitle: {
     'zh-CN': '配置摘要',
     'en-US': 'Configuration summary'
   },
   summaryBody: {
-    'zh-CN': '这是首版的模拟摘要，用来确认问答流程和结果页结构。',
+    'zh-CN': '用于确认当前问答流程和结果页结构。',
     'en-US':
-      'This is the first-pass simulated summary used to validate the question flow and result layout.'
+      'Used to review the current question flow and result layout.'
   },
   resultTitle: {
-    'zh-CN': '已生成模拟配置结果',
-    'en-US': 'Generated simulated configuration result'
+    'zh-CN': '已生成配置结果',
+    'en-US': 'Generated configuration result'
   },
   resultBody: {
-    'zh-CN':
-      'WorkBuddy 将使用以下配置摘要。真实文件写入和环境探测将在后续版本接入。',
-    'en-US':
-      'WorkBuddy will use the following configuration summary. Real file writes and environment detection will be added in a later iteration.'
+    'zh-CN': 'WorkBuddy 将使用以下配置摘要。',
+    'en-US': 'WorkBuddy will use the following configuration summary.'
   },
   comingSoon: {
     'zh-CN': '即将支持',
@@ -94,8 +92,8 @@ export const pageCopy = {
     'en-US': 'Planned output locations'
   },
   localeTag: {
-    'zh-CN': '界面 Demo，暂不接入真实发送能力',
-    'en-US': 'UI demo only, no live send capability yet'
+    'zh-CN': '检查更新',
+    'en-US': 'Check updates'
   }
 } satisfies Record<string, LocalizedText>
 
