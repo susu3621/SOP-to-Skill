@@ -46,13 +46,13 @@
 `npm run tauri:build` 和 `npm run build:desktop:all` 解决的是不同问题：
 
 - `npm run tauri:build` 适合在当前机器上做本地验证，只依赖本机的 Tauri / Rust 环境，不会去触发 GitHub Actions，也不会收集另一平台的产物。
-- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端，`origin/<branch>` 也必须和当前本地 `HEAD` 一致。CI 会把 macOS 的 `.app` 重新打包成权限保留的 `.tar.gz` 作为上传 artifact。
+- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端，`origin/<branch>` 也必须和当前本地 `HEAD` 一致。CI 会直接上传 macOS 的 `.dmg` 安装包和 Windows 的 NSIS `.exe` 安装包作为 artifact。
 
 `npm run build:desktop:all` 的输出目录约定如下：
 
 - `artifacts/desktop/<run-id>/manifest.json`: 记录这次远程构建对应的 workflow、分支、 commit SHA 和下载时间
-- `artifacts/desktop/<run-id>/macos/`: 存放 macOS 构建产物
-- `artifacts/desktop/<run-id>/windows/`: 存放 Windows 构建产物
+- `artifacts/desktop/<run-id>/macos/`: 存放 macOS `.dmg` 安装包
+- `artifacts/desktop/<run-id>/windows/`: 存放 Windows `.exe` 安装包
 
 ## 维护方式
 

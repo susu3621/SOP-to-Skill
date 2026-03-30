@@ -9,7 +9,9 @@ rg -n 'desktop-macos' .github/workflows/build-desktop.yml
 rg -n 'desktop-windows' .github/workflows/build-desktop.yml
 rg -n 'tauri-apps/tauri-action@v0\.6\.2' .github/workflows/build-desktop.yml
 rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
-rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
+rg -n 'bundle/dmg/\*\.dmg' .github/workflows/build-desktop.yml
+rg -n 'bundle/nsis/\*\.exe' .github/workflows/build-desktop.yml
+! rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
 ! rg -n 'uploadWorkflowArtifacts:' .github/workflows/build-desktop.yml
 
 test -f index.html
