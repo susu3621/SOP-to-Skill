@@ -680,12 +680,18 @@ describe('build desktop all workflow dispatch', () => {
     expect(script).toContain("! rg -n '\"targets\"' src-tauri/tauri.conf.json")
   })
 
-  it('pins the desktop workflow to a published tauri action version with release and signing support', () => {
+  it('pins the desktop workflow to current GitHub-hosted action majors and a published tauri action version', () => {
     const workflow = fs.readFileSync(
       path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
       'utf8',
     )
 
+    expect(workflow).toContain('actions/checkout@v6')
+    expect(workflow).toContain('actions/setup-node@v6')
+    expect(workflow).not.toContain('actions/checkout@v5')
+    expect(workflow).not.toContain('actions/setup-node@v5')
+    expect(workflow).not.toContain('actions/checkout@v4')
+    expect(workflow).not.toContain('actions/setup-node@v4')
     expect(workflow).toContain('tauri-apps/tauri-action@v0.6.2')
     expect(workflow).not.toContain('tauri-apps/tauri-action@v1')
     expect(workflow).toContain('uploadWorkflowArtifacts: false')
