@@ -37,7 +37,7 @@ pub fn save_config(config: &AppConfig) -> Result<(), String> {
 #[tauri::command]
 pub fn get_config() -> SkillResult<AppConfig> {
     let config = load_config();
-    SkillResult::Success(config)
+    SkillResult::Success { success: config }
 }
 
 /// Update configuration
@@ -57,7 +57,7 @@ pub fn update_config(
     }
 
     match save_config(&config) {
-        Ok(()) => SkillResult::Success(config),
+        Ok(()) => SkillResult::Success { success: config },
         Err(e) => SkillResult::Error { error: e },
     }
 }
@@ -108,5 +108,5 @@ pub fn open_data_directory() -> SkillResult<()> {
             .ok();
     }
 
-    SkillResult::Success(())
+    SkillResult::Success { success: () }
 }

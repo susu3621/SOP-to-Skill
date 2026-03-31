@@ -102,13 +102,13 @@ fn validate_selected_agent_ids(
 
 #[tauri::command]
 pub fn get_onboarding_state() -> SkillResult<OnboardingState> {
-    SkillResult::Success(load_onboarding_state())
+    SkillResult::Success { success: load_onboarding_state() }
 }
 
 #[tauri::command]
 pub fn set_onboarding_state(state: OnboardingState) -> SkillResult<OnboardingState> {
     match save_onboarding_state(&state) {
-        Ok(()) => SkillResult::Success(state),
+        Ok(()) => SkillResult::Success { success: state },
         Err(error) => SkillResult::Error { error },
     }
 }
@@ -123,11 +123,11 @@ pub fn get_onboarding_install_preview(
         return SkillResult::Error { error };
     }
 
-    SkillResult::Success(build_onboarding_install_preview(
+    SkillResult::Success { success: build_onboarding_install_preview(
         &state,
         &selected_use_cases,
         &agents,
-    ))
+    ) }
 }
 
 #[tauri::command]
@@ -135,7 +135,7 @@ pub fn stage_onboarding_generated_packages(
     input: StageOnboardingPackageInput,
 ) -> SkillResult<StagedOnboardingPackages> {
     match stage_generated_use_case_skill_packages(&input) {
-        Ok(result) => SkillResult::Success(result),
+        Ok(result) => SkillResult::Success { success: result },
         Err(error) => SkillResult::Error {
             error: error.to_string(),
         },
@@ -179,7 +179,7 @@ pub async fn sync_onboarding_installation(
 
         for skill_id in &agent_preview.removed_skill_ids {
             match skill::uninstall_skill(skill_id.clone(), agent_state.id.clone()).await {
-                SkillResult::Success(_) => {}
+                SkillResult::Success { .. } => {}
                 SkillResult::Error { error } => {
                     result_error = Some(error);
                     break;
@@ -223,7 +223,7 @@ pub async fn sync_onboarding_installation(
                     )
                     .await
                     {
-                        SkillResult::Success(_) => {}
+                        SkillResult::Success { .. } => {}
                         SkillResult::Error { error } => {
                             result_error = Some(error);
                             break;
@@ -243,11 +243,13 @@ pub async fn sync_onboarding_installation(
         });
     }
 
-    SkillResult::Success(OnboardingBatchSyncResult {
-        selected_agent_ids: preview.selected_agent_ids,
-        selected_install_skill_ids: preview.selected_install_skill_ids,
-        agent_results,
-    })
+    SkillResult::Success {
+        success: OnboardingBatchSyncResult {
+            selected_agent_ids: preview.selected_agent_ids,
+            selected_install_skill_ids: preview.selected_install_skill_ids,
+            agent_results,
+        },
+    }
 }
 
 pub fn load_onboarding_state() -> OnboardingState {

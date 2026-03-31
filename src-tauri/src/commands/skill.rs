@@ -23,14 +23,14 @@ impl Default for SkillState {
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum SkillResult<T> {
-    Success(T),
+    Success { success: T },
     Error { error: String },
 }
 
 impl<T: Serialize> From<Result<T, SkillError>> for SkillResult<T> {
     fn from(result: Result<T, SkillError>) -> Self {
         match result {
-            Ok(value) => SkillResult::Success(value),
+            Ok(value) => SkillResult::Success { success: value },
             Err(e) => SkillResult::Error {
                 error: e.to_string(),
             },

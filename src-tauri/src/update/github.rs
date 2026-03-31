@@ -197,7 +197,7 @@ pub async fn check_skill_updates() -> crate::commands::skill::SkillResult<Vec<Up
     };
 
     match check_all_updates(templates).await {
-        Ok(results) => crate::commands::skill::SkillResult::Success(results),
+        Ok(results) => crate::commands::skill::SkillResult::Success { success: results },
         Err(e) => crate::commands::skill::SkillResult::Error { error: e.to_string() },
     }
 }
@@ -206,7 +206,7 @@ pub async fn check_skill_updates() -> crate::commands::skill::SkillResult<Vec<Up
 #[tauri::command]
 pub async fn check_app_updates() -> crate::commands::skill::SkillResult<Option<ReleaseInfo>> {
     match get_latest_release("skills-for-no-engineer", "configurator").await {
-        Ok(info) => crate::commands::skill::SkillResult::Success(info),
+        Ok(info) => crate::commands::skill::SkillResult::Success { success: info },
         Err(e) => crate::commands::skill::SkillResult::Error { error: e.to_string() },
     }
 }
