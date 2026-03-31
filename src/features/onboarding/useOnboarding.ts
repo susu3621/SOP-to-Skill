@@ -9,7 +9,6 @@ import {
   onboardingRoles,
   onboardingSupportedAgents,
   onboardingUseCases,
-  sharedConfig,
 } from '../../content/workbuddy'
 import type {
   InstalledSkillInfo,
@@ -53,6 +52,10 @@ function unique(values: string[]) {
 
 function isBaseSkillId(skillId: string) {
   return onboardingBaseSkills.some((skill) => skill.id === skillId)
+}
+
+function isRoleId(roleId: string) {
+  return onboardingRoles.some((role) => role.id === roleId)
 }
 
 function buildManagedSkillIds(roleId: string, baseSkillIds: string[]) {
@@ -185,19 +188,11 @@ function buildAgentPreviews(
 }
 
 function createEmptyState(): OnboardingState {
-  const selected_agent_ids = sharedConfig.testDefaults.agentApps.filter((agentId) =>
-    onboardingSupportedAgents.some((agent) => agent.id === agentId)
-  )
-  const selected_role_id = sharedConfig.testDefaults.role
-  const selected_base_skill_ids = sharedConfig.testDefaults.baseSkills.filter((skillId) =>
-    onboardingBaseSkills.some((skill) => skill.id === skillId)
-  )
-
   return {
-    selected_agent_ids,
-    selected_role_id,
-    selected_base_skill_ids,
-    role_use_case_contents: createDefaultRoleUseCaseContents(selected_role_id),
+    selected_agent_ids: [],
+    selected_role_id: '',
+    selected_base_skill_ids: [],
+    role_use_case_contents: [],
     selected_install_skill_ids: [],
     selected_install_skill_ids_initialized: false,
     selected_install_candidate_skill_ids: [],
@@ -206,7 +201,7 @@ function createEmptyState(): OnboardingState {
 }
 
 function normalizeState(state: OnboardingState): OnboardingState {
-  const selected_role_id = state.selected_role_id || sharedConfig.testDefaults.role || onboardingRoles[0]?.id || ''
+  const selected_role_id = isRoleId(state.selected_role_id) ? state.selected_role_id : ''
   const selected_agent_ids = unique(
     state.selected_agent_ids.filter((agentId) =>
       onboardingSupportedAgents.some((agent) => agent.id === agentId)
@@ -226,7 +221,9 @@ function normalizeState(state: OnboardingState): OnboardingState {
     selected_role_id,
     selected_agent_ids,
     selected_base_skill_ids,
-    role_use_case_contents: createDefaultRoleUseCaseContents(selected_role_id, state.role_use_case_contents),
+    role_use_case_contents: selected_role_id
+      ? createDefaultRoleUseCaseContents(selected_role_id, state.role_use_case_contents)
+      : [],
     selected_install_skill_ids: unique(state.selected_install_skill_ids),
     selected_install_candidate_skill_ids: unique(state.selected_install_candidate_skill_ids),
     credential_values: Object.fromEntries(
@@ -753,6 +750,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     saveFeedbacks,
     saveState,
     selectedUseCases,
+    savedResolvedSelectedInstallSkillIds,
     savedState,
     savingScope,
     state,

@@ -234,6 +234,74 @@ function getSetStateCalls() {
 }
 
 describe('OnboardingShell', () => {
+  it('keeps the home summary empty and shows no configured badges for a fresh unsaved state', async () => {
+    mockControls.stateOverride = {
+      selected_agent_ids: [],
+      selected_role_id: '',
+      selected_base_skill_ids: [],
+      role_use_case_contents: [],
+      selected_install_skill_ids: [],
+      selected_install_skill_ids_initialized: false,
+      selected_install_candidate_skill_ids: [],
+      credential_values: {},
+    }
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    const basicCard = screen.getByRole('button', { name: '基础信息设置' })
+    const useCaseCard = screen.getByRole('button', { name: '用例配置' })
+    const installCard = screen.getByRole('button', { name: '安装技能' })
+
+    expect(within(basicCard).queryByText('已设置')).not.toBeInTheDocument()
+    expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
+    expect(within(installCard).queryByText('已设置')).not.toBeInTheDocument()
+
+    const summary = screen.getByRole('region', { name: '已设置内容' })
+    expect(within(summary).getAllByText('未设置')).toHaveLength(5)
+    expect(within(summary).queryByText('项目经理')).not.toBeInTheDocument()
+    expect(within(summary).queryByText('Jira')).not.toBeInTheDocument()
+    expect(within(summary).queryByText('Codex')).not.toBeInTheDocument()
+  })
+
+  it('keeps basic info and install editors fully unselected for a fresh unsaved state', async () => {
+    mockControls.stateOverride = {
+      selected_agent_ids: [],
+      selected_role_id: '',
+      selected_base_skill_ids: [],
+      role_use_case_contents: [],
+      selected_install_skill_ids: [],
+      selected_install_skill_ids_initialized: false,
+      selected_install_candidate_skill_ids: [],
+      credential_values: {},
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
+    await user.click(await screen.findByRole('button', { name: '选择岗位' }))
+
+    expect(screen.getByRole('radio', { name: '项目经理' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: '产品经理' })).not.toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: '选择基础技能' }))
+
+    expect(screen.getByRole('checkbox', { name: 'Jira' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Confluence' })).not.toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '安装技能' }))
+
+    expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Codex' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Claude Code' })).not.toBeChecked()
+  })
+
   it('shows saved status badges and hides module detail until the user hovers a card', async () => {
     const user = userEvent.setup()
 

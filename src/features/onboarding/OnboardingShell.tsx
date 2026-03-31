@@ -488,8 +488,10 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     previewError,
     saveFeedbacks,
     saveState,
+    savedResolvedSelectedInstallSkillIds,
     savingScope,
     state,
+    savedState,
     syncError,
     syncing,
     syncResult,
@@ -529,30 +531,30 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     () => [
       {
         label: '已选岗位',
-        values: state.selected_role_id ? [getRoleNameById(state.selected_role_id)] : [],
+        values: savedState.selected_role_id ? [getRoleNameById(savedState.selected_role_id)] : [],
       },
       {
         label: '基础技能',
-        values: state.selected_base_skill_ids.map((skillId) => getBaseSkillNameById(skillId)),
+        values: savedState.selected_base_skill_ids.map((skillId) => getBaseSkillNameById(skillId)),
       },
       {
         label: '已配置用例',
-        values: state.role_use_case_contents
+        values: savedState.role_use_case_contents
           .filter((useCase) => completion.useCaseIds[useCase.use_case_id])
           .map((useCase) => useCase.use_case_name),
       },
       {
         label: '安装目标',
-        values: state.selected_agent_ids.map((agentId) => getOnboardingAgentNameById(agentId)),
+        values: savedState.selected_agent_ids.map((agentId) => getOnboardingAgentNameById(agentId)),
       },
       {
         label: '安装技能',
-        values: state.selected_install_skill_ids.map((skillId) =>
-          state.selected_base_skill_ids.includes(skillId) ? getBaseSkillNameById(skillId) : skillId
+        values: savedResolvedSelectedInstallSkillIds.map((skillId) =>
+          savedState.selected_base_skill_ids.includes(skillId) ? getBaseSkillNameById(skillId) : skillId
         ),
       },
     ],
-    [completion.useCaseIds, state]
+    [completion.useCaseIds, savedResolvedSelectedInstallSkillIds, savedState]
   )
 
   if (loading) {
