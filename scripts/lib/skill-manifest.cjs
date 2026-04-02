@@ -6,7 +6,11 @@ const { execFileSync } = require('node:child_process')
 const MANIFEST_RELATIVE_PATH = path.join('skills', 'manifest.json')
 const SEMVER_PATTERN =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/
-const IGNORED_BASENAMES = new Set(['.DS_Store'])
+const IGNORED_BASENAMES = new Set([
+  '.DS_Store',
+  '__pycache__',
+  '.pytest_cache',
+])
 
 function toPosixPath(value) {
   return value.split(path.sep).join('/')
@@ -47,6 +51,10 @@ function collectSkillFiles(skillDir, currentDir = skillDir) {
     }
 
     if (entry.isFile()) {
+      if (entry.name.endsWith('.pyc')) {
+        continue
+      }
+
       files.push(toPosixPath(path.relative(skillDir, absolutePath)))
     }
   }

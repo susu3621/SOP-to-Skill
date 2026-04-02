@@ -62,6 +62,32 @@ function writeSkill(repoRoot: string, skillId: string, contents: Record<string, 
 }
 
 describe('skill manifest validation', () => {
+  it('ignores generated Python cache files when hashing skill content', () => {
+    const repoRoot = tempRepoRoot('ignore-python-cache')
+    writeSkill(repoRoot, 'jira', {
+      'SKILL.md': '# Jira\n',
+      'scripts/search_jira.py': "print('jira')\n",
+    })
+
+    const { computeSkillContentHash } = loadSkillManifestLib()
+    const cleanHash = computeSkillContentHash({
+      repoRoot,
+      skillPath: 'skills/jira',
+    })
+
+    writeSkill(repoRoot, 'jira', {
+      'scripts/__pycache__/search_jira.cpython-313.pyc': 'compiled',
+      '.pytest_cache/README.md': 'cache',
+    })
+
+    expect(
+      computeSkillContentHash({
+        repoRoot,
+        skillPath: 'skills/jira',
+      }),
+    ).toBe(cleanHash)
+  })
+
   it('fails when the manifest hash does not match the packaged files', () => {
     const repoRoot = tempRepoRoot('hash-mismatch')
     writeSkill(repoRoot, 'jira', {
