@@ -17,6 +17,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run verify:skills
       - run: npm run test
       - run: npm run build
 
@@ -41,6 +42,26 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
+      - if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+        name: Validate updater signing secrets
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for var in TAURI_SIGNING_PRIVATE_KEY TAURI_UPDATER_PUBLIC_KEY
+          do
+            if [ -z "${!var:-}" ]; then
+              missing+=("$var")
+            fi
+          done
+
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf 'Missing required updater signing secrets: %s\n' "${missing[*]}" >&2
+            exit 1
+          fi
       - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'
         name: Validate macOS signing secrets
         shell: bash
@@ -84,10 +105,26 @@ jobs:
           EOF
           chmod 600 "$key_path"
           echo "APPLE_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-      - if: github.event_name == 'workflow_dispatch'
+      - if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+        name: Write release updater config
+        shell: bash
+        env:
+          TAURI_UPDATER_PUBLIC_KEY: ${{ secrets.TAURI_UPDATER_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          node <<'EOF'
+          const fs = require('node:fs')
+          const configPath = 'src-tauri/tauri.release.conf.json'
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf8'))
+          config.plugins.updater.pubkey = process.env.TAURI_UPDATER_PUBLIC_KEY
+          fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
+          EOF
+      - if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -95,14 +132,17 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
         with:
+          args: --config src-tauri/tauri.release.conf.json
           uploadWorkflowArtifacts: false
-          tagName: desktop-build-${{ github.run_id }}
-          releaseName: Desktop Build ${{ github.run_number }}
+          uploadUpdaterJson: true
+          uploadUpdaterSignatures: true
+          tagName: v__VERSION__
+          releaseName: Skill Configurator v__VERSION__
           releaseBody: |
-            Automated desktop installer build from `${{ github.ref_name }}` at `${{ github.sha }}`.
-          releaseDraft: true
-          prerelease: true
-      - if: github.event_name != 'workflow_dispatch' && matrix.os == 'macos-latest'
+            Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
+          releaseDraft: false
+          prerelease: false
+      - if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-latest'
         name: Build macOS desktop bundle on push with ad-hoc signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
@@ -110,7 +150,7 @@ jobs:
           APPLE_SIGNING_IDENTITY: '-'
         with:
           uploadWorkflowArtifacts: false
-      - if: github.event_name != 'workflow_dispatch' && matrix.os != 'macos-latest'
+      - if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v') && matrix.os != 'macos-latest'
         name: Build desktop bundle on push without release signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:

@@ -519,6 +519,8 @@ pub struct TargetAppInfo {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::SkillManifestEntry;
+    use crate::template::load_skill_template_from_dir_with_manifest;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir(prefix: &str) -> PathBuf {
@@ -562,5 +564,45 @@ mod tests {
         assert!(rendered.contains("scripts/search_jira.py"));
         assert!(rendered.contains(output_dir.to_string_lossy().as_ref()));
         assert!(output_dir.join("scripts/search_jira.py").exists());
+    }
+
+    #[test]
+    fn install_directory_package_uses_manifest_version_for_directory_packages() {
+        let skills_dir = temp_dir("install-skill-manifest-skills");
+        let data_dir = temp_dir("install-skill-manifest-data");
+        let output_dir = temp_dir("install-skill-manifest-output");
+        let jira_dir = skills_dir.join("jira");
+
+        fs::create_dir_all(jira_dir.join("scripts")).unwrap();
+        fs::write(jira_dir.join("SKILL.md"), "# Jira\n").unwrap();
+        fs::write(jira_dir.join("scripts/search_jira.py"), "print('ok')\n").unwrap();
+        let manifest_entry = SkillManifestEntry {
+            id: "jira".to_string(),
+            path: "skills/jira".to_string(),
+            version: "1.2.3".to_string(),
+            targets: vec![TargetAppId::Codex],
+            content_hash: "sha256:test".to_string(),
+        };
+
+        let template = load_skill_template_from_dir_with_manifest(
+            "jira",
+            &jira_dir,
+            Some(&manifest_entry),
+        )
+        .unwrap();
+
+        let installed = install_directory_package_at_path(
+            "jira",
+            &TargetAppId::Codex,
+            &jira_dir,
+            &output_dir,
+            &template.version,
+            &HashMap::new(),
+            true,
+            Some(&data_dir),
+        )
+        .unwrap();
+
+        assert_eq!(installed.installed_version, "1.2.3");
     }
 }

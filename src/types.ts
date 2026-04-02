@@ -96,6 +96,13 @@ export interface UpdateCheckResult {
   release_url?: string
 }
 
+export interface AppUpdateInfo {
+  currentVersion: string
+  version: string
+  body?: string | null
+  date?: string | null
+}
+
 export interface SkillResult<T> {
   success?: T
   error?: string

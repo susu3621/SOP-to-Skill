@@ -10,6 +10,7 @@ pub type LocalizedText = HashMap<String, String>;
 pub enum TargetAppId {
     ClaudeCode,
     Codex,
+    #[serde(rename = "workbuddy")]
     WorkBuddy,
 }
 
@@ -153,6 +154,26 @@ pub struct SkillTemplate {
     pub variables: Vec<TemplateVariable>,
 }
 
+/// Repository-managed manifest for directory-packaged skills.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillManifest {
+    #[serde(rename = "schemaVersion")]
+    pub schema_version: u32,
+    pub skills: Vec<SkillManifestEntry>,
+}
+
+/// Version metadata for one skill inside the repository manifest.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SkillManifestEntry {
+    pub id: String,
+    pub path: String,
+    pub version: String,
+    #[serde(default)]
+    pub targets: Vec<TargetAppId>,
+    #[serde(rename = "contentHash")]
+    pub content_hash: String,
+}
+
 /// Installed skill state
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstalledSkill {
@@ -223,6 +244,9 @@ pub enum SkillError {
 
     #[error("GitHub API error: {0}")]
     GitHubError(String),
+
+    #[error("Skill manifest error: {0}")]
+    ManifestError(String),
 }
 
 impl Serialize for SkillError {

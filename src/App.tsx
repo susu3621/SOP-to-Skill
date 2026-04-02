@@ -39,7 +39,14 @@ function App() {
     installSkill,
     uninstallSkill,
   } = useSkills()
-  const { hasUpdates, checkUpdates } = useUpdates()
+  const {
+    appUpdate,
+    hasUpdates,
+    checkUpdates,
+    installUpdate,
+    installing: installingUpdate,
+    error: updateError,
+  } = useUpdates()
 
   useEffect(() => {
     const unlisten = listen<string>('tray-navigate', (event) => {
@@ -155,10 +162,26 @@ function App() {
             <p className="masthead__subtitle">{getCopy(locale, pageCopy.heroBody)}</p>
           </div>
           <div className="masthead__actions">
-            <button className="tag tag--button" type="button" onClick={checkUpdates}>
-              {getCopy(locale, pageCopy.localeTag)}
-              {hasUpdates && <span className="update-badge">更新</span>}
-            </button>
+            {hasUpdates && appUpdate ? (
+              <>
+                <button
+                  className="tag tag--button"
+                  type="button"
+                  onClick={() => {
+                    void installUpdate()
+                  }}
+                  disabled={installingUpdate}
+                >
+                  {installingUpdate ? '安装更新中...' : '下载并安装更新'}
+                  <span className="update-badge">更新</span>
+                </button>
+                <p className="update-hint">发现新版本 v{appUpdate.version}</p>
+              </>
+            ) : (
+              <button className="tag tag--button" type="button" onClick={checkUpdates}>
+                {getCopy(locale, pageCopy.localeTag)}
+              </button>
+            )}
             <div className="header-nav">
               <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>
                 Onboarding
@@ -489,6 +512,34 @@ function App() {
                       <p className="panel__body">配置 Skill Configurator。</p>
 
                       <div className="settings-grid">
+                        <section className="summary-card">
+                          <h3>应用更新</h3>
+                          {hasUpdates && appUpdate ? (
+                            <>
+                              <p className="muted">当前版本 v{appUpdate.currentVersion}</p>
+                              <p>新版本 v{appUpdate.version}</p>
+                              {appUpdate.body && <p className="muted">{appUpdate.body}</p>}
+                              <button
+                                className="button"
+                                type="button"
+                                onClick={() => {
+                                  void installUpdate()
+                                }}
+                                disabled={installingUpdate}
+                              >
+                                {installingUpdate ? '安装更新中...' : '下载并安装更新'}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <p className="muted">当前没有检测到可用的新版本。</p>
+                              <button className="button--ghost" type="button" onClick={checkUpdates}>
+                                {updateError ? '重新检查更新' : '检查更新'}
+                              </button>
+                            </>
+                          )}
+                          {updateError && <p className="error">{updateError}</p>}
+                        </section>
                         <section className="summary-card">
                           <h3>数据目录</h3>
                           <p className="muted" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>

@@ -1,34 +1,49 @@
 import { useState, useCallback, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import type { UpdateCheckResult, SkillResult } from '../types'
+import type { AppUpdateInfo } from '../types'
 
 export function useUpdates() {
-  const [updateResults, setUpdateResults] = useState<UpdateCheckResult[]>([])
+  const [appUpdate, setAppUpdate] = useState<AppUpdateInfo | null>(null)
   const [checking, setChecking] = useState(false)
+  const [installing, setInstalling] = useState(false)
   const [lastCheck, setLastCheck] = useState<Date | null>(null)
   const [hasUpdates, setHasUpdates] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const checkUpdates = useCallback(async () => {
     setChecking(true)
+    setError(null)
 
     try {
-      const result: SkillResult<UpdateCheckResult[]> = await invoke('check_skill_updates')
-
-      if (result.success) {
-        setUpdateResults(result.success)
-        setLastCheck(new Date())
-
-        const hasAvailable = result.success.some(
-          (r) => r.update_status === 'update-available'
-        )
-        setHasUpdates(hasAvailable)
-      }
+      const result = await invoke<AppUpdateInfo | null>('check_app_update')
+      setAppUpdate(result ?? null)
+      setLastCheck(new Date())
+      setHasUpdates(Boolean(result))
     } catch (e) {
+      setAppUpdate(null)
+      setHasUpdates(false)
+      setError(String(e))
       console.error('Failed to check updates:', e)
+    } finally {
+      setChecking(false)
     }
+  }, [])
 
-    setChecking(false)
+  const installUpdate = useCallback(async (): Promise<{ success?: boolean; error?: string }> => {
+    setInstalling(true)
+    setError(null)
+
+    try {
+      await invoke<boolean>('install_app_update')
+      return { success: true }
+    } catch (e) {
+      const message = String(e)
+      setError(message)
+      return { error: message }
+    } finally {
+      setInstalling(false)
+    }
   }, [])
 
   // Listen for tray check updates event
@@ -60,10 +75,13 @@ export function useUpdates() {
   }, [checkUpdates])
 
   return {
-    updateResults,
+    appUpdate,
     checking,
+    installing,
     lastCheck,
     hasUpdates,
+    error,
     checkUpdates,
+    installUpdate,
   }
 }

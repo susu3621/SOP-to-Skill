@@ -6,6 +6,7 @@ mod tray;
 mod update;
 
 use commands::skill::SkillState;
+use update::app::PendingAppUpdate;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -22,7 +23,13 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(SkillState::default())
+        .manage(PendingAppUpdate::default())
         .setup(|app| {
+            #[cfg(desktop)]
+            app.handle()
+                .plugin(tauri_plugin_updater::Builder::new().build())
+                .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
+
             // Setup system tray
             if let Err(e) = tray::setup_tray(app.handle()) {
                 tracing::error!("Failed to setup tray: {}", e);
@@ -55,6 +62,8 @@ pub fn run() {
             commands::config::get_data_directory,
             commands::config::open_data_directory,
             // Update commands
+            update::app::check_app_update,
+            update::app::install_app_update,
             update::github::check_skill_updates,
             update::github::check_app_updates,
         ])

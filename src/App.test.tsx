@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import App from './App'
 import type {
   OnboardingAgentSyncResult,
@@ -171,10 +172,24 @@ const fixtures = vi.hoisted(() => {
     ],
   }
 
+  const appUpdate = {
+    currentVersion: '0.1.0',
+    version: '0.2.0',
+    body: 'Bug fixes and bundled skill updates.',
+    date: '2026-04-02T00:00:00Z',
+  }
+
+  const runtime = {
+    appUpdate: null as null | typeof appUpdate,
+    installAppUpdateCalls: 0,
+  }
+
   return {
+    appUpdate,
     onboardingState,
     onboardingPreview,
     onboardingSyncResult,
+    runtime,
   }
 })
 
@@ -187,8 +202,11 @@ vi.mock('@tauri-apps/api/core', () => ({
         return { success: [] }
       case 'get_target_apps':
         return []
-      case 'check_skill_updates':
-        return { success: [] }
+      case 'check_app_update':
+        return fixtures.runtime.appUpdate
+      case 'install_app_update':
+        fixtures.runtime.installAppUpdateCalls += 1
+        return true
       case 'get_config':
         return { success: { preferred_locale: 'zh-CN' } }
       case 'get_onboarding_state':
@@ -212,6 +230,11 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 describe('onboarding shell smoke coverage', () => {
+  beforeEach(() => {
+    fixtures.runtime.appUpdate = null
+    fixtures.runtime.installAppUpdateCalls = 0
+  })
+
   it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
     render(<App />)
 
@@ -226,5 +249,19 @@ describe('onboarding shell smoke coverage', () => {
     expect(
       screen.queryByRole('heading', { name: /Agent、岗位和基础技能/i })
     ).not.toBeInTheDocument()
+  })
+
+  it('shows an install action when a newer desktop app update is available', async () => {
+    fixtures.runtime.appUpdate = fixtures.appUpdate
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    const installButton = await screen.findByRole('button', { name: /下载并安装更新/ })
+    expect(screen.getByText('发现新版本 v0.2.0')).toBeInTheDocument()
+
+    await user.click(installButton)
+
+    expect(fixtures.runtime.installAppUpdateCalls).toBe(1)
   })
 })

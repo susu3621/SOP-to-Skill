@@ -46,7 +46,7 @@
 `npm run tauri:build` 和 `npm run build:desktop:all` 解决的是不同问题：
 
 - `npm run tauri:build` 适合在当前机器上做本地验证，只依赖本机的 Tauri / Rust 环境，不会去触发 GitHub Actions，也不会收集另一平台的产物。
-- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端，`origin/<branch>` 也必须和当前本地 `HEAD` 一致。CI 会继续上传 macOS 的 `.dmg` 安装包和 Windows 的 NSIS `.exe` 安装包作为 artifact 供自动化下载；手动触发的 workflow 还会额外创建一个 draft GitHub Release，直接提供未包成 zip 的安装包下载链接。
+- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端，`origin/<branch>` 也必须和当前本地 `HEAD` 一致。CI 会继续上传 macOS 的 `.dmg` 安装包和 Windows 的 NSIS `.exe` 安装包作为 artifact 供自动化下载；当 workflow 以 `workflow_dispatch` 或 `v*` tag 运行时，还会创建正式 GitHub Release 并附带 updater 所需的 `latest.json` 与签名产物。
 
 `npm run build:desktop:all` 的输出目录约定如下：
 
@@ -54,7 +54,7 @@
 - `artifacts/desktop/<run-id>/macos/`: 存放 macOS `.dmg` 安装包
 - `artifacts/desktop/<run-id>/windows/`: 存放 Windows `.exe` 安装包
 
-普通 `push` 触发的 macOS GitHub Actions 构建会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`）完成 smoke build，这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有手动触发 `workflow_dispatch` 时，workflow 才会要求完整的 Apple 签名与公证配置，并额外创建 draft GitHub Release。
+普通 `push` 触发的 macOS GitHub Actions 构建会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`）完成 smoke build，这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有 `workflow_dispatch` 或 `v*` tag 触发的 release 构建，workflow 才会要求完整的 Apple 签名、公证和 updater 签名配置，并发布正式 GitHub Release。
 
 如果要让 `workflow_dispatch` 产出的 macOS 安装包能作为对外分发的签名/公证版本，仓库需要在 Actions secrets 中提供以下 Apple 配置：
 
@@ -65,11 +65,36 @@
 - `APPLE_API_KEY`
 - `APPLE_API_KEY_CONTENT`
 
+如果要让 GitHub Releases 同时生成可被应用内 updater 使用的更新包，还需要提供以下配置：
+
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+- `TAURI_UPDATER_PUBLIC_KEY`
+
 ## 维护方式
 
 - `docs/index.md` 仍然是公开文档的正式内容源。
 - 桌面配置器代码位于顶层 `src/` 和 `src-tauri/`。
 - `Codex` 与 `Claude Code` 当前只保留为可见入口，后续再接入真实向导流程。
+
+## Skill 版本管理
+
+仓库里的内置 skill 使用 `skills/manifest.json` 作为版本来源。
+
+- 每个 skill 都有独立 `semver`
+- `contentHash` 记录当前目录包内容的稳定哈希
+- 修改某个 skill 目录包时，需要同步更新该 skill 的 `version` 和 `contentHash`
+- `npm run verify:skills` 会校验 manifest 结构、目录内容哈希，以及在提供基线 ref 时检查“内容变了但版本没 bump”的情况
+
+桌面程序安装 skill 后，会把 manifest 里的版本写入本地已安装元数据，因此 UI 可以识别用户机器上的已安装版本。
+
+## 应用在线升级
+
+在线升级只在 release 构建中启用，配置位于 `src-tauri/tauri.release.conf.json`。
+
+- 普通分支 `push` 仍然只做 smoke build，不生成 updater 产物
+- `workflow_dispatch` 或 `v*` tag 触发的 release 构建会注入 updater 公钥，并让 `tauri-action` 上传签名产物和 `latest.json`
+- 桌面应用运行时通过 Tauri updater 检查 GitHub Releases 上的 `latest.json`
 
 ## Skill 安装
 

@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "skills": [
+    {
+      "id": "confluence",
+      "path": "skills/confluence",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "contentHash": "sha256:b50a0745481b43f58201073841417728de92dd2fec535f1e31d0c498b58a1c95"
+    },
+    {
+      "id": "jira",
+      "path": "skills/jira",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "contentHash": "sha256:8ee3ef13bb988a0e0888e07e3ee9acbc9a0713cbc71806df48838a39319dda4f"
+    },
+    {
+      "id": "mail",
+      "path": "skills/mail",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "contentHash": "sha256:8dd737be5ca6192c0207bb6671c78063cc0d0b780249fa6d0388c142be94e5fb"
+    }
+  ]
+}
