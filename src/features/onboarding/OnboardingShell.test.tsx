@@ -313,7 +313,7 @@ describe('OnboardingShell', () => {
     const installCard = screen.getByRole('button', { name: '安装技能' })
 
     expect(within(basicCard).getByText('已设置')).toBeInTheDocument()
-    expect(within(useCaseCard).getByText('已设置')).toBeInTheDocument()
+    expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(installCard).getByText('已设置')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: '基础信息设置' })).not.toBeInTheDocument()
 
@@ -323,12 +323,15 @@ describe('OnboardingShell', () => {
     expect(detailPanel).not.toBeNull()
     expect(
       within(detailPanel as HTMLElement).getByText(
-        '先从当前岗位的用例列表中选择一个，再编辑该用例的描述、来源和规则。'
+        '先从当前岗位的用例列表中选择一个，再查看或调整预置描述，并补充当前流程 / SOP / 模板。'
       )
     ).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('需求评估')).toBeInTheDocument()
     expect(within(detailPanel as HTMLElement).getByText('记录计划')).toBeInTheDocument()
     expect(within(detailPanel as HTMLElement).getByText('记录日志')).toBeInTheDocument()
     expect(within(detailPanel as HTMLElement).getByText('项目周报')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).queryByText('成本核算')).not.toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).queryByText('风险升级')).not.toBeInTheDocument()
     expect(within(detailPanel as HTMLElement).getByRole('heading', { name: '用例配置' })).toBeInTheDocument()
 
     await user.unhover(useCaseCard)
@@ -462,6 +465,76 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
   })
 
+  it('keeps default project manager use cases available when loading onboarding state fails', async () => {
+    mockControls.stateOverride = null
+    const user = userEvent.setup()
+
+    invokeMock.mockImplementation(async (command: string, payload?: { state?: OnboardingState }) => {
+      switch (command) {
+        case 'list_skills':
+          return { success: [] }
+        case 'list_installed':
+          return { success: [] }
+        case 'get_target_apps':
+          return []
+        case 'check_skill_updates':
+          return { success: [] }
+        case 'get_config':
+          return { success: { preferred_locale: 'zh-CN' } }
+        case 'get_onboarding_state':
+          throw new Error('Tauri backend unavailable')
+        case 'set_onboarding_state':
+          return { success: payload?.state }
+        case 'get_onboarding_install_preview':
+          return { success: { ...fixtures.onboardingPreview, selected_install_skill_ids: payload?.state?.selected_install_skill_ids ?? [], selected_agent_ids: payload?.state?.selected_agent_ids ?? [] } }
+        case 'stage_onboarding_generated_packages':
+          return { success: { production: null, test: null } }
+        case 'sync_onboarding_installation':
+          return { success: fixtures.onboardingSyncResult }
+        default:
+          return { success: null }
+      }
+    })
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+
+    expect(await screen.findByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '记录计划' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '记录日志' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '项目周报' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '成本核算' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '风险升级' })).not.toBeInTheDocument()
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
+      '梳理售前需求、企业技术积累和约束边界'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
+      '适合配置成帮你做售前需求初评的助手'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
+      '需要提前说明它会读取哪些公司现有技术积累'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
+      '输入：客户原始需求'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
+      '\n输出：需求拆解'
+    )
+    expect(screen.getByLabelText('用例描述')).toHaveAttribute('rows', '10')
+    expect(screen.queryByText('适合配置成帮你做售前需求初评的助手。')).not.toBeInTheDocument()
+    expect(screen.queryByText('需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('基础信息来源')).not.toBeInTheDocument()
+    expect((screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).value).toBe('')
+    expect(
+      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
+    ).toContain('当前流程 / SOP / 模板')
+    expect(screen.queryByText('当前岗位没有可配置的用例。')).not.toBeInTheDocument()
+  })
+
   it('shows a failure banner when saving base skill changes fails', async () => {
     const user = userEvent.setup()
 
@@ -492,10 +565,12 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '用例配置' }))
 
     expect(await screen.findByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    const requirementAssessmentItem = screen.getByRole('button', { name: '需求评估' })
     const planningItem = screen.getByRole('button', { name: '记录计划' })
     const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
     const weeklyReportItem = screen.getByRole('button', { name: '项目周报' })
 
+    expect(within(requirementAssessmentItem).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(planningItem).getByText('已设置')).toBeInTheDocument()
     expect(within(dailyLogItem).getByText('已设置')).toBeInTheDocument()
     expect(within(weeklyReportItem).getByText('已设置')).toBeInTheDocument()
@@ -510,6 +585,32 @@ describe('OnboardingShell', () => {
 
     expect(getSetStateCalls()).toHaveLength(1)
     expect(await screen.findByText('保存成功')).toBeInTheDocument()
+  })
+
+  it('treats a prefilled description plus SOP as enough to mark a use case configured', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      role_use_case_contents: fixtures.onboardingState.role_use_case_contents.map((useCase) => ({
+        ...useCase,
+        info_sources: '',
+      })),
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+
+    const planningItem = await screen.findByRole('button', { name: '记录计划' })
+    const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
+    const weeklyReportItem = screen.getByRole('button', { name: '项目周报' })
+
+    expect(within(planningItem).getByText('已设置')).toBeInTheDocument()
+    expect(within(dailyLogItem).getByText('已设置')).toBeInTheDocument()
+    expect(within(weeklyReportItem).getByText('已设置')).toBeInTheDocument()
   })
 
   it('requires an explicit save on the install page before syncing and keeps sync results inside the module', async () => {

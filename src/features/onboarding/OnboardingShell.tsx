@@ -11,6 +11,7 @@ import {
   getRoleNameById,
   onboardingBaseSkills,
   onboardingRoles,
+  onboardingUseCases,
 } from '../../content/workbuddy'
 import type {
   InstalledSkillInfo,
@@ -37,8 +38,8 @@ const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> 
   useCases: {
     title: '用例配置',
     summary: '按用例分别编辑内容',
-    description: '先从当前岗位的用例列表中选择一个，再编辑该用例的描述、来源和规则。',
-    items: ['记录计划', '记录日志', '项目周报'],
+    description: '先从当前岗位的用例列表中选择一个，再查看或调整预置描述，并补充当前流程 / SOP / 模板。',
+    items: onboardingUseCases.map((useCase) => useCase.name),
   },
   install: {
     title: '安装技能',
@@ -715,7 +716,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       <div className="onboarding-shell">
         <section className="onboarding-section">
           <ModuleHeader
-            description="先从当前岗位的用例列表中选择一个，再单独编辑该用例的描述、信息来源和规则。"
+            description="先从当前岗位的用例列表中选择一个，再查看或调整预置描述，并补充当前流程 / SOP / 模板。"
             eyebrow="用例配置"
             installedCount={installedSkills.length}
             title="用例配置"

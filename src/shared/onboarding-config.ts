@@ -36,6 +36,10 @@ export interface UseCase {
   name: string;
   directory?: string;
   description: string;
+  guidance?: string[];
+  descriptionPrompt?: string;
+  infoSourcesPrompt?: string;
+  rulesPrompt?: string;
 }
 
 export interface SharedConfig {

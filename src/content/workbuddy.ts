@@ -38,6 +38,10 @@ interface UseCaseConfig {
   name: string
   directory?: string
   description: string
+  guidance?: string[]
+  descriptionPrompt?: string
+  infoSourcesPrompt?: string
+  rulesPrompt?: string
 }
 
 interface SharedConfig {
@@ -152,6 +156,10 @@ export interface OnboardingUseCaseOption {
   name: string
   directory: string
   description: string
+  guidance: string[]
+  description_prompt: string
+  info_sources_prompt: string
+  rules_prompt: string
   applicable_role_ids: string[]
 }
 
@@ -190,11 +198,44 @@ export const onboardingUseCases: OnboardingUseCaseOption[] = Object.entries(type
     name: useCase.name,
     directory: getUseCaseDirectoryByName(useCaseName),
     description: useCase.description,
+    guidance: useCase.guidance ?? [],
+    description_prompt: useCase.descriptionPrompt ?? '',
+    info_sources_prompt: useCase.infoSourcesPrompt ?? '',
+    rules_prompt: useCase.rulesPrompt ?? '',
     applicable_role_ids: Object.entries(typedConfig.roles)
       .filter(([, role]) => role.useCases.includes(useCaseName))
       .map(([roleId]) => roleId),
   })
 )
+
+function buildDefaultUseCaseDescription(useCase: OnboardingUseCaseOption) {
+  return [useCase.description, ...useCase.guidance, useCase.description_prompt]
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0)
+    .join('\n\n')
+}
+
+function clearLegacyAutofillText(currentValue: string | undefined, legacyValues: string[] = []) {
+  if (!currentValue?.trim().length) {
+    return ''
+  }
+
+  const normalizedValue = currentValue.trim()
+  return legacyValues.some((legacyValue) => legacyValue.trim() === normalizedValue)
+    ? ''
+    : currentValue
+}
+
+function resolveUseCaseDescription(currentValue: string | undefined, defaultValue: string, legacyValues: string[] = []) {
+  if (!currentValue?.trim().length) {
+    return defaultValue
+  }
+
+  const normalizedValue = currentValue.trim()
+  return legacyValues.some((legacyValue) => legacyValue.trim() === normalizedValue)
+    ? defaultValue
+    : currentValue
+}
 
 export function getOnboardingAgentNameById(agentId: string): string {
   return typedConfig.agentApps[agentId]?.name ?? agentId
@@ -212,6 +253,10 @@ export function getApplicableUseCasesForRole(roleId: string): OnboardingUseCaseO
   return onboardingUseCases.filter((useCase) => useCase.applicable_role_ids.includes(roleId))
 }
 
+export function getOnboardingUseCaseOptionById(useCaseId: string) {
+  return onboardingUseCases.find((useCase) => useCase.id === useCaseId) ?? null
+}
+
 export function buildGeneratedSkillIdsForRoleUseCase(roleId: string, useCaseDirectory: string) {
   return {
     production_skill_id: `${roleId}-${useCaseDirectory}`,
@@ -227,14 +272,19 @@ export function createDefaultRoleUseCaseContents(
     const existingRecord = existing.find(
       (record) => record.role_id === roleId && record.use_case_id === useCase.id
     )
+    const defaultDescription = buildDefaultUseCaseDescription(useCase)
 
     return {
       role_id: roleId,
       use_case_id: useCase.id,
       use_case_name: useCase.name,
-      description: existingRecord?.description ?? useCase.description,
+      description: resolveUseCaseDescription(
+        existingRecord?.description,
+        defaultDescription,
+        [useCase.description, useCase.description_prompt]
+      ),
       info_sources: existingRecord?.info_sources ?? '',
-      rules: existingRecord?.rules ?? '',
+      rules: clearLegacyAutofillText(existingRecord?.rules, [useCase.rules_prompt]),
     }
   })
 }
@@ -319,28 +369,14 @@ export const workbuddySteps: WizardStep[] = [
     ],
   },
   {
-    id: 'project-source',
-    title: text('基础信息来源'),
-    description: text('请用文本框写下你依赖的基础信息来源，可以是系统名称、页面链接、文档位置或补充说明。'),
-    fields: [
-      {
-        id: 'infoSources',
-        type: 'textarea',
-        label: text('基础信息来源'),
-        placeholder: text('例如：Jira 项目看板、Confluence 项目主页、邮件归档、例会纪要目录。'),
-        required: true,
-      },
-    ],
-  },
-  {
     id: 'weekly-rules',
-    title: text('用例规则'),
-    description: text('如果这个用例在公司内部有模板、规则、语气或输出要求，可以先写在这里。'),
+    title: text('当前流程 / SOP / 模板'),
+    description: text('如果这个用例在公司内部有固定流程、模板、语气或输出要求，可以先写在这里。'),
     fields: [
       {
         id: 'reportRules',
         type: 'textarea',
-        label: text('用例规则或模板'),
+        label: text('当前流程 / SOP / 模板'),
         placeholder: text('例如：采用固定模板，先风险后里程碑，没有更新也要写明阻塞项。'),
         required: false,
       },

@@ -7,19 +7,19 @@ const {
 
 const DEFAULT_USE_CASE_TEMPLATES = [
   {
-    description: '记录每日工作内容和进展，方便持续追踪。',
+    description: '',
     infoSources: '',
     name: '记录日志',
     rules: '',
   },
   {
-    description: '维护计划、里程碑和下一步安排。',
+    description: '',
     infoSources: '',
     name: '记录计划',
     rules: '',
   },
   {
-    description: '沉淀项目周报，汇总风险、进展与待办。',
+    description: '',
     infoSources: '',
     name: '项目周报',
     rules: '',
@@ -122,8 +122,10 @@ function toSeedArray(record) {
 
 function getDefaultUseCaseTemplates(sharedConfig) {
   const configuredUseCases = Object.values(sharedConfig.useCases || {}).map((useCase) => ({
-    description: useCase.description || '',
+    description: '',
+    infoSources: '',
     name: useCase.name,
+    rules: '',
   }));
 
   return configuredUseCases.length > 0 ? configuredUseCases : DEFAULT_USE_CASE_TEMPLATES;
@@ -150,10 +152,23 @@ function createDefaultUseCases(sharedConfig) {
     applicableRoleIds: applicableRoleIdsByUseCase.get(template.name) || [],
     description: template.description,
     id: normalizeNameToId(template.name),
-    infoSources: template.infoSources,
+    infoSources: template.infoSources || '',
     name: template.name,
     rules: template.rules,
   }));
+}
+
+function clearLegacyAutofillText(currentValue, legacyValues = []) {
+  if (typeof currentValue !== 'string' || currentValue.trim().length === 0) {
+    return '';
+  }
+
+  const normalizedValue = currentValue.trim();
+  return legacyValues.some((legacyValue) => (
+    typeof legacyValue === 'string' && legacyValue.trim() === normalizedValue
+  ))
+    ? ''
+    : currentValue;
 }
 
 function createDefaultBasicInfo(sharedConfig) {
@@ -263,11 +278,17 @@ function mergeUseCasesWithDefaults(existingUseCases, defaultUseCases) {
 
         return {
           applicableRoleIds: defaultUseCase.applicableRoleIds,
-          description: existing.description ?? defaultUseCase.description,
+          description: clearLegacyAutofillText(existing.description, [
+            sharedConfig.useCases?.[defaultUseCase.name]?.description,
+            sharedConfig.useCases?.[defaultUseCase.name]?.descriptionPrompt,
+          ]),
           id: defaultUseCase.id,
           infoSources: existing.infoSources ?? defaultUseCase.infoSources,
           name: defaultUseCase.name,
-          rules: existing.rules ?? defaultUseCase.rules,
+          rules: clearLegacyAutofillText(existing.rules, [
+            sharedConfig.useCases?.[defaultUseCase.name]?.rules,
+            sharedConfig.useCases?.[defaultUseCase.name]?.rulesPrompt,
+          ]),
         };
       }),
       ...(existingUseCases.useCases || []).filter((useCase) => !defaultIds.has(useCase.id)),

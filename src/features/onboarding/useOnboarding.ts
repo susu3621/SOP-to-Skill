@@ -123,11 +123,7 @@ function isConfiguredText(value: string) {
 }
 
 function isUseCaseConfigured(record: OnboardingEditableUseCaseRecord) {
-  return (
-    isConfiguredText(record.description) &&
-    isConfiguredText(record.info_sources) &&
-    isConfiguredText(record.rules)
-  )
+  return isConfiguredText(record.description) && isConfiguredText(record.rules)
 }
 
 function getUseCaseSaveScope(useCaseId: string) {
@@ -194,7 +190,7 @@ function createEmptyState(): OnboardingState {
     selected_agent_ids: [],
     selected_role_id: defaultOnboardingRoleId,
     selected_base_skill_ids: [],
-    role_use_case_contents: [],
+    role_use_case_contents: createDefaultRoleUseCaseContents(defaultOnboardingRoleId),
     selected_install_skill_ids: [],
     selected_install_skill_ids_initialized: false,
     selected_install_candidate_skill_ids: [],
