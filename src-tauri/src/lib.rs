@@ -6,10 +6,13 @@ mod tray;
 mod update;
 
 use commands::skill::SkillState;
-use update::app::PendingAppUpdate;
+use update::app::{updater_is_configured, PendingAppUpdate};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+    let updater_enabled = updater_is_configured(context.config());
+
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -18,18 +21,20 @@ pub fn run() {
         )
         .init();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(SkillState::default())
-        .manage(PendingAppUpdate::default())
-        .setup(|app| {
-            #[cfg(desktop)]
-            app.handle()
-                .plugin(tauri_plugin_updater::Builder::new().build())
-                .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
+        .manage(PendingAppUpdate::default());
 
+    #[cfg(desktop)]
+    if updater_enabled {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
+        .setup(|app| {
             // Setup system tray
             if let Err(e) = tray::setup_tray(app.handle()) {
                 tracing::error!("Failed to setup tray: {}", e);
@@ -74,6 +79,6 @@ pub fn run() {
                 api.prevent_close();
             }
         })
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
