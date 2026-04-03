@@ -3,12 +3,14 @@ import { invoke } from '@tauri-apps/api/core'
 import {
   buildGeneratedSkillIdsForRoleUseCase,
   createDefaultRoleUseCaseContents,
+  defaultOnboardingRoleId,
   getApplicableUseCasesForRole,
   getCredentialFields,
+  getRoleNameById,
   onboardingBaseSkills,
-  onboardingRoles,
   onboardingSupportedAgents,
   onboardingUseCases,
+  sharedConfig,
 } from '../../content/workbuddy'
 import type {
   InstalledSkillInfo,
@@ -55,7 +57,7 @@ function isBaseSkillId(skillId: string) {
 }
 
 function isRoleId(roleId: string) {
-  return onboardingRoles.some((role) => role.id === roleId)
+  return Object.prototype.hasOwnProperty.call(sharedConfig.roles, roleId)
 }
 
 function buildManagedSkillIds(roleId: string, baseSkillIds: string[]) {
@@ -190,7 +192,7 @@ function buildAgentPreviews(
 function createEmptyState(): OnboardingState {
   return {
     selected_agent_ids: [],
-    selected_role_id: '',
+    selected_role_id: defaultOnboardingRoleId,
     selected_base_skill_ids: [],
     role_use_case_contents: [],
     selected_install_skill_ids: [],
@@ -201,7 +203,9 @@ function createEmptyState(): OnboardingState {
 }
 
 function normalizeState(state: OnboardingState): OnboardingState {
-  const selected_role_id = isRoleId(state.selected_role_id) ? state.selected_role_id : ''
+  const selected_role_id = isRoleId(state.selected_role_id)
+    ? state.selected_role_id
+    : defaultOnboardingRoleId
   const selected_agent_ids = unique(
     state.selected_agent_ids.filter((agentId) =>
       onboardingSupportedAgents.some((agent) => agent.id === agentId)
@@ -699,9 +703,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
               {
                 input: {
                   role_id: state.selected_role_id,
-                  role_name:
-                    onboardingRoles.find((role) => role.id === state.selected_role_id)?.name ??
-                    state.selected_role_id,
+                  role_name: getRoleNameById(state.selected_role_id),
                   selected_agent_ids: state.selected_agent_ids,
                   selected_base_skill_ids: state.selected_base_skill_ids,
                   use_case: useCaseContent,

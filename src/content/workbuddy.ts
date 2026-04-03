@@ -57,6 +57,22 @@ interface SharedConfig {
 }
 
 const typedConfig = config as SharedConfig
+const visibleRoleIds = ['project-manager'] as const
+
+export const defaultOnboardingRoleId = visibleRoleIds[0]
+
+function getVisibleRoles() {
+  return visibleRoleIds
+    .map((roleId) => {
+      const role = typedConfig.roles[roleId]
+      if (!role) {
+        return null
+      }
+
+      return [roleId, role] as const
+    })
+    .filter((entry): entry is readonly [typeof visibleRoleIds[number], RoleConfig] => entry != null)
+}
 
 // Helper to create localized text
 function text(value: string): LocalizedText {
@@ -90,13 +106,11 @@ export const workbuddyAgentApps: WizardOption[] = Object.entries(typedConfig.age
   })
 )
 
-export const workbuddyRoles: WizardOption[] = Object.entries(typedConfig.roles).map(
-  ([, role]) => ({
+export const workbuddyRoles: WizardOption[] = getVisibleRoles().map(([, role]) => ({
     value: role.name,
     label: text(role.name),
     hint: text(role.description),
-  })
-)
+  }))
 
 export const workbuddyBaseSkills: WizardOption[] = Object.entries(typedConfig.baseSkills).map(
   ([key, skill]) => ({
@@ -155,13 +169,11 @@ export const onboardingSupportedAgents: OnboardingAgentOption[] = onboardingAgen
   onboardingSupportedAgentIds.includes(agent.id as (typeof onboardingSupportedAgentIds)[number])
 )
 
-export const onboardingRoles: OnboardingRoleOption[] = Object.entries(typedConfig.roles).map(
-  ([id, role]) => ({
+export const onboardingRoles: OnboardingRoleOption[] = getVisibleRoles().map(([id, role]) => ({
     id,
     name: role.name,
     description: role.description,
-  })
-)
+  }))
 
 export const onboardingBaseSkills: OnboardingBaseSkillOption[] = Object.entries(
   typedConfig.baseSkills

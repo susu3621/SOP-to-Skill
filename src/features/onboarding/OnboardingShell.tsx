@@ -51,15 +51,15 @@ const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> 
 const basicInfoEntries: Record<BasicEntryView, EntryCopy> = {
   role: {
     title: '选择岗位',
-    summary: '单选岗位',
-    description: '岗位决定了当前可编辑的用例集合，以及岗位生成技能的命名和安装范围。',
-    items: ['项目经理', '产品经理', '研发负责人'],
+    summary: '默认项目经理',
+    description: '当前前端仅暴露项目经理角色。岗位仍会决定可编辑的用例集合，以及岗位生成技能的命名和安装范围。',
+    items: onboardingRoles.map((role) => role.name),
   },
   baseSkills: {
     title: '选择基础技能',
     summary: '多选基础技能',
     description: '基础技能会决定需要补充的凭证字段，也会进入最终的安装集合。',
-    items: ['Jira', 'Confluence', 'Slack'],
+    items: onboardingBaseSkills.map((skill) => skill.name),
   },
 }
 

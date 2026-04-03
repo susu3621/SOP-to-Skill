@@ -234,7 +234,7 @@ function getSetStateCalls() {
 }
 
 describe('OnboardingShell', () => {
-  it('keeps the home summary empty and shows no configured badges for a fresh unsaved state', async () => {
+  it('shows the default role while leaving unsaved sections incomplete for a fresh state', async () => {
     mockControls.stateOverride = {
       selected_agent_ids: [],
       selected_role_id: '',
@@ -259,13 +259,13 @@ describe('OnboardingShell', () => {
     expect(within(installCard).queryByText('已设置')).not.toBeInTheDocument()
 
     const summary = screen.getByRole('region', { name: '已设置内容' })
-    expect(within(summary).getAllByText('未设置')).toHaveLength(5)
-    expect(within(summary).queryByText('项目经理')).not.toBeInTheDocument()
+    expect(within(summary).getAllByText('未设置')).toHaveLength(3)
+    expect(within(summary).getByText('项目经理')).toBeInTheDocument()
     expect(within(summary).queryByText('Jira')).not.toBeInTheDocument()
     expect(within(summary).queryByText('Codex')).not.toBeInTheDocument()
   })
 
-  it('keeps basic info and install editors fully unselected for a fresh unsaved state', async () => {
+  it('defaults fresh unsaved state to project manager while keeping other selectors unselected', async () => {
     mockControls.stateOverride = {
       selected_agent_ids: [],
       selected_role_id: '',
@@ -286,8 +286,8 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '基础信息设置' }))
     await user.click(await screen.findByRole('button', { name: '选择岗位' }))
 
-    expect(screen.getByRole('radio', { name: '项目经理' })).not.toBeChecked()
-    expect(screen.getByRole('radio', { name: '产品经理' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: '项目经理' })).toBeChecked()
+    expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '选择基础技能' }))
 
@@ -411,30 +411,55 @@ describe('OnboardingShell', () => {
     const detailHeading = within(detailPanel as HTMLElement).getByRole('heading', { name: '选择岗位' })
     expect(detailHeading.closest('.summary-card')).toBeNull()
     expect(within(detailPanel as HTMLElement).getByText('项目经理')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('产品经理')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('研发负责人')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).queryByText('产品经理')).not.toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).queryByText('研发负责人')).not.toBeInTheDocument()
     expect(document.querySelector('.summary-card--nested')).toBeNull()
   })
 
-  it('does not persist role changes until save and shows a success banner after saving', async () => {
+  it('loads a hidden legacy role state without exposing hidden role options', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_role_id: 'product-manager',
+      role_use_case_contents: [
+        {
+          role_id: 'product-manager',
+          use_case_id: 'daily-log',
+          use_case_name: '记录日志',
+          description: '记录需求和评审进展。',
+          info_sources: 'Confluence',
+          rules: '按会后更新',
+        },
+        {
+          role_id: 'product-manager',
+          use_case_id: 'planning',
+          use_case_name: '记录计划',
+          description: '维护版本计划。',
+          info_sources: 'Jira',
+          rules: '按周整理',
+        },
+      ],
+      selected_install_skill_ids: [
+        'jira',
+        'confluence',
+        'product-manager-daily-log',
+        'test-product-manager-daily-log',
+        'product-manager-planning',
+        'test-product-manager-planning',
+      ],
+    }
+
     const user = userEvent.setup()
 
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: '已设置内容' })).toHaveTextContent('产品经理')
 
     await user.click(screen.getByRole('button', { name: '基础信息设置' }))
     await user.click(await screen.findByRole('button', { name: '选择岗位' }))
 
-    await user.click(screen.getByRole('radio', { name: '产品经理' }))
-
-    expect(getSetStateCalls()).toHaveLength(0)
-    expect(screen.getByRole('button', { name: '保存设置' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '保存设置' }))
-
-    expect(getSetStateCalls()).toHaveLength(1)
-    expect(await screen.findByText('保存成功')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '项目经理' })).not.toBeChecked()
+    expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
   })
 
   it('shows a failure banner when saving base skill changes fails', async () => {
