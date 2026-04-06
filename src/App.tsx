@@ -49,6 +49,10 @@ function App() {
   } = useUpdates()
 
   useEffect(() => {
+    document.title = getCopy(locale, pageCopy.appTitle)
+  }, [])
+
+  useEffect(() => {
     const unlisten = listen<string>('tray-navigate', (event) => {
       const path = event.payload
       if (path === '/installed') {

@@ -4,8 +4,8 @@ export const defaultLocale: Locale = 'zh-CN'
 
 export const pageCopy = {
   appTitle: {
-    'zh-CN': 'AI 时代先受益的，是每天被重复工作困住的人。',
-    'en-US': 'The first people to benefit from AI are those trapped by repetitive work every day.'
+    'zh-CN': 'SOP to Skill',
+    'en-US': 'SOP to Skill'
   },
   appSubtitle: {
     'zh-CN': '给普通员工的 AI 工作方式邀请',
@@ -16,10 +16,8 @@ export const pageCopy = {
     'en-US': 'Turn weekly report setup into a guided conversation'
   },
   heroBody: {
-    'zh-CN':
-      '如果你是传统公司里的普通员工，AI 最先带来的不是遥远的组织战略，而是更少的重复劳动、更轻的沟通压力、和更快把事情做成的能力。',
-    'en-US':
-      'If you work in a traditional company, the first thing AI changes is not abstract strategy. It is less repetitive labor, lighter communication pressure, and faster execution.'
+    'zh-CN': '把团队 SOP 整理成可复用、可安装的 AI Skills。',
+    'en-US': 'Turn team SOPs into reusable, installable AI skills.'
   },
   startButton: {
     'zh-CN': '开始配置',

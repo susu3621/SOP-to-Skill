@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Skill Configurator",
+  "productName": "SOP to Skill",
   "version": "0.1.0",
   "identifier": "com.skillsfornoengineer.configurator",
   "build": {
@@ -18,7 +18,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Skill Configurator",
+        "title": "SOP to Skill",
         "width": 1200,
         "height": 820,
         "minWidth": 960,
@@ -34,8 +34,8 @@
   "bundle": {
     "active": true,
     "category": "DeveloperTool",
-    "shortDescription": "Guided desktop shell for configuring skills.",
-    "longDescription": "A desktop configurator scaffold that guides non-technical users through step-by-step skill setup flows.",
+    "shortDescription": "Turn team SOPs into reusable, installable AI skills.",
+    "longDescription": "A desktop app that turns team SOPs into reusable AI skills through guided setup and installation flows.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

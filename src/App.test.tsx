@@ -238,6 +238,14 @@ describe('onboarding shell smoke coverage', () => {
   it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
     render(<App />)
 
+    expect(await screen.findByRole('heading', { name: 'SOP to Skill' })).toBeInTheDocument()
+    expect(
+      screen.getByText('把团队 SOP 整理成可复用、可安装的 AI Skills。')
+    ).toBeInTheDocument()
+    expect(document.title).toBe('SOP to Skill')
+    expect(
+      screen.queryByText('AI 时代先受益的，是每天被重复工作困住的人。')
+    ).not.toBeInTheDocument()
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '设置' })).not.toBeInTheDocument()
