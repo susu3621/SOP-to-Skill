@@ -1,6 +1,8 @@
 import {
+  createCustomUseCaseId,
   createDefaultRoleUseCaseContents,
   getRoleNameById,
+  isCustomUseCaseId,
   onboardingUseCases,
   onboardingRoles,
   sharedConfig,
@@ -106,6 +108,38 @@ describe('workbuddy agent apps', () => {
         info_sources: '保留自定义来源',
         rules: '保留自定义流程',
       })
+    )
+  })
+
+  it('creates stable custom ids with a custom prefix and deduplicates repeated names', () => {
+    expect(createCustomUseCaseId('Weekly Risk Review', [])).toBe('custom-weekly-risk-review')
+    expect(createCustomUseCaseId('Weekly Risk Review', ['custom-weekly-risk-review'])).toBe(
+      'custom-weekly-risk-review-2'
+    )
+    expect(createCustomUseCaseId('周风险复盘', [])).toBe('custom-use-case')
+    expect(isCustomUseCaseId('custom-weekly-risk-review')).toBe(true)
+    expect(isCustomUseCaseId('weekly-report')).toBe(false)
+  })
+
+  it('preserves current-role custom use cases when rebuilding bundled defaults', () => {
+    const normalized = createDefaultRoleUseCaseContents('project-manager', [
+      {
+        role_id: 'project-manager',
+        use_case_id: 'custom-weekly-risk-review',
+        use_case_name: '周风险复盘',
+        description: '',
+        info_sources: '',
+        rules: '',
+      },
+    ])
+
+    expect(normalized).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          use_case_id: 'custom-weekly-risk-review',
+          use_case_name: '周风险复盘',
+        }),
+      ])
     )
   })
 })

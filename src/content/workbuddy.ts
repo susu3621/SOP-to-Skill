@@ -64,6 +64,7 @@ const typedConfig = config as SharedConfig
 const visibleRoleIds = ['project-manager'] as const
 
 export const defaultOnboardingRoleId = visibleRoleIds[0]
+export const customUseCaseIdPrefix = 'custom-'
 
 function getVisibleRoles() {
   return visibleRoleIds
@@ -99,6 +100,29 @@ function getUseCaseNameById(useCaseId: string): string {
     ([, useCase]) => (useCase.directory ?? useCase.name) === useCaseId
   )
   return match?.[1]?.name ?? useCaseId
+}
+
+export function isCustomUseCaseId(useCaseId: string): boolean {
+  return useCaseId.startsWith(customUseCaseIdPrefix)
+}
+
+export function createCustomUseCaseId(useCaseName: string, existingIds: string[]): string {
+  const baseSlug =
+    useCaseName
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'use-case'
+
+  let candidate = `${customUseCaseIdPrefix}${baseSlug}`
+  let suffix = 2
+
+  while (existingIds.includes(candidate)) {
+    candidate = `${customUseCaseIdPrefix}${baseSlug}-${suffix}`
+    suffix += 1
+  }
+
+  return candidate
 }
 
 // Transform shared config to wizard options
@@ -268,7 +292,7 @@ export function createDefaultRoleUseCaseContents(
   roleId: string,
   existing: OnboardingEditableUseCaseRecord[] = []
 ): OnboardingEditableUseCaseRecord[] {
-  return getApplicableUseCasesForRole(roleId).map((useCase) => {
+  const defaultRecords = getApplicableUseCasesForRole(roleId).map((useCase) => {
     const existingRecord = existing.find(
       (record) => record.role_id === roleId && record.use_case_id === useCase.id
     )
@@ -287,6 +311,11 @@ export function createDefaultRoleUseCaseContents(
       rules: clearLegacyAutofillText(existingRecord?.rules, [useCase.rules_prompt]),
     }
   })
+  const customRecords = existing.filter(
+    (record) => record.role_id === roleId && isCustomUseCaseId(record.use_case_id)
+  )
+
+  return [...defaultRecords, ...customRecords]
 }
 
 export function getUseCaseNameFromId(useCaseId: string): string {
