@@ -587,6 +587,93 @@ describe('OnboardingShell', () => {
     expect(await screen.findByText('保存成功')).toBeInTheDocument()
   })
 
+  it('lets the user add a custom use case from the use-case sidebar', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+
+    expect(await screen.findByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    await user.type(screen.getByLabelText('新增用例名称'), '周风险复盘')
+    await user.click(screen.getByRole('button', { name: '新增用例' }))
+
+    expect(screen.getByRole('button', { name: '周风险复盘' })).toBeInTheDocument()
+    expect(screen.getByText(/^custom-/)).toBeInTheDocument()
+    expect(screen.getByLabelText('用例描述')).toHaveValue('')
+    expect(screen.getByLabelText('当前流程 / SOP / 模板')).toHaveValue('')
+    expect(screen.getByRole('button', { name: '删除该用例' })).toBeInTheDocument()
+  })
+
+  it('lets the user delete a saved custom use case from the editor panel', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      role_use_case_contents: [
+        ...fixtures.onboardingState.role_use_case_contents,
+        {
+          role_id: 'project-manager',
+          use_case_id: 'custom-weekly-risk-review',
+          use_case_name: '周风险复盘',
+          description: '',
+          info_sources: '',
+          rules: '',
+        },
+      ],
+    }
+
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+    await user.click(await screen.findByRole('button', { name: '周风险复盘' }))
+    await user.click(screen.getByRole('button', { name: '删除该用例' }))
+
+    expect(screen.queryByRole('button', { name: '周风险复盘' })).not.toBeInTheDocument()
+    expect(confirmSpy).toHaveBeenCalled()
+
+    confirmSpy.mockRestore()
+  })
+
+  it('shows custom use cases in install candidates and removes them after deletion', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+    await user.type(screen.getByLabelText('新增用例名称'), '周风险复盘')
+    await user.click(screen.getByRole('button', { name: '新增用例' }))
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '安装技能' }))
+
+    expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
+    expect(screen.getByText('周风险复盘')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '周风险复盘 生产包' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: '周风险复盘 测试包' })).toBeChecked()
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '用例配置' }))
+    await user.click(screen.getByRole('button', { name: '周风险复盘' }))
+    await user.click(screen.getByRole('button', { name: '删除该用例' }))
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '安装技能' }))
+
+    expect(screen.queryByText('周风险复盘')).not.toBeInTheDocument()
+    expect(confirmSpy).toHaveBeenCalled()
+
+    confirmSpy.mockRestore()
+  })
+
   it('treats a prefilled description plus SOP as enough to mark a use case configured', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,

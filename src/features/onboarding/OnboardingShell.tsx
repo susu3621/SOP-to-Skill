@@ -8,6 +8,7 @@ import { useOnboarding } from './useOnboarding'
 import {
   getBaseSkillNameById,
   getOnboardingAgentNameById,
+  isCustomUseCaseId,
   getRoleNameById,
   onboardingBaseSkills,
   onboardingRoles,
@@ -499,6 +500,8 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     startSync,
     toggleAgent,
     toggleBaseSkill,
+    createUseCase,
+    deleteUseCase,
     getUseCaseSaveScope,
     toggleInstallSkill,
     updateCredentialValue,
@@ -511,6 +514,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   const [basicEntryView, setBasicEntryView] = useState<BasicEntryView | null>(null)
   const [hoveredBasicEntry, setHoveredBasicEntry] = useState<BasicEntryView | null>(null)
   const [selectedUseCaseId, setSelectedUseCaseId] = useState<string | null>(null)
+  const [newUseCaseName, setNewUseCaseName] = useState('')
 
   useEffect(() => {
     if (!selectedUseCaseId || !state.role_use_case_contents.some((item) => item.use_case_id === selectedUseCaseId)) {
@@ -712,6 +716,15 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   }
 
   if (view === 'useCases') {
+    const handleCreateUseCase = () => {
+      const nextUseCaseId = createUseCase(newUseCaseName)
+
+      if (nextUseCaseId) {
+        setSelectedUseCaseId(nextUseCaseId)
+        setNewUseCaseName('')
+      }
+    }
+
     return (
       <div className="onboarding-shell">
         <section className="onboarding-section">
@@ -728,6 +741,26 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             <section className="summary-card onboarding-module-grid__sidebar">
               <h3>可配置用例</h3>
               <p>当前岗位下可用的用例入口。</p>
+              <div className="field-stack onboarding-use-case-creator">
+                <div className="field">
+                  <label htmlFor="new-use-case-name">新增用例名称</label>
+                  <input
+                    id="new-use-case-name"
+                    placeholder="例如：周风险复盘"
+                    type="text"
+                    value={newUseCaseName}
+                    onChange={(event) => setNewUseCaseName(event.target.value)}
+                  />
+                </div>
+                <button
+                  className="button"
+                  disabled={newUseCaseName.trim().length === 0}
+                  type="button"
+                  onClick={handleCreateUseCase}
+                >
+                  新增用例
+                </button>
+              </div>
               <UseCaseList
                 activeUseCaseId={activeUseCase?.use_case_id ?? null}
                 configuredById={completion.useCaseIds}
@@ -763,6 +796,19 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                     >
                       {savingScope === activeUseCaseScope ? '保存中...' : '保存设置'}
                     </button>
+                    {isCustomUseCaseId(activeUseCase.use_case_id) ? (
+                      <button
+                        className="button--ghost"
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`确认删除用例「${activeUseCase.use_case_name}」吗？`)) {
+                            deleteUseCase(activeUseCase.use_case_id)
+                          }
+                        }}
+                      >
+                        删除该用例
+                      </button>
+                    ) : null}
                   </div>
                 </div>
               ) : (

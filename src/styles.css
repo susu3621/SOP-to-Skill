@@ -859,6 +859,10 @@ textarea {
   align-content: start;
 }
 
+.onboarding-use-case-creator {
+  margin-top: 16px;
+}
+
 .onboarding-use-case-list {
   display: grid;
   gap: 12px;
