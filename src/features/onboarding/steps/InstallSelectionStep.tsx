@@ -67,7 +67,7 @@ export function InstallSelectionStep({
       </section>
 
       <section className="summary-card">
-        <h3>基础技能</h3>
+        <h3>公司 IT 工具</h3>
         <div className="field-stack">
           {selectedBaseSkillIds.map((skillId) => (
             <label className="field-option field-option--compact" key={skillId}>

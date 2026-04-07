@@ -299,7 +299,7 @@ function BaseSkillSelectionPanel({
 }: BaseSkillSelectionPanelProps) {
   return (
     <div className="field">
-      <label>基础技能</label>
+      <label>公司 IT 工具</label>
       <div className="options options--cards">
         {onboardingBaseSkills.map((skill) => (
           <label className="field-option" key={skill.id}>
@@ -449,10 +449,10 @@ function InstallModule({
     <div className="onboarding-shell">
       <section className="onboarding-section">
         <ModuleHeader
-          description="先选择安装目标，再确认基础技能和岗位生成技能的安装集合，最后执行同步安装。"
-          eyebrow="安装技能"
+          description="先选择要安装到的 AI 工具，再确认公司 IT 工具和岗位生成技能的安装内容，最后开始安装。"
+          eyebrow="安装到 AI 工具"
           installedCount={installedCount}
-          title="安装技能"
+          title="安装到 AI 工具"
           onBack={onBack}
           onOpenInstalled={onOpenInstalled}
         />
@@ -470,7 +470,7 @@ function InstallModule({
           />
           <section className="summary-card onboarding-subeditor-panel">
             <h3>账号凭证</h3>
-            <p>只显示当前仍被选择的基础技能所需的凭证字段。</p>
+            <p>只显示当前仍被选择的公司 IT 工具所需的凭证字段。</p>
             <CredentialsStep
               credentialFields={credentialFields}
               credentialValues={credentialValues}
@@ -609,7 +609,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   )
 
   if (loading) {
-    return <p className="muted">正在加载 onboarding 配置...</p>
+    return <p className="muted">正在加载设置内容...</p>
   }
 
   if (view === 'home') {

@@ -271,6 +271,32 @@ function reconcileInstallSelection(
   }
 }
 
+function buildPersistedStateForScope(
+  scope: string,
+  currentState: OnboardingState,
+  savedState: OnboardingState
+) {
+  if (scope === 'role') {
+    const nextSelection = reconcileInstallSelection(
+      savedState,
+      currentState.selected_role_id,
+      savedState.selected_base_skill_ids
+    )
+
+    return normalizeState({
+      ...savedState,
+      selected_role_id: currentState.selected_role_id,
+      role_use_case_contents: createDefaultRoleUseCaseContents(
+        currentState.selected_role_id,
+        savedState.role_use_case_contents
+      ),
+      ...nextSelection,
+    })
+  }
+
+  return normalizeState(currentState)
+}
+
 export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const [state, setState] = useState<OnboardingState>(() => createEmptyState())
   const [savedState, setSavedState] = useState<OnboardingState>(() => createEmptyState())
@@ -499,7 +525,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
 
   const saveState = useCallback(
     async (scope: string) => {
-      const nextState = normalizeState(state)
+      const nextState = buildPersistedStateForScope(scope, state, savedState)
       setSavingScope(scope)
       setSyncError(null)
 
@@ -541,7 +567,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
         setSavingScope((current) => (current === scope ? null : current))
       }
     },
-    [state]
+    [savedState, state]
   )
 
   const toggleAgent = useCallback(

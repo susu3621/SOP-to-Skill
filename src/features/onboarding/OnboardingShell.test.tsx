@@ -307,7 +307,7 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '返回首页' }))
     await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
-    expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '安装到 AI 工具' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Codex' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Claude Code' })).not.toBeChecked()
   })
@@ -491,6 +491,73 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
   })
 
+  it('saves role changes without persisting unrelated unsaved company IT tool edits', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_role_id: 'product-manager',
+      selected_base_skill_ids: ['jira'],
+      role_use_case_contents: [
+        {
+          role_id: 'product-manager',
+          use_case_id: 'daily-log',
+          use_case_name: '记录日志',
+          description: '记录需求和评审进展。',
+          info_sources: 'Confluence',
+          rules: '按会后更新',
+        },
+        {
+          role_id: 'product-manager',
+          use_case_id: 'planning',
+          use_case_name: '记录计划',
+          description: '维护版本计划。',
+          info_sources: 'Jira',
+          rules: '按周整理',
+        },
+      ],
+      selected_install_skill_ids: [
+        'jira',
+        'product-manager-daily-log',
+        'test-product-manager-daily-log',
+        'product-manager-planning',
+        'test-product-manager-planning',
+      ],
+      selected_install_skill_ids_initialized: true,
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(await screen.findByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Confluence' }))
+
+    expect(getSetStateCalls()).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: '项目经理' }))
+    await user.click(screen.getByRole('button', { name: '保存岗位' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+
+    const [, payload] = getSetStateCalls()[0] as [string, { state: OnboardingState }]
+    expect(payload.state.selected_role_id).toBe('project-manager')
+    expect(payload.state.selected_base_skill_ids).toEqual(['jira'])
+    expect(payload.state.selected_install_skill_ids).toContain('jira')
+    expect(payload.state.selected_install_skill_ids).not.toContain('confluence')
+    expect(payload.state.selected_install_skill_ids).toContain(
+      'project-manager-daily-log'
+    )
+    expect(payload.state.selected_install_skill_ids).not.toContain(
+      'product-manager-daily-log'
+    )
+  })
+
   it('keeps default project manager use cases available when loading onboarding state fails', async () => {
     mockControls.stateOverride = null
     const user = userEvent.setup()
@@ -562,7 +629,7 @@ describe('OnboardingShell', () => {
     expect(
       (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
     ).toContain('当前流程 / SOP / 模板')
-    expect(screen.queryByText('当前岗位没有可配置的用例。')).not.toBeInTheDocument()
+    expect(screen.queryByText('当前岗位没有可配置的工作。')).not.toBeInTheDocument()
   })
 
   it('shows a failure banner when saving base skill changes fails', async () => {
@@ -653,7 +720,8 @@ describe('OnboardingShell', () => {
 
     await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
-    expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '安装到 AI 工具' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '公司 IT 工具' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Codex' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Claude Code' })).toBeInTheDocument()
 
