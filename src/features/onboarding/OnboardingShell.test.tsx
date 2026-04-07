@@ -355,11 +355,18 @@ describe('OnboardingShell', () => {
     const basicCard = screen.getByRole('button', { name: '选择公司 IT 工具' })
     const useCaseCard = screen.getByRole('button', { name: '配置要交给 AI 的工作' })
     const installCard = screen.getByRole('button', { name: '安装到 AI 工具' })
+    const homeCardShells = Array.from(
+      document.querySelectorAll('.onboarding-entry-card-shell')
+    ) as HTMLElement[]
     const useCaseShell = useCaseCard.closest('.onboarding-entry-card-shell') as HTMLElement | null
 
     expect(within(basicCard).getByText('已设置')).toBeInTheDocument()
     expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(installCard).getByText('已设置')).toBeInTheDocument()
+    expect(homeCardShells).toHaveLength(3)
+    homeCardShells.forEach((shell) => {
+      expect(shell).toHaveClass('onboarding-entry-card-shell--uniform')
+    })
     expect(useCaseShell).not.toBeNull()
     expect(
       within(useCaseShell as HTMLElement).queryByRole('heading', {

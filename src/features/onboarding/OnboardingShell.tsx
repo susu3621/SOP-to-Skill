@@ -604,7 +604,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
           </div>
 
           <div className="onboarding-entry-grid">
-            <div className="onboarding-entry-card-shell">
+            <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
               <EntryCard
                 active={hoveredHomeEntry === 'basic'}
                 complete={completion.baseSkills}
@@ -627,7 +627,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 />
               )}
             </div>
-            <div className="onboarding-entry-card-shell">
+            <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
               <EntryCard
                 active={hoveredHomeEntry === 'useCases'}
                 complete={completion.role && completion.useCases}
@@ -650,7 +650,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 />
               )}
             </div>
-            <div className="onboarding-entry-card-shell">
+            <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
               <EntryCard
                 active={hoveredHomeEntry === 'install'}
                 complete={completion.install}

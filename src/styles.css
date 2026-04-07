@@ -789,13 +789,16 @@ textarea {
 
 .onboarding-entry-card-shell {
   position: relative;
-  width: fit-content;
-  max-width: 100%;
+}
+
+.onboarding-entry-card-shell--uniform {
+  width: 100%;
 }
 
 .onboarding-entry-card {
   display: grid;
   gap: 10px;
+  width: 100%;
   align-content: start;
   min-height: 180px;
   padding: 32px;
