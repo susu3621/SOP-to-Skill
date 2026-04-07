@@ -745,6 +745,10 @@ textarea {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.onboarding-entry-card-shell {
+  position: relative;
+}
+
 .onboarding-entry-card {
   display: grid;
   gap: 10px;
@@ -820,6 +824,47 @@ textarea {
   display: grid;
   gap: 14px;
   padding: 4px 0 0;
+}
+
+.onboarding-detail-panel--bubble {
+  position: absolute;
+  top: 18px;
+  left: calc(100% + 14px);
+  z-index: 10;
+  width: min(320px, 32vw);
+  padding: 16px 18px;
+  border: 1px solid rgba(22, 48, 41, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 250, 245, 0.96);
+  box-shadow: 0 18px 36px rgba(74, 49, 30, 0.14);
+  pointer-events: none;
+}
+
+.onboarding-detail-panel--bubble[data-placement='left'] {
+  right: calc(100% + 14px);
+  left: auto;
+}
+
+.onboarding-detail-panel--bubble::before {
+  content: '';
+  position: absolute;
+  top: 22px;
+  left: -8px;
+  width: 16px;
+  height: 16px;
+  transform: rotate(45deg);
+  border-left: 1px solid rgba(22, 48, 41, 0.12);
+  border-bottom: 1px solid rgba(22, 48, 41, 0.12);
+  background: rgba(255, 250, 245, 0.96);
+}
+
+.onboarding-detail-panel--bubble[data-placement='left']::before {
+  right: -8px;
+  left: auto;
+  border-top: 1px solid rgba(22, 48, 41, 0.12);
+  border-right: 1px solid rgba(22, 48, 41, 0.12);
+  border-left: none;
+  border-bottom: none;
 }
 
 .onboarding-detail-panel__eyebrow {
@@ -1302,6 +1347,10 @@ textarea {
 
   .onboarding-home-summary__grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-detail-panel--bubble {
+    display: none;
   }
 
   .onboarding-home-install-table,

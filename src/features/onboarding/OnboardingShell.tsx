@@ -154,6 +154,8 @@ interface DetailPanelProps {
   title: string
   description: string
   items: string[]
+  className?: string
+  placement?: 'left' | 'right'
 }
 
 interface HomeSummaryGroup {
@@ -170,9 +172,20 @@ interface HomeInstallSummaryRow {
   testLabel: string
 }
 
-function DetailPanel({ eyebrow, title, description, items }: DetailPanelProps) {
+function DetailPanel({
+  eyebrow,
+  title,
+  description,
+  items,
+  className,
+  placement = 'right',
+}: DetailPanelProps) {
   return (
-    <section aria-live="polite" className="onboarding-detail-panel">
+    <section
+      aria-live="polite"
+      className={`onboarding-detail-panel${className ? ` ${className}` : ''}`}
+      data-placement={placement}
+    >
       <p className="onboarding-detail-panel__eyebrow">{eyebrow}</p>
       <h3 className="onboarding-detail-panel__title">{title}</h3>
       <p className="panel__body">{description}</p>
@@ -564,8 +577,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   }
 
   if (view === 'home') {
-    const detail = hoveredHomeEntry ? onboardingHomeEntries[hoveredHomeEntry] : null
-
     return (
       <div className="onboarding-shell">
         <section className="onboarding-section">
@@ -583,49 +594,76 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
           </div>
 
           <div className="onboarding-entry-grid">
-            <EntryCard
-              active={hoveredHomeEntry === 'basic'}
-              complete={completion.baseSkills}
-              index="01"
-              summary={onboardingHomeEntries.basic.summary}
-              title={onboardingHomeEntries.basic.title}
-              onClick={() => openView('basic')}
-              onFocus={() => setHoveredHomeEntry('basic')}
-              onHover={() => setHoveredHomeEntry('basic')}
-              onLeave={() => setHoveredHomeEntry(null)}
-            />
-            <EntryCard
-              active={hoveredHomeEntry === 'useCases'}
-              complete={completion.role && completion.useCases}
-              index="02"
-              summary={onboardingHomeEntries.useCases.summary}
-              title={onboardingHomeEntries.useCases.title}
-              onClick={() => openView('useCases')}
-              onFocus={() => setHoveredHomeEntry('useCases')}
-              onHover={() => setHoveredHomeEntry('useCases')}
-              onLeave={() => setHoveredHomeEntry(null)}
-            />
-            <EntryCard
-              active={hoveredHomeEntry === 'install'}
-              complete={completion.install}
-              index="03"
-              summary={onboardingHomeEntries.install.summary}
-              title={onboardingHomeEntries.install.title}
-              onClick={() => openView('install')}
-              onFocus={() => setHoveredHomeEntry('install')}
-              onHover={() => setHoveredHomeEntry('install')}
-              onLeave={() => setHoveredHomeEntry(null)}
-            />
+            <div className="onboarding-entry-card-shell">
+              <EntryCard
+                active={hoveredHomeEntry === 'basic'}
+                complete={completion.baseSkills}
+                index="01"
+                summary={onboardingHomeEntries.basic.summary}
+                title={onboardingHomeEntries.basic.title}
+                onClick={() => openView('basic')}
+                onFocus={() => setHoveredHomeEntry('basic')}
+                onHover={() => setHoveredHomeEntry('basic')}
+                onLeave={() => setHoveredHomeEntry(null)}
+              />
+              {hoveredHomeEntry === 'basic' && (
+                <DetailPanel
+                  className="onboarding-detail-panel--bubble"
+                  description={onboardingHomeEntries.basic.description}
+                  eyebrow="模块说明"
+                  items={onboardingHomeEntries.basic.items}
+                  placement="right"
+                  title={onboardingHomeEntries.basic.title}
+                />
+              )}
+            </div>
+            <div className="onboarding-entry-card-shell">
+              <EntryCard
+                active={hoveredHomeEntry === 'useCases'}
+                complete={completion.role && completion.useCases}
+                index="02"
+                summary={onboardingHomeEntries.useCases.summary}
+                title={onboardingHomeEntries.useCases.title}
+                onClick={() => openView('useCases')}
+                onFocus={() => setHoveredHomeEntry('useCases')}
+                onHover={() => setHoveredHomeEntry('useCases')}
+                onLeave={() => setHoveredHomeEntry(null)}
+              />
+              {hoveredHomeEntry === 'useCases' && (
+                <DetailPanel
+                  className="onboarding-detail-panel--bubble"
+                  description={onboardingHomeEntries.useCases.description}
+                  eyebrow="模块说明"
+                  items={onboardingHomeEntries.useCases.items}
+                  placement="right"
+                  title={onboardingHomeEntries.useCases.title}
+                />
+              )}
+            </div>
+            <div className="onboarding-entry-card-shell">
+              <EntryCard
+                active={hoveredHomeEntry === 'install'}
+                complete={completion.install}
+                index="03"
+                summary={onboardingHomeEntries.install.summary}
+                title={onboardingHomeEntries.install.title}
+                onClick={() => openView('install')}
+                onFocus={() => setHoveredHomeEntry('install')}
+                onHover={() => setHoveredHomeEntry('install')}
+                onLeave={() => setHoveredHomeEntry(null)}
+              />
+              {hoveredHomeEntry === 'install' && (
+                <DetailPanel
+                  className="onboarding-detail-panel--bubble"
+                  description={onboardingHomeEntries.install.description}
+                  eyebrow="模块说明"
+                  items={onboardingHomeEntries.install.items}
+                  placement="left"
+                  title={onboardingHomeEntries.install.title}
+                />
+              )}
+            </div>
           </div>
-
-          {detail && (
-            <DetailPanel
-              description={detail.description}
-              eyebrow="模块说明"
-              items={detail.items}
-              title={detail.title}
-            />
-          )}
 
           <HomeSummarySection groups={homeSummaryGroups} />
         </section>

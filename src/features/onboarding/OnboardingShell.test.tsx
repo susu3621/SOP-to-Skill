@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../../App'
 import type {
@@ -346,7 +346,7 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('button', { name: '保存岗位' })).not.toBeInTheDocument()
   })
 
-  it('shows saved status badges and hides module detail until the user hovers a card', async () => {
+  it('shows saved status badges and reveals a hover bubble beside the active card', async () => {
     const user = userEvent.setup()
 
     render(<App />)
@@ -355,33 +355,65 @@ describe('OnboardingShell', () => {
     const basicCard = screen.getByRole('button', { name: '选择公司 IT 工具' })
     const useCaseCard = screen.getByRole('button', { name: '配置要交给 AI 的工作' })
     const installCard = screen.getByRole('button', { name: '安装到 AI 工具' })
+    const useCaseShell = useCaseCard.closest('.onboarding-entry-card-shell') as HTMLElement | null
 
     expect(within(basicCard).getByText('已设置')).toBeInTheDocument()
     expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(installCard).getByText('已设置')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
+    expect(useCaseShell).not.toBeNull()
+    expect(
+      within(useCaseShell as HTMLElement).queryByRole('heading', {
+        name: '配置要交给 AI 的工作',
+      })
+    ).not.toBeInTheDocument()
+    expect(document.querySelector('.onboarding-section > .onboarding-detail-panel')).toBeNull()
 
     await user.hover(useCaseCard)
 
-    const detailPanel = document.querySelector('.onboarding-detail-panel')
-    expect(detailPanel).not.toBeNull()
+    const detailPanel = within(useCaseShell as HTMLElement).getByRole('heading', {
+      name: '配置要交给 AI 的工作',
+    })
+    expect(detailPanel).toBeInTheDocument()
     expect(
-      within(detailPanel as HTMLElement).getByText(
+      within(useCaseShell as HTMLElement).getByText(
         '先选岗位，再决定哪些工作要交给 AI 去做，并补充对应的 SOP、信息来源和执行要求。'
       )
     ).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('选择岗位')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('选择工作')).toBeInTheDocument()
+    expect(within(useCaseShell as HTMLElement).getByText('选择岗位')).toBeInTheDocument()
+    expect(within(useCaseShell as HTMLElement).getByText('选择工作')).toBeInTheDocument()
     expect(
-      within(detailPanel as HTMLElement).getByText('补充 SOP / 信息来源 / 执行要求')
-    ).toBeInTheDocument()
-    expect(
-      within(detailPanel as HTMLElement).getByRole('heading', { name: '配置要交给 AI 的工作' })
+      within(useCaseShell as HTMLElement).getByText('补充 SOP / 信息来源 / 执行要求')
     ).toBeInTheDocument()
 
     await user.unhover(useCaseCard)
 
-    expect(screen.queryByRole('heading', { name: '配置要交给 AI 的工作' })).not.toBeInTheDocument()
+    expect(
+      within(useCaseShell as HTMLElement).queryByRole('heading', {
+        name: '配置要交给 AI 的工作',
+      })
+    ).not.toBeInTheDocument()
+  })
+
+  it('shows the same hover bubble when a home card receives keyboard focus', async () => {
+    render(<App />)
+
+    const installCard = await screen.findByRole('button', { name: '安装到 AI 工具' })
+    const installShell = installCard.closest('.onboarding-entry-card-shell') as HTMLElement | null
+
+    expect(installShell).not.toBeNull()
+
+    fireEvent.focus(installCard)
+
+    expect(
+      within(installShell as HTMLElement).getByRole('heading', { name: '安装到 AI 工具' })
+    ).toBeInTheDocument()
+    expect(within(installShell as HTMLElement).getByText('选择 AI 工具')).toBeInTheDocument()
+
+    fireEvent.blur(installCard)
+
+    expect(
+      within(installShell as HTMLElement).queryByRole('heading', { name: '安装到 AI 工具' })
+    ).not.toBeInTheDocument()
   })
 
   it('lists configured onboarding details on the home screen', async () => {
