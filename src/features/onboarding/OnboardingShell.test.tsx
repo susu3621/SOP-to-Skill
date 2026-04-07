@@ -430,9 +430,14 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
 
     expect(await screen.findByRole('heading', { name: '选择公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
+    expect(screen.getByText('公司 IT 工具', { selector: 'label' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
     expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('先选择“选择公司 IT 工具”，再进入对应的编辑界面。')
+    ).not.toBeInTheDocument()
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {
@@ -699,6 +704,33 @@ describe('OnboardingShell', () => {
 
     expect(getSetStateCalls()).toHaveLength(1)
     expect(await screen.findByText('保存失败：网络异常')).toBeInTheDocument()
+  })
+
+  it('saving base skill changes persists the selected company IT tools', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    const confluenceCheckbox = screen.getByRole('checkbox', { name: 'Confluence' })
+    expect(confluenceCheckbox).toBeChecked()
+
+    await user.click(confluenceCheckbox)
+
+    expect(getSetStateCalls()).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+
+    const [, payload] = getSetStateCalls()[0] as [string, { state: OnboardingState }]
+    expect(payload.state.selected_base_skill_ids).toEqual(['jira'])
+    expect(payload.state.selected_install_skill_ids).toContain('jira')
+    expect(payload.state.selected_install_skill_ids).not.toContain('confluence')
+    expect(await screen.findByText('保存成功')).toBeInTheDocument()
   })
 
   it('shows a use-case list first, marks configured items, and saves only on demand', async () => {
