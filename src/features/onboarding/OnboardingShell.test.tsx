@@ -370,6 +370,7 @@ describe('OnboardingShell', () => {
     expect(within(installTargetsGroup).getByText('Codex')).toBeInTheDocument()
     expect(within(installTargetsGroup).getByText('Claude Code')).toBeInTheDocument()
     expect(within(summary).getByText('安装技能')).toBeInTheDocument()
+    expect(installSkillsGroup).toHaveClass('onboarding-home-summary__group--full-width')
     const installSkillTable = within(installSkillsGroup).getByRole('table', { name: '安装技能汇总' })
     expect(within(installSkillTable).getByRole('columnheader', { name: '岗位用例' })).toBeInTheDocument()
     expect(within(installSkillTable).getByRole('columnheader', { name: '生产用' })).toBeInTheDocument()

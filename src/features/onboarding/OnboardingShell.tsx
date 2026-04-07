@@ -174,6 +174,7 @@ interface DetailPanelProps {
 interface HomeSummaryGroup {
   label: string
   kind?: 'values' | 'installTable'
+  fullWidth?: boolean
   values?: string[]
   rows?: HomeInstallSummaryRow[]
 }
@@ -213,7 +214,10 @@ function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
       </h3>
       <div className="onboarding-home-summary__grid">
         {groups.map((group) => (
-          <section className="onboarding-home-summary__group" key={group.label}>
+          <section
+            className={`onboarding-home-summary__group${group.fullWidth ? ' onboarding-home-summary__group--full-width' : ''}`}
+            key={group.label}
+          >
             <p className="onboarding-home-summary__label">{group.label}</p>
             {group.kind === 'installTable' ? (
               group.rows && group.rows.length > 0 ? (
@@ -591,6 +595,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       {
         label: '安装技能',
         kind: 'installTable',
+        fullWidth: true,
         rows: savedState.selected_role_id
           ? savedState.role_use_case_contents.map((useCase) => {
               const generatedSkillIds = buildGeneratedSkillIdsForRoleUseCase(

@@ -664,6 +664,10 @@ textarea {
   gap: 6px;
 }
 
+.onboarding-home-summary__group--full-width {
+  grid-column: 1 / -1;
+}
+
 .onboarding-home-summary__label {
   margin: 0;
   color: rgba(22, 48, 41, 0.58);
