@@ -249,10 +249,14 @@ describe('OnboardingShell', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    expect(
+      screen.getByText('按下面 3 步设置好以后，AI 就能按公司的 SOP 去完成你选好的工作。')
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Onboarding')).not.toBeInTheDocument()
 
-    const basicCard = screen.getByRole('button', { name: '基础信息设置' })
-    const useCaseCard = screen.getByRole('button', { name: '用例配置' })
-    const installCard = screen.getByRole('button', { name: '安装技能' })
+    const basicCard = screen.getByRole('button', { name: '选择公司 IT 工具' })
+    const useCaseCard = screen.getByRole('button', { name: '配置要交给 AI 的工作' })
+    const installCard = screen.getByRole('button', { name: '安装到 AI 工具' })
 
     expect(within(basicCard).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
@@ -283,19 +287,25 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
-    await user.click(await screen.findByRole('button', { name: '选择岗位' }))
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '选择岗位' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '项目经理' })).toBeChecked()
     expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '选择基础技能' }))
+    expect(screen.getByRole('heading', { name: '选择工作' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
 
+    expect(await screen.findByRole('heading', { name: '选择公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '选择岗位' })).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
     expect(screen.getByRole('checkbox', { name: 'Jira' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).not.toBeChecked()
 
     await user.click(screen.getByRole('button', { name: '返回首页' }))
-    await user.click(screen.getByRole('button', { name: '安装技能' }))
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
     expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Codex' })).not.toBeChecked()
@@ -308,14 +318,14 @@ describe('OnboardingShell', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
-    const basicCard = screen.getByRole('button', { name: '基础信息设置' })
-    const useCaseCard = screen.getByRole('button', { name: '用例配置' })
-    const installCard = screen.getByRole('button', { name: '安装技能' })
+    const basicCard = screen.getByRole('button', { name: '选择公司 IT 工具' })
+    const useCaseCard = screen.getByRole('button', { name: '配置要交给 AI 的工作' })
+    const installCard = screen.getByRole('button', { name: '安装到 AI 工具' })
 
     expect(within(basicCard).getByText('已设置')).toBeInTheDocument()
     expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(installCard).getByText('已设置')).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: '基础信息设置' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
 
     await user.hover(useCaseCard)
 
@@ -323,20 +333,21 @@ describe('OnboardingShell', () => {
     expect(detailPanel).not.toBeNull()
     expect(
       within(detailPanel as HTMLElement).getByText(
-        '先从当前岗位的用例列表中选择一个，再查看或调整预置描述，并补充当前流程 / SOP / 模板。'
+        '先选岗位，再决定哪些工作要交给 AI 去做，并补充对应的 SOP、信息来源和执行要求。'
       )
     ).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('需求评估')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('记录计划')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('记录日志')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('项目周报')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).queryByText('成本核算')).not.toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).queryByText('风险升级')).not.toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('选择岗位')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('选择工作')).toBeInTheDocument()
+    expect(
+      within(detailPanel as HTMLElement).getByText('补充 SOP / 信息来源 / 执行要求')
+    ).toBeInTheDocument()
+    expect(
+      within(detailPanel as HTMLElement).getByRole('heading', { name: '配置要交给 AI 的工作' })
+    ).toBeInTheDocument()
 
     await user.unhover(useCaseCard)
 
-    expect(screen.queryByRole('heading', { name: '用例配置' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '配置要交给 AI 的工作' })).not.toBeInTheDocument()
   })
 
   it('lists configured onboarding details on the home screen', async () => {
@@ -346,10 +357,10 @@ describe('OnboardingShell', () => {
 
     const summary = screen.getByRole('region', { name: '已设置内容' })
     const baseSkillsGroup = within(summary)
-      .getByText('基础技能')
+      .getByText('公司 IT 工具')
       .closest('.onboarding-home-summary__group') as HTMLElement
     const useCasesGroup = within(summary)
-      .getByText('已配置用例')
+      .getByText('已配置工作')
       .closest('.onboarding-home-summary__group') as HTMLElement
     const installTargetsGroup = within(summary)
       .getByText('安装目标')
@@ -360,10 +371,10 @@ describe('OnboardingShell', () => {
 
     expect(within(summary).getByText('已选岗位')).toBeInTheDocument()
     expect(within(summary).getByText('项目经理')).toBeInTheDocument()
-    expect(within(summary).getByText('基础技能')).toBeInTheDocument()
+    expect(within(summary).getByText('公司 IT 工具')).toBeInTheDocument()
     expect(within(baseSkillsGroup).getByText('Jira')).toBeInTheDocument()
     expect(within(baseSkillsGroup).getByText('Confluence')).toBeInTheDocument()
-    expect(within(summary).getByText('已配置用例')).toBeInTheDocument()
+    expect(within(summary).getByText('已配置工作')).toBeInTheDocument()
     expect(within(useCasesGroup).getByText('记录计划')).toBeInTheDocument()
     expect(within(useCasesGroup).getByText('项目周报')).toBeInTheDocument()
     expect(within(summary).getByText('安装目标')).toBeInTheDocument()
@@ -401,7 +412,7 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
     const summary = screen.getByRole('region', { name: '已设置内容' })
-    expect(within(summary).getByText('基础技能')).toBeInTheDocument()
+    expect(within(summary).getByText('公司 IT 工具')).toBeInTheDocument()
     expect(within(summary).getAllByText('未设置').length).toBeGreaterThanOrEqual(3)
     const installSkillsGroup = within(summary)
       .getByText('安装技能')
@@ -410,29 +421,31 @@ describe('OnboardingShell', () => {
     expect(within(installSkillTable).getAllByText('未安装').length).toBeGreaterThan(0)
   })
 
-  it('renders secondary-entry guidance as text instead of nested boxed cards', async () => {
+  it('shows only the company IT tools entry in the first module and avoids nested boxed guidance', async () => {
     const user = userEvent.setup()
 
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
-    const roleEntry = await screen.findByRole('button', { name: '选择岗位' })
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    const baseSkillEntry = await screen.findByRole('button', { name: '选择公司 IT 工具' })
 
-    await user.click(roleEntry)
+    expect(screen.queryByRole('button', { name: '选择岗位' })).not.toBeInTheDocument()
+    await user.click(baseSkillEntry)
 
     const detailPanel = document.querySelector('.onboarding-detail-panel')
     expect(detailPanel).not.toBeNull()
-    const detailHeading = within(detailPanel as HTMLElement).getByRole('heading', { name: '选择岗位' })
+    const detailHeading = within(detailPanel as HTMLElement).getByRole('heading', {
+      name: '选择公司 IT 工具',
+    })
     expect(detailHeading.closest('.summary-card')).toBeNull()
-    expect(within(detailPanel as HTMLElement).getByText('项目经理')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).queryByText('产品经理')).not.toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).queryByText('研发负责人')).not.toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('Jira')).toBeInTheDocument()
+    expect(within(detailPanel as HTMLElement).getByText('Confluence')).toBeInTheDocument()
     expect(document.querySelector('.summary-card--nested')).toBeNull()
   })
 
-  it('loads a hidden legacy role state without exposing hidden role options', async () => {
+  it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
       selected_role_id: 'product-manager',
@@ -471,9 +484,9 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: '已设置内容' })).toHaveTextContent('产品经理')
 
-    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
-    await user.click(await screen.findByRole('button', { name: '选择岗位' }))
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '项目经理' })).not.toBeChecked()
     expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
   })
@@ -513,9 +526,13 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '用例配置' }))
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
-    expect(await screen.findByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '选择岗位' })).toBeInTheDocument()
+    expect(screen.getByText('先选岗位，再看这个岗位下可以交给 AI 的工作。')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '选择工作' })).toBeInTheDocument()
+    expect(screen.getByText('当前岗位下可以交给 AI 的工作。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '记录计划' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '记录日志' })).toBeInTheDocument()
@@ -555,8 +572,8 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '基础信息设置' }))
-    await user.click(await screen.findByRole('button', { name: '选择基础技能' }))
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(await screen.findByRole('button', { name: '选择公司 IT 工具' }))
     await user.click(screen.getByRole('checkbox', { name: 'Confluence' }))
 
     expect(getSetStateCalls()).toHaveLength(0)
@@ -575,9 +592,10 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '用例配置' }))
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
-    expect(await screen.findByRole('heading', { name: '用例配置' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存岗位' })).toBeInTheDocument()
     const requirementAssessmentItem = screen.getByRole('button', { name: '需求评估' })
     const planningItem = screen.getByRole('button', { name: '记录计划' })
     const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
@@ -615,7 +633,7 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '用例配置' }))
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
     const planningItem = await screen.findByRole('button', { name: '记录计划' })
     const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
@@ -633,7 +651,7 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '安装技能' }))
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
     expect(await screen.findByRole('heading', { name: '安装技能' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Codex' })).toBeInTheDocument()
@@ -672,7 +690,7 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '安装技能' }))
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
     const table = await screen.findByRole('table', { name: '岗位生成技能列表' })
     expect(within(table).getByRole('columnheader', { name: '岗位用例' })).toBeInTheDocument()

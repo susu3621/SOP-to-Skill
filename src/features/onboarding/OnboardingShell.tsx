@@ -20,7 +20,7 @@ import type {
 } from '../../types'
 
 type OnboardingView = 'home' | 'basic' | 'useCases' | 'install'
-type BasicEntryView = 'role' | 'baseSkills'
+type BasicEntryView = 'baseSkills'
 
 interface EntryCopy {
   title: string
@@ -31,36 +31,30 @@ interface EntryCopy {
 
 const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> = {
   basic: {
-    title: '基础信息设置',
-    summary: '选择岗位和基础技能',
-    description: '先确认角色和基础技能，再决定后续可配置的用例和安装集合。',
-    items: ['选择岗位', '选择基础技能'],
+    title: '选择公司 IT 工具',
+    summary: '先选公司常用系统',
+    description: '先选公司里已经在用的 IT 工具。AI 后面要从这些工具里取信息，才能按公司的 SOP 做事。',
+    items: ['选择公司 IT 工具'],
   },
   useCases: {
-    title: '用例配置',
-    summary: '按用例分别编辑内容',
-    description: '先从当前岗位的用例列表中选择一个，再查看或调整预置描述，并补充当前流程 / SOP / 模板。',
-    items: onboardingUseCases.map((useCase) => useCase.name),
+    title: '配置要交给 AI 的工作',
+    summary: '先选岗位，再选工作',
+    description: '先选岗位，再决定哪些工作要交给 AI 去做，并补充对应的 SOP、信息来源和执行要求。',
+    items: ['选择岗位', '选择工作', '补充 SOP / 信息来源 / 执行要求'],
   },
   install: {
-    title: '安装技能',
-    summary: '选择目标并执行安装',
-    description: '先选择要安装到的目标，再确认基础技能和岗位生成技能的安装集合。',
-    items: ['选择安装目标', '确认安装集合', '开始同步安装'],
+    title: '安装到 AI 工具',
+    summary: '选择工具并开始安装',
+    description: '把前面整理好的 Skill 安装到你正在使用的 AI 工具里，之后就可以直接调用。',
+    items: ['选择 AI 工具', '确认安装内容', '开始安装'],
   },
 }
 
 const basicInfoEntries: Record<BasicEntryView, EntryCopy> = {
-  role: {
-    title: '选择岗位',
-    summary: '默认项目经理',
-    description: '当前前端仅暴露项目经理角色。岗位仍会决定可编辑的用例集合，以及岗位生成技能的命名和安装范围。',
-    items: onboardingRoles.map((role) => role.name),
-  },
   baseSkills: {
-    title: '选择基础技能',
-    summary: '多选基础技能',
-    description: '基础技能会决定需要补充的凭证字段，也会进入最终的安装集合。',
+    title: '选择公司 IT 工具',
+    summary: '先选公司常用系统',
+    description: '先选公司里已经在用的 IT 工具。AI 后面要从这些工具里取信息，才能按公司的 SOP 做事。',
     items: onboardingBaseSkills.map((skill) => skill.name),
   },
 }
@@ -361,31 +355,27 @@ function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: Us
 
 interface BasicEditorPanelProps {
   basicEntryView: BasicEntryView | null
-  selectedRoleId: string
   selectedBaseSkillIds: string[]
   saveFeedback: { kind: 'success' | 'error'; message: string } | null | undefined
   saveDisabled: boolean
   saving: boolean
   onSave: () => void
-  onSelectRole: (roleId: string) => void
   onToggleBaseSkill: (skillId: string) => void
 }
 
 function BasicEditorPanel({
   basicEntryView,
-  selectedRoleId,
   selectedBaseSkillIds,
   saveFeedback,
   saveDisabled,
   saving,
   onSave,
-  onSelectRole,
   onToggleBaseSkill,
 }: BasicEditorPanelProps) {
   if (!basicEntryView) {
     return (
       <p className="hint-callout">
-        先选择一个二级入口，再进入对应的基础信息编辑界面。
+        先选择“选择公司 IT 工具”，再进入对应的编辑界面。
       </p>
     )
   }
@@ -395,14 +385,10 @@ function BasicEditorPanel({
       <SaveFeedbackBanner feedback={saveFeedback} />
       <h3>{basicInfoEntries[basicEntryView].title}</h3>
       <p>{basicInfoEntries[basicEntryView].description}</p>
-      {basicEntryView === 'role' ? (
-        <RoleSelectionPanel selectedRoleId={selectedRoleId} onSelectRole={onSelectRole} />
-      ) : (
-        <BaseSkillSelectionPanel
-          selectedBaseSkillIds={selectedBaseSkillIds}
-          onToggleBaseSkill={onToggleBaseSkill}
-        />
-      )}
+      <BaseSkillSelectionPanel
+        selectedBaseSkillIds={selectedBaseSkillIds}
+        onToggleBaseSkill={onToggleBaseSkill}
+      />
       <div className="button-row">
         <button className="button" disabled={saveDisabled} type="button" onClick={onSave}>
           {saving ? '保存中...' : '保存设置'}
@@ -565,8 +551,8 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       null,
     [selectedUseCaseId, state.role_use_case_contents]
   )
-  const activeBasicScope: 'role' | 'baseSkills' | null =
-    basicEntryView === 'role' || basicEntryView === 'baseSkills' ? basicEntryView : null
+  const activeBasicScope: 'baseSkills' | null =
+    basicEntryView === 'baseSkills' ? basicEntryView : null
   const activeUseCaseScope = activeUseCase ? getUseCaseSaveScope(activeUseCase.use_case_id) : null
   const homeSummaryGroups = useMemo<HomeSummaryGroup[]>(
     () => [
@@ -576,12 +562,12 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
         values: savedState.selected_role_id ? [getRoleNameById(savedState.selected_role_id)] : [],
       },
       {
-        label: '基础技能',
+        label: '公司 IT 工具',
         kind: 'values',
         values: savedState.selected_base_skill_ids.map((skillId) => getBaseSkillNameById(skillId)),
       },
       {
-        label: '已配置用例',
+        label: '已配置工作',
         kind: 'values',
         values: savedState.role_use_case_contents
           .filter((useCase) => completion.useCaseIds[useCase.use_case_id])
@@ -634,10 +620,10 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
         <section className="onboarding-section">
           <div className="onboarding-section__header">
             <div>
-              <span className="panel__eyebrow">Onboarding</span>
+              <span className="panel__eyebrow">开始设置</span>
               <h2 className="panel__title">开始设置</h2>
               <p className="panel__body">
-                先从三个模块中选择一个入口。首页只负责导航，详细说明放到下方详情区，避免重新回到长流程页面。
+                按下面 3 步设置好以后，AI 就能按公司的 SOP 去完成你选好的工作。
               </p>
             </div>
             <button className="button--ghost" type="button" onClick={onOpenInstalled}>
@@ -648,7 +634,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
           <div className="onboarding-entry-grid">
             <EntryCard
               active={hoveredHomeEntry === 'basic'}
-              complete={completion.basic}
+              complete={completion.baseSkills}
               index="01"
               summary={onboardingHomeEntries.basic.summary}
               title={onboardingHomeEntries.basic.title}
@@ -663,7 +649,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             />
             <EntryCard
               active={hoveredHomeEntry === 'useCases'}
-              complete={completion.useCases}
+              complete={completion.role && completion.useCases}
               index="02"
               summary={onboardingHomeEntries.useCases.summary}
               title={onboardingHomeEntries.useCases.title}
@@ -707,33 +693,19 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       <div className="onboarding-shell">
         <section className="onboarding-section">
           <ModuleHeader
-            description="基础信息设置只负责岗位和基础技能，不混入用例编辑或安装执行。"
-            eyebrow="基础信息设置"
+            description="先选择公司里已经在用的 IT 工具。后续 AI 会从这些工具中获取信息。"
+            eyebrow="选择公司 IT 工具"
             installedCount={installedSkills.length}
-            title="基础信息设置"
+            title="选择公司 IT 工具"
             onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
           />
 
           <div className="onboarding-entry-grid onboarding-entry-grid--nested">
             <EntryCard
-              active={hoveredBasicEntry === 'role'}
-              complete={completion.role}
-              index="1"
-              summary={basicInfoEntries.role.summary}
-              title={basicInfoEntries.role.title}
-              onClick={() => {
-                setBasicEntryView('role')
-                setHoveredBasicEntry('role')
-              }}
-              onFocus={() => setHoveredBasicEntry('role')}
-              onHover={() => setHoveredBasicEntry('role')}
-              onLeave={() => setHoveredBasicEntry(null)}
-            />
-            <EntryCard
               active={hoveredBasicEntry === 'baseSkills'}
               complete={completion.baseSkills}
-              index="2"
+              index="1"
               summary={basicInfoEntries.baseSkills.summary}
               title={basicInfoEntries.baseSkills.title}
               onClick={() => {
@@ -761,13 +733,11 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             saveFeedback={activeBasicScope ? saveFeedbacks[activeBasicScope] : null}
             saving={activeBasicScope ? savingScope === activeBasicScope : false}
             selectedBaseSkillIds={state.selected_base_skill_ids}
-            selectedRoleId={state.selected_role_id}
             onSave={() => {
               if (activeBasicScope) {
                 void saveState(activeBasicScope)
               }
             }}
-            onSelectRole={selectRole}
             onToggleBaseSkill={toggleBaseSkill}
           />
         </section>
@@ -780,18 +750,32 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       <div className="onboarding-shell">
         <section className="onboarding-section">
           <ModuleHeader
-            description="先从当前岗位的用例列表中选择一个，再查看或调整预置描述，并补充当前流程 / SOP / 模板。"
-            eyebrow="用例配置"
+            description="先选岗位，再补充这个岗位下要交给 AI 的具体工作内容和 SOP 要求。"
+            eyebrow="配置要交给 AI 的工作"
             installedCount={installedSkills.length}
-            title="用例配置"
+            title="配置要交给 AI 的工作"
             onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
           />
 
           <div className="onboarding-module-grid">
             <section className="summary-card onboarding-module-grid__sidebar">
-              <h3>可配置用例</h3>
-              <p>当前岗位下可用的用例入口。</p>
+              <h3>选择岗位</h3>
+              <p>先选岗位，再看这个岗位下可以交给 AI 的工作。</p>
+              <RoleSelectionPanel selectedRoleId={state.selected_role_id} onSelectRole={selectRole} />
+              <SaveFeedbackBanner feedback={saveFeedbacks.role} />
+              <div className="button-row">
+                <button
+                  className="button"
+                  disabled={!dirty.role || savingScope === 'role'}
+                  type="button"
+                  onClick={() => void saveState('role')}
+                >
+                  {savingScope === 'role' ? '保存中...' : '保存岗位'}
+                </button>
+              </div>
+              <h3>选择工作</h3>
+              <p>当前岗位下可以交给 AI 的工作。</p>
               <UseCaseList
                 activeUseCaseId={activeUseCase?.use_case_id ?? null}
                 configuredById={completion.useCaseIds}
@@ -830,7 +814,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                   </div>
                 </div>
               ) : (
-                <p className="hint-callout">当前岗位没有可配置的用例。</p>
+                <p className="hint-callout">当前岗位没有可配置的工作。</p>
               )}
             </section>
           </div>
