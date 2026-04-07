@@ -239,16 +239,47 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', {
+        name: '把公司的 SOP 交给 AI 执行，省下时间去做真正有价值的事。',
+      })
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '先选公司常用的 IT 工具，再告诉 AI 要做哪些工作，最后安装到 AI 工具里，让重复工作按公司的 SOP 自动完成。'
+      )
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '开始设置' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Skill 库' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '设置' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Onboarding' })).not.toBeInTheDocument()
     expect(screen.queryByText('界面 Demo，暂不接入真实发送能力')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '基础信息设置' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '用例配置' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '安装技能' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '选择公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '安装到 AI 工具' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '已设置内容' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: /Agent、岗位和基础技能/i })
     ).not.toBeInTheDocument()
+  })
+
+  it('uses singular Skill wording in the empty skill library state', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByRole('heading', { name: '开始设置' })
+    await user.click(screen.getByRole('button', { name: 'Skill 库' }))
+
+    expect(screen.getByRole('heading', { name: '可用 Skill' })).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。'
+      )
+    ).toBeInTheDocument()
   })
 
   it('shows an install action when a newer desktop app update is available', async () => {

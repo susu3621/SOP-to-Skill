@@ -184,10 +184,10 @@ function App() {
             )}
             <div className="header-nav">
               <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>
-                Onboarding
+                开始设置
               </button>
               <button className="button--ghost" type="button" onClick={() => setView('skills-list')}>
-                Skills
+                Skill 库
               </button>
               <button className="button--ghost" type="button" onClick={() => setView('installed')}>
                 已安装
@@ -202,17 +202,30 @@ function App() {
               <div className="page-content">
                 <div className="page-content__scroll">
                   {view === 'onboarding' && (
-                    <OnboardingShell
-                      installedSkills={installed}
-                      onOpenInstalled={() => setView('installed')}
-                    />
+                    <>
+                      <div className="onboarding-entry-grid" aria-label="onboarding-home-actions">
+                        <button className="onboarding-entry-card" type="button" onClick={() => setView('onboarding')}>
+                          <span className="onboarding-entry-card__title">选择公司 IT 工具</span>
+                        </button>
+                        <button className="onboarding-entry-card" type="button" onClick={() => setView('onboarding')}>
+                          <span className="onboarding-entry-card__title">配置要交给 AI 的工作</span>
+                        </button>
+                        <button className="onboarding-entry-card" type="button" onClick={() => setView('onboarding')}>
+                          <span className="onboarding-entry-card__title">安装到 AI 工具</span>
+                        </button>
+                      </div>
+                      <OnboardingShell
+                        installedSkills={installed}
+                        onOpenInstalled={() => setView('installed')}
+                      />
+                    </>
                   )}
 
                   {view === 'skills-list' && (
                     <>
-                      <span className="panel__eyebrow">Skills 库</span>
-                      <h2 className="panel__title">可用 Skills</h2>
-                      <p className="panel__body">浏览并安装 Skills 到你的目标应用程序。</p>
+                      <span className="panel__eyebrow">Skill 库</span>
+                      <h2 className="panel__title">可用 Skill</h2>
+                      <p className="panel__body">浏览并安装可用 Skill。</p>
 
                       {loading && <p>加载中...</p>}
                       {error && <p className="error">{error}</p>}
@@ -239,7 +252,7 @@ function App() {
 
                       {skills.length === 0 && !loading && (
                         <p className="muted">
-                          暂无可用 Skills。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的
+                          暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的
                           `skills/` 目录。
                         </p>
                       )}
@@ -466,12 +479,12 @@ function App() {
 
                   {view === 'installed' && (
                     <>
-                      <span className="panel__eyebrow">已安装</span>
-                      <h2 className="panel__title">已安装的 Skills</h2>
-                      <p className="panel__body">管理已安装到各目标应用的 Skills。</p>
+                      <span className="panel__eyebrow">Skill 库</span>
+                      <h2 className="panel__title">已安装 Skill</h2>
+                      <p className="panel__body">管理已经安装到各个 AI 工具中的 Skill。</p>
 
                       {installed.length === 0 ? (
-                        <p className="muted">暂无已安装的 Skills。</p>
+                        <p className="muted">暂无已安装 Skill。</p>
                       ) : (
                         <div className="installed-list">
                           {installed.map((skill) => (
