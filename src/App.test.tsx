@@ -256,9 +256,9 @@ describe('onboarding shell smoke coverage', () => {
     expect(screen.queryByRole('button', { name: '设置' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Onboarding' })).not.toBeInTheDocument()
     expect(screen.queryByText('界面 Demo，暂不接入真实发送能力')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '基础信息设置' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '用例配置' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '安装技能' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '选择公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '安装到 AI 工具' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '已设置内容' })).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: /Agent、岗位和基础技能/i })
