@@ -16,6 +16,13 @@ interface InstallSelectionStepProps {
   onToggleInstallSkill: (skillId: string) => void
 }
 
+interface GeneratedSkillToggleProps {
+  skillId: string
+  title: string
+  checked: boolean
+  onToggle: (skillId: string) => void
+}
+
 function renderSkillList(skillIds: string[]) {
   if (skillIds.length === 0) {
     return <span className="muted">无</span>
@@ -29,6 +36,18 @@ function renderSkillList(skillIds: string[]) {
         </span>
       ))}
     </div>
+  )
+}
+
+function GeneratedSkillToggle({ skillId, title, checked, onToggle }: GeneratedSkillToggleProps) {
+  return (
+    <label className="onboarding-install-skill-toggle" aria-label={`${title} ${skillId}`}>
+      <input checked={checked} type="checkbox" onChange={() => onToggle(skillId)} />
+      <span className="onboarding-install-skill-toggle__copy">
+        <span className="onboarding-install-skill-toggle__title">{title}</span>
+        <span className="onboarding-install-skill-toggle__id">{skillId}</span>
+      </span>
+    </label>
   )
 }
 
@@ -65,29 +84,50 @@ export function InstallSelectionStep({
 
       <section className="summary-card">
         <h3>岗位生成技能</h3>
-        <div className="field-stack">
-          {installCandidateGroups.map((group) => (
-            <div className="onboarding-install-group" key={group.use_case_id}>
-              <p className="onboarding-install-group__title">{group.use_case_name}</p>
-              <label className="field-option field-option--compact">
-                <input
-                  checked={selectedInstallSkillIds.includes(group.production_skill_id)}
-                  type="checkbox"
-                  onChange={() => onToggleInstallSkill(group.production_skill_id)}
-                />
-                <span>{`${group.use_case_name} 生产包`}</span>
-              </label>
-              <label className="field-option field-option--compact">
-                <input
-                  checked={selectedInstallSkillIds.includes(group.test_skill_id)}
-                  type="checkbox"
-                  onChange={() => onToggleInstallSkill(group.test_skill_id)}
-                />
-                <span>{`${group.use_case_name} 测试包`}</span>
-              </label>
-            </div>
-          ))}
-        </div>
+        {installCandidateGroups.length > 0 ? (
+          <div className="onboarding-install-skill-table-wrap">
+            <table aria-label="岗位生成技能列表" className="onboarding-install-skill-table">
+              <thead>
+                <tr>
+                  <th scope="col">岗位用例</th>
+                  <th scope="col">生产技能</th>
+                  <th scope="col">测试技能</th>
+                </tr>
+              </thead>
+              <tbody>
+                {installCandidateGroups.map((group) => (
+                  <tr key={group.use_case_id}>
+                    <th
+                      className="onboarding-install-skill-table__use-case"
+                      data-label="岗位用例"
+                      scope="row"
+                    >
+                      {group.use_case_name}
+                    </th>
+                    <td data-label="生产技能">
+                      <GeneratedSkillToggle
+                        checked={selectedInstallSkillIds.includes(group.production_skill_id)}
+                        skillId={group.production_skill_id}
+                        title="生产技能"
+                        onToggle={onToggleInstallSkill}
+                      />
+                    </td>
+                    <td data-label="测试技能">
+                      <GeneratedSkillToggle
+                        checked={selectedInstallSkillIds.includes(group.test_skill_id)}
+                        skillId={group.test_skill_id}
+                        title="测试技能"
+                        onToggle={onToggleInstallSkill}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="muted">当前岗位暂无可安装的生成技能。</p>
+        )}
       </section>
 
       <section className="summary-card">

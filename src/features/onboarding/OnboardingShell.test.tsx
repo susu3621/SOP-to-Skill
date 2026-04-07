@@ -651,4 +651,26 @@ describe('OnboardingShell', () => {
     expect(screen.getByText('claude-code sync failed')).toBeInTheDocument()
     expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
   })
+
+  it('renders generated install skills as one row per use case with production and test columns', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '安装技能' }))
+
+    const table = await screen.findByRole('table', { name: '岗位生成技能列表' })
+    expect(within(table).getByRole('columnheader', { name: '岗位用例' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: '生产技能' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: '测试技能' })).toBeInTheDocument()
+
+    expect(within(table).getByText('记录日志')).toBeInTheDocument()
+    const planningRow = within(table).getByText('记录计划').closest('tr') as HTMLTableRowElement
+    expect(planningRow).not.toBeNull()
+    expect(within(table).getByText('项目周报')).toBeInTheDocument()
+    expect(within(planningRow).getByText('project-manager-planning')).toBeInTheDocument()
+    expect(within(planningRow).getByText('test-project-manager-planning')).toBeInTheDocument()
+  })
 })

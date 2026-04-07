@@ -944,17 +944,77 @@ textarea {
   gap: 16px;
 }
 
-.onboarding-install-group {
-  display: grid;
-  gap: 10px;
+.onboarding-install-skill-table-wrap {
+  overflow-x: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.onboarding-install-skill-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.onboarding-install-skill-table th,
+.onboarding-install-skill-table td {
   padding: 14px 16px;
-  border-radius: 16px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(22, 48, 41, 0.08);
+}
+
+.onboarding-install-skill-table thead th {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(22, 48, 41, 0.62);
   background: rgba(22, 48, 41, 0.05);
 }
 
-.onboarding-install-group__title {
-  margin: 0;
+.onboarding-install-skill-table tbody tr:last-child th,
+.onboarding-install-skill-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.onboarding-install-skill-table__use-case {
+  width: 22%;
+  font-size: 0.96rem;
   font-weight: 700;
+  color: #163029;
+}
+
+.onboarding-install-skill-toggle {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(22, 48, 41, 0.05);
+}
+
+.onboarding-install-skill-toggle input {
+  margin-top: 2px;
+}
+
+.onboarding-install-skill-toggle__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.onboarding-install-skill-toggle__title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(22, 48, 41, 0.62);
+}
+
+.onboarding-install-skill-toggle__id {
+  color: #163029;
+  font-family: 'SFMono-Regular', 'SF Mono', 'Consolas', monospace;
+  font-size: 0.88rem;
+  overflow-wrap: anywhere;
 }
 
 .onboarding-preview-list {
@@ -1153,5 +1213,62 @@ textarea {
   .onboarding-entry-grid--nested,
   .onboarding-module-grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-install-skill-table,
+  .onboarding-install-skill-table thead,
+  .onboarding-install-skill-table tbody,
+  .onboarding-install-skill-table tr,
+  .onboarding-install-skill-table th,
+  .onboarding-install-skill-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .onboarding-install-skill-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .onboarding-install-skill-table tbody {
+    display: grid;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .onboarding-install-skill-table tbody tr {
+    border-radius: 16px;
+    background: rgba(22, 48, 41, 0.05);
+    overflow: hidden;
+  }
+
+  .onboarding-install-skill-table tbody th,
+  .onboarding-install-skill-table tbody td {
+    border-bottom: 1px solid rgba(22, 48, 41, 0.08);
+  }
+
+  .onboarding-install-skill-table tbody tr > :last-child {
+    border-bottom: none;
+  }
+
+  .onboarding-install-skill-table tbody th::before,
+  .onboarding-install-skill-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.76rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(22, 48, 41, 0.62);
+  }
+
+  .onboarding-install-skill-table__use-case {
+    width: 100%;
   }
 }
