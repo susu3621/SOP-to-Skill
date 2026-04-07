@@ -509,7 +509,7 @@ function App() {
                     <>
                       <span className="panel__eyebrow">设置</span>
                       <h2 className="panel__title">应用设置</h2>
-                      <p className="panel__body">配置 Skill Configurator。</p>
+                      <p className="panel__body">配置 SOP to Skill。</p>
 
                       <div className="settings-grid">
                         <section className="summary-card">

@@ -143,7 +143,7 @@ jobs:
           uploadUpdaterJson: true
           uploadUpdaterSignatures: true
           tagName: v__VERSION__
-          releaseName: Skill Configurator v__VERSION__
+          releaseName: SOP to Skill v__VERSION__
           releaseBody: |
             Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
           releaseDraft: false
