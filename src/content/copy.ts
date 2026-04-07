@@ -105,17 +105,17 @@ export const pageCopy = {
   },
   skillsLibraryTitle: {
     'zh-CN': '可用 Skill',
-    'en-US': 'Available Skill',
+    'en-US': 'Available Skills',
   },
   skillsLibraryBody: {
     'zh-CN': '浏览并安装可用 Skill。',
-    'en-US': 'Browse and install available Skill.',
+    'en-US': 'Browse and install available Skills.',
   },
   skillsLibraryEmpty: {
     'zh-CN':
       '暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。',
     'en-US':
-      'No available Skill yet. Put the Skill directory package in the repository `skills/` directory or the application data `skills/` directory.',
+      'No Skills are available yet. Put the Skill directory package in the repository `skills/` directory or the application data `skills/` directory.',
   },
   installedLibraryEyebrow: {
     'zh-CN': 'Skill 库',
@@ -123,15 +123,15 @@ export const pageCopy = {
   },
   installedLibraryTitle: {
     'zh-CN': '已安装 Skill',
-    'en-US': 'Installed Skill',
+    'en-US': 'Installed Skills',
   },
   installedLibraryBody: {
     'zh-CN': '管理已经安装到各个 AI 工具中的 Skill。',
-    'en-US': 'Manage installed Skill in each AI tool.',
+    'en-US': 'Manage Skills already installed in each AI tool.',
   },
   installedLibraryEmpty: {
     'zh-CN': '暂无已安装 Skill。',
-    'en-US': 'No installed Skill yet.',
+    'en-US': 'No Skills are installed yet.',
   }
 } satisfies Record<string, LocalizedText>
 
