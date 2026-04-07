@@ -202,23 +202,10 @@ function App() {
               <div className="page-content">
                 <div className="page-content__scroll">
                   {view === 'onboarding' && (
-                    <>
-                      <div className="onboarding-entry-grid" aria-label="onboarding-home-actions">
-                        <button className="onboarding-entry-card" type="button" onClick={() => setView('onboarding')}>
-                          <span className="onboarding-entry-card__title">选择公司 IT 工具</span>
-                        </button>
-                        <button className="onboarding-entry-card" type="button" onClick={() => setView('onboarding')}>
-                          <span className="onboarding-entry-card__title">配置要交给 AI 的工作</span>
-                        </button>
-                        <button className="onboarding-entry-card" type="button" onClick={() => setView('onboarding')}>
-                          <span className="onboarding-entry-card__title">安装到 AI 工具</span>
-                        </button>
-                      </div>
-                      <OnboardingShell
-                        installedSkills={installed}
-                        onOpenInstalled={() => setView('installed')}
-                      />
-                    </>
+                    <OnboardingShell
+                      installedSkills={installed}
+                      onOpenInstalled={() => setView('installed')}
+                    />
                   )}
 
                   {view === 'skills-list' && (
