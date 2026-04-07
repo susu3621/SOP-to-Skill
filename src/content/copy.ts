@@ -4,7 +4,7 @@ export const defaultLocale: Locale = 'zh-CN'
 
 export const pageCopy = {
   appTitle: {
-    'zh-CN': '公司的 SOP 交给 AI 执行，省下时间去做真正有价值的事。',
+    'zh-CN': 'SOP 交给 AI 执行，省下时间去做真正有价值的事。',
     'en-US': 'Hand your company SOPs to AI so you can spend time on work that matters.',
   },
   heroBody: {
