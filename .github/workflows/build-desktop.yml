@@ -36,10 +36,10 @@ jobs:
         include:
           - os: macos-latest
             artifact_name: desktop-macos
-            bundle_path: src-tauri/target/release/bundle/dmg/*.dmg
+            bundle_path: src-tauri/target/release/bundle/dmg/sop-to-skill-*.dmg
           - os: windows-latest
             artifact_name: desktop-windows
-            bundle_path: src-tauri/target/release/skill-configurator.exe
+            bundle_path: src-tauri/target/release/sop-to-skill.exe
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
@@ -163,6 +163,22 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           uploadWorkflowArtifacts: false
+      - if: matrix.os == 'macos-latest'
+        name: Rename macOS DMG artifact to sop-to-skill slug
+        shell: bash
+        run: |
+          set -euo pipefail
+          dmg_dir='src-tauri/target/release/bundle/dmg'
+          original="$(find "$dmg_dir" -maxdepth 1 -type f -name '*.dmg' | head -n 1)"
+          if [ -z "$original" ]; then
+            echo 'No DMG found to rename' >&2
+            exit 1
+          fi
+
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          arch="$(uname -m)"
+          renamed="$dmg_dir/sop-to-skill-${version}-${arch}.dmg"
+          mv "$original" "$renamed"
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}

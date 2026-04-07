@@ -1,5 +1,5 @@
 [package]
-name = "skill-configurator"
+name = "sop-to-skill"
 version = "0.1.0"
 description = "Desktop scaffold for guided skill configuration"
 authors = ["OpenAI Codex"]

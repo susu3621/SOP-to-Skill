@@ -543,7 +543,7 @@ function App() {
                         <section className="summary-card">
                           <h3>数据目录</h3>
                           <p className="muted" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                            ~/Library/Application Support/SkillConfigurator
+                            ~/Library/Application Support/sop-to-skill
                           </p>
                           <button
                             className="button--ghost"

@@ -716,6 +716,22 @@ describe('build desktop all workflow dispatch', () => {
     expect(workflow).toContain('APPLE_API_KEY_PATH')
   })
 
+  it('keeps desktop artifact filenames aligned to sop-to-skill', () => {
+    const workflow = fs.readFileSync(
+      path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
+      'utf8',
+    )
+    const verifyScript = fs.readFileSync(
+      path.join(process.cwd(), 'scripts/verify-desktop-scaffold.sh'),
+      'utf8',
+    )
+
+    expect(workflow).toContain('target/release/sop-to-skill.exe')
+    expect(workflow).toContain('bundle/dmg/sop-to-skill-')
+    expect(verifyScript).toContain("rg -n 'target/release/sop-to-skill\\.exe' .github/workflows/build-desktop.yml")
+    expect(verifyScript).toContain("test -f scripts/install-sop-to-skill.ps1")
+  })
+
   it('keeps push macOS builds on ad-hoc signing while gating notarization secrets behind workflow_dispatch', () => {
     const workflow = fs.readFileSync(
       path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
