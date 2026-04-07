@@ -7,22 +7,28 @@ if (-not (Test-Path $exePath)) {
   throw "Portable executable not found: $exePath"
 }
 
-$launch = Start-Process -FilePath $exePath -PassThru
-Start-Sleep -Seconds 8
+$taskName = "SkillConfiguratorPortable-$([DateTime]::Now.ToString('yyyyMMdd-HHmmss'))"
+$startTime = (Get-Date).AddMinutes(1).ToString('HH:mm')
 
-$alive = Get-Process -Id $launch.Id -ErrorAction SilentlyContinue
-if (-not $alive) {
+try {
+  schtasks.exe /create /tn $taskName /tr $exePath /sc once /st $startTime /it /f | Out-Null
+  schtasks.exe /run /tn $taskName | Out-Null
+  Start-Sleep -Seconds 8
+
   $alive = Get-Process | Where-Object {
-    $_.Path -eq $exePath -or $_.ProcessName -eq 'skill-configurator' -or $_.ProcessName -eq 'Skill Configurator'
+    $_.Path -eq $exePath -and $_.SessionId -ne 0
   } | Select-Object -First 1
+} finally {
+  schtasks.exe /delete /tn $taskName /f | Out-Null
 }
 
 if (-not $alive) {
-  throw 'Application did not remain running after launch'
+  throw 'Application did not appear in an interactive user session after launch'
 }
 
 [pscustomobject]@{
   remoteDir = $remoteDir
   exePath = $exePath
   processId = $alive.Id
+  sessionId = $alive.SessionId
 } | ConvertTo-Json -Compress

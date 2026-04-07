@@ -58,7 +58,7 @@
 部署到 Windows 主机时，仓库内置 `scripts/deploy-windows-artifact.sh` 和 `scripts/install-skill-configurator.ps1`：
 
 - shell 脚本负责触发构建、选择最新 `.exe`、并通过 `ssh/scp` 上传到目标主机
-- PowerShell 脚本负责直接启动便携版可执行文件并验证进程存活
+- PowerShell 脚本负责通过一次性计划任务把便携版可执行文件拉起到活跃桌面会话，并验证进程存活
 
 普通 `push` 触发的 GitHub Actions 构建，以及 `workflow_dispatch` 且 `release_build=false` 的手动构建，都会走 smoke build 路径。macOS smoke build 会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`），这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有 `workflow_dispatch` 且 `release_build=true`，或者 `v*` tag 触发的 release 构建，workflow 才会要求完整的 Apple 签名、公证和 updater 签名配置，并发布正式 GitHub Release。
 
