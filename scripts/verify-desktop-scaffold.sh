@@ -53,6 +53,7 @@ test -f src/App.tsx
 test -f src-tauri/Cargo.toml
 test -f src-tauri/tauri.conf.json
 test -f .github/workflows/build-desktop.yml
+rg -n 'windows_subsystem = "windows"' src-tauri/src/main.rs
 test -f scripts/deploy-windows-artifact.sh
 test -f scripts/install-skill-configurator.ps1
 
