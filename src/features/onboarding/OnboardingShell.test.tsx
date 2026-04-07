@@ -290,11 +290,12 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
     expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '选择岗位' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择岗位', selected: true })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择工作', selected: false })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '项目经理' })).toBeChecked()
     expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
-
-    expect(screen.getByRole('heading', { name: '选择工作' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '需求评估' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('用例描述')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '返回首页' }))
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
 
@@ -309,6 +310,40 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '安装到 AI 工具' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Codex' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Claude Code' })).not.toBeChecked()
+  })
+
+  it('opens the work page on the 岗位 tab by default', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择岗位', selected: true })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择工作', selected: false })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '项目经理' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存岗位' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '需求评估' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('用例描述')).not.toBeInTheDocument()
+  })
+
+  it('shows the work list and editor after switching to the 工作 tab', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
+
+    expect(screen.getByRole('tab', { name: '选择岗位', selected: false })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择工作', selected: true })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
+    expect(screen.getByLabelText('用例描述')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '保存岗位' })).not.toBeInTheDocument()
   })
 
   it('shows saved status badges and hides module detail until the user hovers a card', async () => {
@@ -596,11 +631,13 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: '项目经理' }))
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
 
     const descriptionInput = screen.getByLabelText('用例描述') as HTMLTextAreaElement
     await user.clear(descriptionInput)
     await user.type(descriptionInput, temporaryEdit)
 
+    await user.click(screen.getByRole('tab', { name: '选择岗位' }))
     await user.click(screen.getByRole('button', { name: '保存岗位' }))
 
     expect(getSetStateCalls()).toHaveLength(1)
@@ -610,6 +647,7 @@ describe('OnboardingShell', () => {
         record.description.includes(temporaryEdit)
       )
     ).toBe(false)
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
     expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(temporaryEdit)
   })
 
@@ -651,10 +689,10 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
     expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '选择岗位' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择岗位', selected: true })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择工作', selected: false })).toBeInTheDocument()
     expect(screen.getByText('先选岗位，再看这个岗位下可以交给 AI 的工作。')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '选择工作' })).toBeInTheDocument()
-    expect(screen.getByText('当前岗位下可以交给 AI 的工作。')).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
     expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '记录计划' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '记录日志' })).toBeInTheDocument()
@@ -743,7 +781,9 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
     expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: '选择岗位', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存岗位' })).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
     const requirementAssessmentItem = screen.getByRole('button', { name: '需求评估' })
     const planningItem = screen.getByRole('button', { name: '记录计划' })
     const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
@@ -783,6 +823,7 @@ describe('OnboardingShell', () => {
 
     await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
     const planningItem = await screen.findByRole('button', { name: '记录计划' })
     const dailyLogItem = screen.getByRole('button', { name: '记录日志' })
     const weeklyReportItem = screen.getByRole('button', { name: '项目周报' })

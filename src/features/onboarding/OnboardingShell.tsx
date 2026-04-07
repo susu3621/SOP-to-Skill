@@ -20,6 +20,7 @@ import type {
 } from '../../types'
 
 type OnboardingView = 'home' | 'basic' | 'useCases' | 'install'
+type UseCaseTab = 'role' | 'work'
 
 interface EntryCopy {
   title: string
@@ -478,8 +479,17 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   } = useOnboarding(installedSkills)
 
   const [view, setView] = useState<OnboardingView>('home')
+  const [activeUseCaseTab, setActiveUseCaseTab] = useState<UseCaseTab>('role')
   const [hoveredHomeEntry, setHoveredHomeEntry] = useState<Exclude<OnboardingView, 'home'> | null>(null)
   const [selectedUseCaseId, setSelectedUseCaseId] = useState<string | null>(null)
+
+  const openView = (nextView: OnboardingView) => {
+    setView(nextView)
+
+    if (nextView === 'useCases') {
+      setActiveUseCaseTab('role')
+    }
+  }
 
   useEffect(() => {
     if (!selectedUseCaseId || !state.role_use_case_contents.some((item) => item.use_case_id === selectedUseCaseId)) {
@@ -579,7 +589,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
               index="01"
               summary={onboardingHomeEntries.basic.summary}
               title={onboardingHomeEntries.basic.title}
-              onClick={() => setView('basic')}
+              onClick={() => openView('basic')}
               onFocus={() => setHoveredHomeEntry('basic')}
               onHover={() => setHoveredHomeEntry('basic')}
               onLeave={() => setHoveredHomeEntry(null)}
@@ -590,7 +600,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
               index="02"
               summary={onboardingHomeEntries.useCases.summary}
               title={onboardingHomeEntries.useCases.title}
-              onClick={() => setView('useCases')}
+              onClick={() => openView('useCases')}
               onFocus={() => setHoveredHomeEntry('useCases')}
               onHover={() => setHoveredHomeEntry('useCases')}
               onLeave={() => setHoveredHomeEntry(null)}
@@ -601,7 +611,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
               index="03"
               summary={onboardingHomeEntries.install.summary}
               title={onboardingHomeEntries.install.title}
-              onClick={() => setView('install')}
+              onClick={() => openView('install')}
               onFocus={() => setHoveredHomeEntry('install')}
               onHover={() => setHoveredHomeEntry('install')}
               onLeave={() => setHoveredHomeEntry(null)}
@@ -673,65 +683,128 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             onOpenInstalled={onOpenInstalled}
           />
 
-          <div className="onboarding-module-grid">
-            <section className="summary-card onboarding-module-grid__sidebar">
-              <h3>选择岗位</h3>
-              <p>先选岗位，再看这个岗位下可以交给 AI 的工作。</p>
-              <RoleSelectionPanel selectedRoleId={state.selected_role_id} onSelectRole={selectRole} />
-              <SaveFeedbackBanner feedback={saveFeedbacks.role} />
-              <div className="button-row">
-                <button
-                  className="button"
-                  disabled={!dirty.role || savingScope === 'role'}
-                  type="button"
-                  onClick={() => void saveState('role')}
-                >
-                  {savingScope === 'role' ? '保存中...' : '保存岗位'}
-                </button>
-              </div>
-              <h3>选择工作</h3>
-              <p>当前岗位下可以交给 AI 的工作。</p>
-              <UseCaseList
-                activeUseCaseId={activeUseCase?.use_case_id ?? null}
-                configuredById={completion.useCaseIds}
-                useCases={state.role_use_case_contents}
-                onSelect={setSelectedUseCaseId}
-              />
-            </section>
+          <div className="onboarding-work-tabs">
+            <div
+              aria-label="工作配置导航"
+              className="onboarding-tablist"
+              role="tablist"
+            >
+              <button
+                aria-controls="onboarding-role-tabpanel"
+                aria-selected={activeUseCaseTab === 'role'}
+                className="onboarding-tab"
+                id="onboarding-role-tab"
+                role="tab"
+                tabIndex={activeUseCaseTab === 'role' ? 0 : -1}
+                type="button"
+                onClick={() => setActiveUseCaseTab('role')}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowRight') {
+                    setActiveUseCaseTab('work')
+                  }
+                }}
+              >
+                选择岗位
+              </button>
+              <button
+                aria-controls="onboarding-work-tabpanel"
+                aria-selected={activeUseCaseTab === 'work'}
+                className="onboarding-tab"
+                id="onboarding-work-tab"
+                role="tab"
+                tabIndex={activeUseCaseTab === 'work' ? 0 : -1}
+                type="button"
+                onClick={() => setActiveUseCaseTab('work')}
+                onKeyDown={(event) => {
+                  if (event.key === 'ArrowLeft') {
+                    setActiveUseCaseTab('role')
+                  }
+                }}
+              >
+                选择工作
+              </button>
+            </div>
 
-            <section className="summary-card onboarding-module-grid__content">
-              {activeUseCase ? (
-                <div className="onboarding-subeditor-panel">
-                  <SaveFeedbackBanner
-                    feedback={activeUseCaseScope ? saveFeedbacks[activeUseCaseScope] : null}
-                  />
-                  <UseCaseConfigStep
-                    useCases={[activeUseCase]}
-                    onUpdate={updateUseCaseContent}
-                  />
-                  <div className="button-row">
-                    <button
-                      className="button"
-                      disabled={
-                        !activeUseCaseScope ||
-                        !dirty.useCases[activeUseCase.use_case_id] ||
-                        savingScope === activeUseCaseScope
-                      }
-                      type="button"
-                      onClick={() => {
-                        if (activeUseCaseScope) {
-                          void saveState(activeUseCaseScope)
-                        }
-                      }}
-                    >
-                      {savingScope === activeUseCaseScope ? '保存中...' : '保存设置'}
-                    </button>
+            {activeUseCaseTab === 'role' ? (
+              <section
+                aria-labelledby="onboarding-role-tab"
+                className="summary-card onboarding-subeditor-panel"
+                id="onboarding-role-tabpanel"
+                role="tabpanel"
+              >
+                <h3>选择岗位</h3>
+                <p>先选岗位，再看这个岗位下可以交给 AI 的工作。</p>
+                <RoleSelectionPanel
+                  selectedRoleId={state.selected_role_id}
+                  onSelectRole={selectRole}
+                />
+                <SaveFeedbackBanner feedback={saveFeedbacks.role} />
+                <div className="button-row">
+                  <button
+                    className="button"
+                    disabled={!dirty.role || savingScope === 'role'}
+                    type="button"
+                    onClick={() => void saveState('role')}
+                  >
+                    {savingScope === 'role' ? '保存中...' : '保存岗位'}
+                  </button>
+                </div>
+              </section>
+            ) : (
+              <section
+                aria-labelledby="onboarding-work-tab"
+                className="summary-card"
+                id="onboarding-work-tabpanel"
+                role="tabpanel"
+              >
+                <div className="onboarding-module-grid onboarding-module-grid--work">
+                  <div className="onboarding-module-grid__sidebar onboarding-subeditor-panel">
+                    <h3>选择工作</h3>
+                    <p>当前岗位下可以交给 AI 的工作。</p>
+                    <UseCaseList
+                      activeUseCaseId={activeUseCase?.use_case_id ?? null}
+                      configuredById={completion.useCaseIds}
+                      useCases={state.role_use_case_contents}
+                      onSelect={setSelectedUseCaseId}
+                    />
+                  </div>
+
+                  <div className="onboarding-module-grid__content">
+                    {activeUseCase ? (
+                      <div className="onboarding-subeditor-panel">
+                        <SaveFeedbackBanner
+                          feedback={activeUseCaseScope ? saveFeedbacks[activeUseCaseScope] : null}
+                        />
+                        <UseCaseConfigStep
+                          useCases={[activeUseCase]}
+                          onUpdate={updateUseCaseContent}
+                        />
+                        <div className="button-row">
+                          <button
+                            className="button"
+                            disabled={
+                              !activeUseCaseScope ||
+                              !dirty.useCases[activeUseCase.use_case_id] ||
+                              savingScope === activeUseCaseScope
+                            }
+                            type="button"
+                            onClick={() => {
+                              if (activeUseCaseScope) {
+                                void saveState(activeUseCaseScope)
+                              }
+                            }}
+                          >
+                            {savingScope === activeUseCaseScope ? '保存中...' : '保存设置'}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="hint-callout">当前岗位没有可配置的工作。</p>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <p className="hint-callout">当前岗位没有可配置的工作。</p>
-              )}
-            </section>
+              </section>
+            )}
           </div>
         </section>
       </div>

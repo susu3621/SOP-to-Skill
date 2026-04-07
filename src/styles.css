@@ -895,6 +895,44 @@ textarea {
   gap: 10px;
 }
 
+.onboarding-work-tabs {
+  display: grid;
+  gap: 16px;
+}
+
+.onboarding-tablist {
+  display: inline-flex;
+  gap: 8px;
+  align-self: start;
+  padding: 6px;
+  border: 1px solid rgba(22, 48, 41, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 250, 245, 0.86);
+}
+
+.onboarding-tab {
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: rgba(22, 48, 41, 0.72);
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.onboarding-tab:hover,
+.onboarding-tab:focus-visible {
+  color: #163029;
+  outline: none;
+}
+
+.onboarding-tab[aria-selected='true'] {
+  background: #163029;
+  color: #fffaf5;
+  box-shadow: 0 12px 24px rgba(22, 48, 41, 0.14);
+}
+
 .onboarding-module-grid {
   display: grid;
   grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
