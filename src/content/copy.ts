@@ -7,14 +7,6 @@ export const pageCopy = {
     'zh-CN': '把公司的 SOP 交给 AI 执行，省下时间去做真正有价值的事。',
     'en-US': 'Hand your company SOPs to AI so you can spend time on work that matters.',
   },
-  appSubtitle: {
-    'zh-CN': '给普通员工的 AI 工作方式邀请',
-    'en-US': 'AI Workstyle Invitation'
-  },
-  heroTitle: {
-    'zh-CN': '把周报准备过程拆成一步一步的问题',
-    'en-US': 'Turn weekly report setup into a guided conversation'
-  },
   heroBody: {
     'zh-CN':
       '先选公司常用的 IT 工具，再告诉 AI 要做哪些工作，最后安装到 AI 工具里，让重复工作按公司的 SOP 自动完成。',
@@ -93,7 +85,7 @@ export const pageCopy = {
   },
   localeTag: {
     'zh-CN': '检查更新',
-    'en-US': 'Check updates'
+    'en-US': 'Check updates',
   },
   navOnboarding: {
     'zh-CN': '开始设置',
@@ -101,7 +93,7 @@ export const pageCopy = {
   },
   navSkills: {
     'zh-CN': 'Skill 库',
-    'en-US': 'Skill library',
+    'en-US': 'Skill Library',
   },
   navInstalled: {
     'zh-CN': '已安装',
@@ -109,7 +101,7 @@ export const pageCopy = {
   },
   skillsLibraryEyebrow: {
     'zh-CN': 'Skill 库',
-    'en-US': 'Skill library',
+    'en-US': 'Skill Library',
   },
   skillsLibraryTitle: {
     'zh-CN': '可用 Skill',
@@ -123,11 +115,11 @@ export const pageCopy = {
     'zh-CN':
       '暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。',
     'en-US':
-      'No available Skill yet. Put the Skill directory package into the repository `skills/` directory, or the application data directory `skills/` directory.',
+      'No available Skill yet. Put the Skill directory package in the repository `skills/` directory or the application data `skills/` directory.',
   },
   installedLibraryEyebrow: {
     'zh-CN': 'Skill 库',
-    'en-US': 'Skill library',
+    'en-US': 'Skill Library',
   },
   installedLibraryTitle: {
     'zh-CN': '已安装 Skill',
@@ -135,7 +127,7 @@ export const pageCopy = {
   },
   installedLibraryBody: {
     'zh-CN': '管理已经安装到各个 AI 工具中的 Skill。',
-    'en-US': 'Manage Skill already installed in each AI tool.',
+    'en-US': 'Manage installed Skill in each AI tool.',
   },
   installedLibraryEmpty: {
     'zh-CN': '暂无已安装 Skill。',
