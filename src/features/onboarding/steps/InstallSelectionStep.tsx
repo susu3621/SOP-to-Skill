@@ -90,8 +90,8 @@ export function InstallSelectionStep({
               <thead>
                 <tr>
                   <th scope="col">岗位用例</th>
-                  <th scope="col">生产技能</th>
-                  <th scope="col">测试技能</th>
+                  <th scope="col">生产用</th>
+                  <th scope="col">测试用</th>
                 </tr>
               </thead>
               <tbody>
@@ -104,19 +104,19 @@ export function InstallSelectionStep({
                     >
                       {group.use_case_name}
                     </th>
-                    <td data-label="生产技能">
+                    <td data-label="生产用">
                       <GeneratedSkillToggle
                         checked={selectedInstallSkillIds.includes(group.production_skill_id)}
                         skillId={group.production_skill_id}
-                        title="生产技能"
+                        title="生产用"
                         onToggle={onToggleInstallSkill}
                       />
                     </td>
-                    <td data-label="测试技能">
+                    <td data-label="测试用">
                       <GeneratedSkillToggle
                         checked={selectedInstallSkillIds.includes(group.test_skill_id)}
                         skillId={group.test_skill_id}
-                        title="测试技能"
+                        title="测试用"
                         onToggle={onToggleInstallSkill}
                       />
                     </td>

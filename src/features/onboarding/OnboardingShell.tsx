@@ -6,6 +6,7 @@ import { InstallSelectionStep } from './steps/InstallSelectionStep'
 import { UseCaseConfigStep } from './steps/UseCaseConfigStep'
 import { useOnboarding } from './useOnboarding'
 import {
+  buildGeneratedSkillIdsForRoleUseCase,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
   getRoleNameById,
@@ -172,7 +173,15 @@ interface DetailPanelProps {
 
 interface HomeSummaryGroup {
   label: string
-  values: string[]
+  kind?: 'values' | 'installTable'
+  values?: string[]
+  rows?: HomeInstallSummaryRow[]
+}
+
+interface HomeInstallSummaryRow {
+  useCaseName: string
+  productionLabel: string
+  testLabel: string
 }
 
 function DetailPanel({ eyebrow, title, description, items }: DetailPanelProps) {
@@ -206,7 +215,34 @@ function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
         {groups.map((group) => (
           <section className="onboarding-home-summary__group" key={group.label}>
             <p className="onboarding-home-summary__label">{group.label}</p>
-            {group.values.length > 0 ? (
+            {group.kind === 'installTable' ? (
+              group.rows && group.rows.length > 0 ? (
+                <div className="onboarding-home-install-table-wrap">
+                  <table aria-label="安装技能汇总" className="onboarding-home-install-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">岗位用例</th>
+                        <th scope="col">生产用</th>
+                        <th scope="col">测试用</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.rows.map((row) => (
+                        <tr key={row.useCaseName}>
+                          <th data-label="岗位用例" scope="row">
+                            {row.useCaseName}
+                          </th>
+                          <td data-label="生产用">{row.productionLabel}</td>
+                          <td data-label="测试用">{row.testLabel}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="onboarding-home-summary__empty">未设置</p>
+              )
+            ) : group.values && group.values.length > 0 ? (
               <div className="onboarding-home-summary__values">
                 {group.values.map((value) => (
                   <span className="onboarding-home-summary__value" key={`${group.label}-${value}`}>
@@ -532,27 +568,50 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     () => [
       {
         label: '已选岗位',
+        kind: 'values',
         values: savedState.selected_role_id ? [getRoleNameById(savedState.selected_role_id)] : [],
       },
       {
         label: '基础技能',
+        kind: 'values',
         values: savedState.selected_base_skill_ids.map((skillId) => getBaseSkillNameById(skillId)),
       },
       {
         label: '已配置用例',
+        kind: 'values',
         values: savedState.role_use_case_contents
           .filter((useCase) => completion.useCaseIds[useCase.use_case_id])
           .map((useCase) => useCase.use_case_name),
       },
       {
         label: '安装目标',
+        kind: 'values',
         values: savedState.selected_agent_ids.map((agentId) => getOnboardingAgentNameById(agentId)),
       },
       {
         label: '安装技能',
-        values: savedResolvedSelectedInstallSkillIds.map((skillId) =>
-          savedState.selected_base_skill_ids.includes(skillId) ? getBaseSkillNameById(skillId) : skillId
-        ),
+        kind: 'installTable',
+        rows: savedState.selected_role_id
+          ? savedState.role_use_case_contents.map((useCase) => {
+              const generatedSkillIds = buildGeneratedSkillIdsForRoleUseCase(
+                savedState.selected_role_id,
+                useCase.use_case_id
+              )
+              return {
+                useCaseName: useCase.use_case_name,
+                productionLabel: savedResolvedSelectedInstallSkillIds.includes(
+                  generatedSkillIds.production_skill_id
+                )
+                  ? generatedSkillIds.production_skill_id
+                  : '未安装',
+                testLabel: savedResolvedSelectedInstallSkillIds.includes(
+                  generatedSkillIds.test_skill_id
+                )
+                  ? generatedSkillIds.test_skill_id
+                  : '未安装',
+              }
+            })
+          : [],
       },
     ],
     [completion.useCaseIds, savedResolvedSelectedInstallSkillIds, savedState]

@@ -688,6 +688,49 @@ textarea {
   color: rgba(22, 48, 41, 0.54);
 }
 
+.onboarding-home-install-table-wrap {
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.onboarding-home-install-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.onboarding-home-install-table th,
+.onboarding-home-install-table td {
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid rgba(22, 48, 41, 0.08);
+  font-size: 0.88rem;
+  color: rgba(22, 48, 41, 0.88);
+}
+
+.onboarding-home-install-table thead th {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(22, 48, 41, 0.58);
+  background: rgba(22, 48, 41, 0.05);
+}
+
+.onboarding-home-install-table tbody tr:last-child th,
+.onboarding-home-install-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.onboarding-home-install-table tbody th {
+  width: 30%;
+  font-weight: 700;
+  color: #163029;
+}
+
 .onboarding-entry-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1213,6 +1256,63 @@ textarea {
   .onboarding-entry-grid--nested,
   .onboarding-module-grid {
     grid-template-columns: 1fr;
+  }
+
+  .onboarding-home-summary__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .onboarding-home-install-table,
+  .onboarding-home-install-table thead,
+  .onboarding-home-install-table tbody,
+  .onboarding-home-install-table tr,
+  .onboarding-home-install-table th,
+  .onboarding-home-install-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .onboarding-home-install-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .onboarding-home-install-table tbody {
+    display: grid;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .onboarding-home-install-table tbody tr {
+    border-radius: 14px;
+    background: rgba(22, 48, 41, 0.05);
+    overflow: hidden;
+  }
+
+  .onboarding-home-install-table tbody th,
+  .onboarding-home-install-table tbody td {
+    border-bottom: 1px solid rgba(22, 48, 41, 0.08);
+  }
+
+  .onboarding-home-install-table tbody tr > :last-child {
+    border-bottom: none;
+  }
+
+  .onboarding-home-install-table tbody th::before,
+  .onboarding-home-install-table tbody td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(22, 48, 41, 0.58);
   }
 
   .onboarding-install-skill-table,

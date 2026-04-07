@@ -370,7 +370,14 @@ describe('OnboardingShell', () => {
     expect(within(installTargetsGroup).getByText('Codex')).toBeInTheDocument()
     expect(within(installTargetsGroup).getByText('Claude Code')).toBeInTheDocument()
     expect(within(summary).getByText('安装技能')).toBeInTheDocument()
-    expect(within(installSkillsGroup).getByText('test-project-manager-weekly-report')).toBeInTheDocument()
+    const installSkillTable = within(installSkillsGroup).getByRole('table', { name: '安装技能汇总' })
+    expect(within(installSkillTable).getByRole('columnheader', { name: '岗位用例' })).toBeInTheDocument()
+    expect(within(installSkillTable).getByRole('columnheader', { name: '生产用' })).toBeInTheDocument()
+    expect(within(installSkillTable).getByRole('columnheader', { name: '测试用' })).toBeInTheDocument()
+    const weeklyReportRow = within(installSkillTable).getByText('项目周报').closest('tr') as HTMLTableRowElement
+    expect(weeklyReportRow).not.toBeNull()
+    expect(within(weeklyReportRow).getByText('project-manager-weekly-report')).toBeInTheDocument()
+    expect(within(weeklyReportRow).getByText('test-project-manager-weekly-report')).toBeInTheDocument()
   })
 
   it('shows 未设置 for empty summary groups when no values are selected', async () => {
@@ -394,7 +401,12 @@ describe('OnboardingShell', () => {
 
     const summary = screen.getByRole('region', { name: '已设置内容' })
     expect(within(summary).getByText('基础技能')).toBeInTheDocument()
-    expect(within(summary).getAllByText('未设置').length).toBeGreaterThanOrEqual(4)
+    expect(within(summary).getAllByText('未设置').length).toBeGreaterThanOrEqual(3)
+    const installSkillsGroup = within(summary)
+      .getByText('安装技能')
+      .closest('.onboarding-home-summary__group') as HTMLElement
+    const installSkillTable = within(installSkillsGroup).getByRole('table', { name: '安装技能汇总' })
+    expect(within(installSkillTable).getAllByText('未安装').length).toBeGreaterThan(0)
   })
 
   it('renders secondary-entry guidance as text instead of nested boxed cards', async () => {
@@ -663,8 +675,8 @@ describe('OnboardingShell', () => {
 
     const table = await screen.findByRole('table', { name: '岗位生成技能列表' })
     expect(within(table).getByRole('columnheader', { name: '岗位用例' })).toBeInTheDocument()
-    expect(within(table).getByRole('columnheader', { name: '生产技能' })).toBeInTheDocument()
-    expect(within(table).getByRole('columnheader', { name: '测试技能' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: '生产用' })).toBeInTheDocument()
+    expect(within(table).getByRole('columnheader', { name: '测试用' })).toBeInTheDocument()
 
     expect(within(table).getByText('记录日志')).toBeInTheDocument()
     const planningRow = within(table).getByText('记录计划').closest('tr') as HTMLTableRowElement
