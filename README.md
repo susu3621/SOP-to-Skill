@@ -38,6 +38,7 @@
 - `npm run tauri:dev`: 启动 Tauri 桌面开发模式
 - `npm run tauri:build`: 直接在本机运行 Tauri 构建，只生成当前平台的桌面 bundle；在 macOS 上会产出 `src-tauri/target/release/bundle/macos/` 下的 `.app`
 - `npm run build:desktop:all`: 触发远程 GitHub Actions 的双平台桌面 smoke build，等待 macOS / Windows 两个平台完成后，把产物下载到 `artifacts/desktop/<run-id>/`
+- `npm run deploy:windows -- <host> <user> [executable-path]`: 构建并部署最新 Windows 便携版；如果不传 `executable-path`，会先运行 `build:desktop:all`，再把最新 `.exe` 通过 `ssh/scp` 传到目标 Windows 机器并直接启动
 - `npm run docs:dev`: 启动文档站开发模式
 - `npm run docs:build`: 构建 GitHub Pages 文档
 
@@ -52,7 +53,12 @@
 
 - `artifacts/desktop/<run-id>/manifest.json`: 记录这次远程构建对应的 workflow、分支、 commit SHA 和下载时间
 - `artifacts/desktop/<run-id>/macos/`: 存放 macOS `.dmg` 安装包
-- `artifacts/desktop/<run-id>/windows/`: 存放 Windows `.exe` 安装包
+- `artifacts/desktop/<run-id>/windows/`: 存放 Windows 便携版 `.exe`
+
+部署到 Windows 主机时，仓库内置 `scripts/deploy-windows-artifact.sh` 和 `scripts/install-skill-configurator.ps1`：
+
+- shell 脚本负责触发构建、选择最新 `.exe`、并通过 `ssh/scp` 上传到目标主机
+- PowerShell 脚本负责直接启动便携版可执行文件并验证进程存活
 
 普通 `push` 触发的 GitHub Actions 构建，以及 `workflow_dispatch` 且 `release_build=false` 的手动构建，都会走 smoke build 路径。macOS smoke build 会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`），这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有 `workflow_dispatch` 且 `release_build=true`，或者 `v*` tag 触发的 release 构建，workflow 才会要求完整的 Apple 签名、公证和 updater 签名配置，并发布正式 GitHub Release。
 

@@ -23,7 +23,7 @@ rg -n 'actions/setup-node@v6' .github/workflows/deploy-pages.yml
 rg -n 'tauri-apps/tauri-action@v0\.6\.2' .github/workflows/build-desktop.yml
 rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
 rg -n 'bundle/dmg/\*\.dmg' .github/workflows/build-desktop.yml
-rg -n 'bundle/nsis/\*\.exe' .github/workflows/build-desktop.yml
+rg -n 'target/release/skill-configurator\.exe' .github/workflows/build-desktop.yml
 ! rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
 rg -n 'workflow_dispatch:' .github/workflows/build-desktop.yml
 rg -n 'release_build:' .github/workflows/build-desktop.yml
@@ -53,6 +53,8 @@ test -f src/App.tsx
 test -f src-tauri/Cargo.toml
 test -f src-tauri/tauri.conf.json
 test -f .github/workflows/build-desktop.yml
+test -f scripts/deploy-windows-artifact.sh
+test -f scripts/install-skill-configurator.ps1
 
 npm run verify:skills
 npm run test

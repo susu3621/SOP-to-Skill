@@ -39,7 +39,7 @@ jobs:
             bundle_path: src-tauri/target/release/bundle/dmg/*.dmg
           - os: windows-latest
             artifact_name: desktop-windows
-            bundle_path: src-tauri/target/release/bundle/nsis/*.exe
+            bundle_path: src-tauri/target/release/skill-configurator.exe
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v6
