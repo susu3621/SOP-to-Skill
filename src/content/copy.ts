@@ -94,6 +94,52 @@ export const pageCopy = {
   localeTag: {
     'zh-CN': '检查更新',
     'en-US': 'Check updates'
+  },
+  navOnboarding: {
+    'zh-CN': '开始设置',
+    'en-US': 'Start setup',
+  },
+  navSkills: {
+    'zh-CN': 'Skill 库',
+    'en-US': 'Skill library',
+  },
+  navInstalled: {
+    'zh-CN': '已安装',
+    'en-US': 'Installed',
+  },
+  skillsLibraryEyebrow: {
+    'zh-CN': 'Skill 库',
+    'en-US': 'Skill library',
+  },
+  skillsLibraryTitle: {
+    'zh-CN': '可用 Skill',
+    'en-US': 'Available Skill',
+  },
+  skillsLibraryBody: {
+    'zh-CN': '浏览并安装可用 Skill。',
+    'en-US': 'Browse and install available Skill.',
+  },
+  skillsLibraryEmpty: {
+    'zh-CN':
+      '暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。',
+    'en-US':
+      'No available Skill yet. Put the Skill directory package into the repository `skills/` directory, or the application data directory `skills/` directory.',
+  },
+  installedLibraryEyebrow: {
+    'zh-CN': 'Skill 库',
+    'en-US': 'Skill library',
+  },
+  installedLibraryTitle: {
+    'zh-CN': '已安装 Skill',
+    'en-US': 'Installed Skill',
+  },
+  installedLibraryBody: {
+    'zh-CN': '管理已经安装到各个 AI 工具中的 Skill。',
+    'en-US': 'Manage Skill already installed in each AI tool.',
+  },
+  installedLibraryEmpty: {
+    'zh-CN': '暂无已安装 Skill。',
+    'en-US': 'No installed Skill yet.',
   }
 } satisfies Record<string, LocalizedText>
 

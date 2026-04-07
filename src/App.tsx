@@ -184,13 +184,13 @@ function App() {
             )}
             <div className="header-nav">
               <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>
-                开始设置
+                {getCopy(locale, pageCopy.navOnboarding)}
               </button>
               <button className="button--ghost" type="button" onClick={() => setView('skills-list')}>
-                Skill 库
+                {getCopy(locale, pageCopy.navSkills)}
               </button>
               <button className="button--ghost" type="button" onClick={() => setView('installed')}>
-                已安装
+                {getCopy(locale, pageCopy.navInstalled)}
               </button>
             </div>
           </div>
@@ -210,9 +210,9 @@ function App() {
 
                   {view === 'skills-list' && (
                     <>
-                      <span className="panel__eyebrow">Skill 库</span>
-                      <h2 className="panel__title">可用 Skill</h2>
-                      <p className="panel__body">浏览并安装可用 Skill。</p>
+                      <span className="panel__eyebrow">{getCopy(locale, pageCopy.skillsLibraryEyebrow)}</span>
+                      <h2 className="panel__title">{getCopy(locale, pageCopy.skillsLibraryTitle)}</h2>
+                      <p className="panel__body">{getCopy(locale, pageCopy.skillsLibraryBody)}</p>
 
                       {loading && <p>加载中...</p>}
                       {error && <p className="error">{error}</p>}
@@ -238,10 +238,7 @@ function App() {
                       </div>
 
                       {skills.length === 0 && !loading && (
-                        <p className="muted">
-                          暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的
-                          `skills/` 目录。
-                        </p>
+                        <p className="muted">{getCopy(locale, pageCopy.skillsLibraryEmpty)}</p>
                       )}
                     </>
                   )}
@@ -466,12 +463,12 @@ function App() {
 
                   {view === 'installed' && (
                     <>
-                      <span className="panel__eyebrow">Skill 库</span>
-                      <h2 className="panel__title">已安装 Skill</h2>
-                      <p className="panel__body">管理已经安装到各个 AI 工具中的 Skill。</p>
+                      <span className="panel__eyebrow">{getCopy(locale, pageCopy.installedLibraryEyebrow)}</span>
+                      <h2 className="panel__title">{getCopy(locale, pageCopy.installedLibraryTitle)}</h2>
+                      <p className="panel__body">{getCopy(locale, pageCopy.installedLibraryBody)}</p>
 
                       {installed.length === 0 ? (
-                        <p className="muted">暂无已安装 Skill。</p>
+                        <p className="muted">{getCopy(locale, pageCopy.installedLibraryEmpty)}</p>
                       ) : (
                         <div className="installed-list">
                           {installed.map((skill) => (

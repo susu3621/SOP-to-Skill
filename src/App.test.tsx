@@ -252,6 +252,7 @@ describe('onboarding shell smoke coverage', () => {
     expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '开始设置' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Skill 库' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '已安装' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '设置' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Onboarding' })).not.toBeInTheDocument()
     expect(screen.queryByText('界面 Demo，暂不接入真实发送能力')).not.toBeInTheDocument()
@@ -277,6 +278,20 @@ describe('onboarding shell smoke coverage', () => {
         '暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。'
       )
     ).toBeInTheDocument()
+  })
+
+  it('uses singular Skill wording in the empty installed state', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await screen.findByRole('heading', { name: '开始设置' })
+    await user.click(screen.getByRole('button', { name: '已安装' }))
+
+    expect(screen.getByRole('heading', { name: '已安装 Skill' })).toBeInTheDocument()
+    expect(
+      screen.getByText('管理已经安装到各个 AI 工具中的 Skill。')
+    ).toBeInTheDocument()
+    expect(screen.getByText('暂无已安装 Skill。')).toBeInTheDocument()
   })
 
   it('shows an install action when a newer desktop app update is available', async () => {
