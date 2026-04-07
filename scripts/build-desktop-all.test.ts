@@ -110,7 +110,15 @@ describe('build desktop all workflow dispatch', () => {
 
     expect(
       buildWorkflowRunArgs({ branch: 'feat/desktop-windows-build', workflowFile: 'build-desktop.yml' }),
-    ).toEqual(['workflow', 'run', 'build-desktop.yml', '--ref', 'feat/desktop-windows-build'])
+    ).toEqual([
+      'workflow',
+      'run',
+      'build-desktop.yml',
+      '--ref',
+      'feat/desktop-windows-build',
+      '-f',
+      'release_build=false',
+    ])
   })
 
   it('selects only the workflow_dispatch run that matches branch, sha, and trigger time', () => {

@@ -9,7 +9,7 @@ const RUN_DISCOVERY_INTERVAL_MS = 1000;
 const RUN_DISCOVERY_CLOCK_SKEW_MS = 5000;
 
 function buildWorkflowRunArgs({ workflowFile, branch }) {
-  return ['workflow', 'run', workflowFile, '--ref', branch];
+  return ['workflow', 'run', workflowFile, '--ref', branch, '-f', 'release_build=false'];
 }
 
 function selectWorkflowRun(
