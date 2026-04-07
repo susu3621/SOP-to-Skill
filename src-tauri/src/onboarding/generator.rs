@@ -1,5 +1,6 @@
 use crate::models::OnboardingRoleUseCaseContent;
 use crate::models::SkillError;
+use crate::template::get_data_root;
 use std::fs;
 use std::path::PathBuf;
 
@@ -23,16 +24,6 @@ pub struct StagedOnboardingPackage {
 pub struct StagedOnboardingPackages {
     pub production: StagedOnboardingPackage,
     pub test: StagedOnboardingPackage,
-}
-
-fn get_data_root() -> PathBuf {
-    if let Ok(path) = std::env::var("SKILL_CONFIGURATOR_DATA_DIR") {
-        return PathBuf::from(path);
-    }
-
-    dirs::data_dir()
-        .expect("Failed to get data directory")
-        .join("SkillConfigurator")
 }
 
 fn get_data_root_override(data_root: Option<&PathBuf>) -> PathBuf {
@@ -134,7 +125,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .expect("time went backwards")
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("skill-configurator-{prefix}-{unique}"));
+        let path = std::env::temp_dir().join(format!("sop-to-skill-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
     }

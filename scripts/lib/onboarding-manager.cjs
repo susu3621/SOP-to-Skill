@@ -142,7 +142,7 @@ function buildOverviewSnapshot(input, homeDir = requireHomeDirectory()) {
 function renderHelp(homeDir = requireHomeDirectory()) {
   const defaultStorageDir = path.join(homeDir, '.skills-for-no-engineer', 'onboarding');
 
-  return `Skill Configurator Onboarding Config Manager
+  return `SOP to Skill Onboarding Config Manager
 
 用法:
   node scripts/test-onboarding.cjs

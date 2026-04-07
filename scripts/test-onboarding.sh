@@ -7,7 +7,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 show_help() {
   cat <<'EOF'
-Skill Configurator Onboarding Config Manager
+SOP to Skill Onboarding Config Manager
 
 用法:
   ./scripts/test-onboarding.sh

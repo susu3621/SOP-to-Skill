@@ -55,7 +55,7 @@
 - `artifacts/desktop/<run-id>/macos/`: 存放 macOS `.dmg` 安装包
 - `artifacts/desktop/<run-id>/windows/`: 存放 Windows 便携版 `.exe`
 
-部署到 Windows 主机时，仓库内置 `scripts/deploy-windows-artifact.sh` 和 `scripts/install-skill-configurator.ps1`：
+部署到 Windows 主机时，仓库内置 `scripts/deploy-windows-artifact.sh` 和 `scripts/install-sop-to-skill.ps1`：
 
 - shell 脚本负责触发构建、选择最新 `.exe`、并通过 `ssh/scp` 上传到目标主机
 - PowerShell 脚本负责通过一次性计划任务把便携版可执行文件拉起到活跃桌面会话，并验证进程存活

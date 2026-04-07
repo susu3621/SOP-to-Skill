@@ -1,5 +1,5 @@
 use crate::models::AppConfig;
-use crate::template::{ensure_directories, get_config_path};
+use crate::template::{ensure_directories, get_config_path, get_data_root};
 use std::fs;
 
 use super::skill::SkillResult;
@@ -65,19 +65,13 @@ pub fn update_config(
 /// Get the data directory path
 #[tauri::command]
 pub fn get_data_directory() -> String {
-    dirs::data_dir()
-        .expect("Failed to get data directory")
-        .join("SkillConfigurator")
-        .to_string_lossy()
-        .to_string()
+    get_data_root().to_string_lossy().to_string()
 }
 
 /// Open the data directory in file manager
 #[tauri::command]
 pub fn open_data_directory() -> SkillResult<()> {
-    let data_dir = dirs::data_dir()
-        .expect("Failed to get data directory")
-        .join("SkillConfigurator");
+    let data_dir = get_data_root();
 
     let _ = ensure_directories();
 
