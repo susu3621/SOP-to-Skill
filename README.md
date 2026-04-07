@@ -37,7 +37,7 @@
 - `npm run build`: 构建桌面前端静态资源
 - `npm run tauri:dev`: 启动 Tauri 桌面开发模式
 - `npm run tauri:build`: 直接在本机运行 Tauri 构建，只生成当前平台的桌面 bundle；在 macOS 上会产出 `src-tauri/target/release/bundle/macos/` 下的 `.app`
-- `npm run build:desktop:all`: 触发远程 GitHub Actions 的双平台桌面构建，等待 macOS / Windows 两个平台完成后，把产物下载到 `artifacts/desktop/<run-id>/`
+- `npm run build:desktop:all`: 触发远程 GitHub Actions 的双平台桌面 smoke build，等待 macOS / Windows 两个平台完成后，把产物下载到 `artifacts/desktop/<run-id>/`
 - `npm run docs:dev`: 启动文档站开发模式
 - `npm run docs:build`: 构建 GitHub Pages 文档
 
@@ -46,7 +46,7 @@
 `npm run tauri:build` 和 `npm run build:desktop:all` 解决的是不同问题：
 
 - `npm run tauri:build` 适合在当前机器上做本地验证，只依赖本机的 Tauri / Rust 环境，不会去触发 GitHub Actions，也不会收集另一平台的产物。
-- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端，`origin/<branch>` 也必须和当前本地 `HEAD` 一致。CI 会继续上传 macOS 的 `.dmg` 安装包和 Windows 的 NSIS `.exe` 安装包作为 artifact 供自动化下载；当 workflow 以 `workflow_dispatch` 或 `v*` tag 运行时，还会创建正式 GitHub Release 并附带 updater 所需的 `latest.json` 与签名产物。
+- `npm run build:desktop:all` 适合做跨平台回归和 smoke test。它会调用 `gh workflow run` 触发 `.github/workflows/build-desktop.yml`，并显式传入 `release_build=false`，因此需要 `gh auth status` 通过，并且当前分支已经推送到远端，`origin/<branch>` 也必须和当前本地 `HEAD` 一致。CI 会继续上传 macOS 的 `.dmg` 安装包和 Windows 的 NSIS `.exe` 安装包作为 artifact 供自动化下载；只有 `workflow_dispatch` 且 `release_build=true`，或者 `v*` tag 触发时，workflow 才会创建正式 GitHub Release 并附带 updater 所需的 `latest.json` 与签名产物。
 
 `npm run build:desktop:all` 的输出目录约定如下：
 
@@ -54,9 +54,9 @@
 - `artifacts/desktop/<run-id>/macos/`: 存放 macOS `.dmg` 安装包
 - `artifacts/desktop/<run-id>/windows/`: 存放 Windows `.exe` 安装包
 
-普通 `push` 触发的 macOS GitHub Actions 构建会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`）完成 smoke build，这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有 `workflow_dispatch` 或 `v*` tag 触发的 release 构建，workflow 才会要求完整的 Apple 签名、公证和 updater 签名配置，并发布正式 GitHub Release。
+普通 `push` 触发的 GitHub Actions 构建，以及 `workflow_dispatch` 且 `release_build=false` 的手动构建，都会走 smoke build 路径。macOS smoke build 会使用 ad-hoc signing（`APPLE_SIGNING_IDENTITY='-'`），这样即使没有 Apple secrets 也不会直接把 workflow 判失败。只有 `workflow_dispatch` 且 `release_build=true`，或者 `v*` tag 触发的 release 构建，workflow 才会要求完整的 Apple 签名、公证和 updater 签名配置，并发布正式 GitHub Release。
 
-如果要让 `workflow_dispatch` 产出的 macOS 安装包能作为对外分发的签名/公证版本，仓库需要在 Actions secrets 中提供以下 Apple 配置：
+如果要让 `workflow_dispatch` 且 `release_build=true` 产出的 macOS 安装包能作为对外分发的签名/公证版本，仓库需要在 Actions secrets 中提供以下 Apple 配置：
 
 - `APPLE_CERTIFICATE`
 - `APPLE_CERTIFICATE_PASSWORD`
@@ -93,7 +93,7 @@
 在线升级只在 release 构建中启用，配置位于 `src-tauri/tauri.release.conf.json`。
 
 - 普通分支 `push` 仍然只做 smoke build，不生成 updater 产物
-- `workflow_dispatch` 或 `v*` tag 触发的 release 构建会注入 updater 公钥，并让 `tauri-action` 上传签名产物和 `latest.json`
+- `workflow_dispatch` 且 `release_build=true`，或 `v*` tag 触发的 release 构建会注入 updater 公钥，并让 `tauri-action` 上传签名产物和 `latest.json`
 - 桌面应用运行时通过 Tauri updater 检查 GitHub Releases 上的 `latest.json`
 
 ## Skill 安装
