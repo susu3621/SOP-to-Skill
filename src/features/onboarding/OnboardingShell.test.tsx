@@ -558,6 +558,67 @@ describe('OnboardingShell', () => {
     )
   })
 
+  it('keeps unsaved local work edits visible after a successful role save', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_role_id: 'product-manager',
+      selected_base_skill_ids: ['jira'],
+      role_use_case_contents: [
+        {
+          role_id: 'product-manager',
+          use_case_id: 'daily-log',
+          use_case_name: '记录日志',
+          description: '记录需求和评审进展。',
+          info_sources: 'Confluence',
+          rules: '按会后更新',
+        },
+        {
+          role_id: 'product-manager',
+          use_case_id: 'planning',
+          use_case_name: '记录计划',
+          description: '维护版本计划。',
+          info_sources: 'Jira',
+          rules: '按周整理',
+        },
+      ],
+      selected_install_skill_ids: [
+        'jira',
+        'product-manager-daily-log',
+        'test-product-manager-daily-log',
+        'product-manager-planning',
+        'test-product-manager-planning',
+      ],
+      selected_install_skill_ids_initialized: true,
+    }
+
+    const temporaryEdit = '临时未保存的工作说明'
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+
+    expect(await screen.findByRole('heading', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
+    await user.click(screen.getByRole('radio', { name: '项目经理' }))
+
+    const descriptionInput = screen.getByLabelText('用例描述') as HTMLTextAreaElement
+    await user.clear(descriptionInput)
+    await user.type(descriptionInput, temporaryEdit)
+
+    await user.click(screen.getByRole('button', { name: '保存岗位' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    const [, payload] = getSetStateCalls()[0] as [string, { state: OnboardingState }]
+    expect(
+      payload.state.role_use_case_contents.some((record) =>
+        record.description.includes(temporaryEdit)
+      )
+    ).toBe(false)
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(temporaryEdit)
+  })
+
   it('keeps default project manager use cases available when loading onboarding state fails', async () => {
     mockControls.stateOverride = null
     const user = userEvent.setup()

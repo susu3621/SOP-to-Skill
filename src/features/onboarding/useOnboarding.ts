@@ -536,7 +536,11 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
 
         if (result.success) {
           const normalizedState = normalizeState(result.success)
-          setState(normalizedState)
+          if (scope === 'role') {
+            setState((current) => normalizeState(current))
+          } else {
+            setState(normalizedState)
+          }
           setSavedState(normalizedState)
           setSaveFeedbacks((current) => ({
             ...current,
