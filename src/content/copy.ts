@@ -9,7 +9,7 @@ export const pageCopy = {
   },
   heroBody: {
     'zh-CN':
-      '先选公司常用的 IT 工具，再告诉 AI 要做哪些工作，最后安装到 AI 工具里，让重复工作按公司的 SOP 自动完成。',
+      '利用公司的 SOP，快速生成对应的 Skill，让 AI 快速替你完成任务。',
     'en-US':
       'Choose the company IT tools first, decide which work AI should handle, then install it into an AI tool so repeated SOP work can run automatically.',
   },
