@@ -30,12 +30,16 @@ fi
 
 REMOTE_EXECUTABLE='skill-configurator.exe'
 REMOTE_SCRIPT='install-skill-configurator.ps1'
-
-scp "${SSH_OPTS[@]}" "$EXECUTABLE_PATH" "${TARGET_USER}@${TARGET_HOST}:${REMOTE_EXECUTABLE}"
-scp "${SSH_OPTS[@]}" "${SCRIPT_DIR}/install-skill-configurator.ps1" "${TARGET_USER}@${TARGET_HOST}:${REMOTE_SCRIPT}"
+REMOTE_DIR="skill-configurator-portable-$(date +%Y%m%d-%H%M%S)"
 
 ssh "${SSH_OPTS[@]}" "${TARGET_USER}@${TARGET_HOST}" \
-  "powershell -NoProfile -ExecutionPolicy Bypass -File ${REMOTE_SCRIPT}"
+  "powershell -NoProfile -Command \"New-Item -ItemType Directory -Force -Path '${REMOTE_DIR}' | Out-Null\""
+
+scp "${SSH_OPTS[@]}" "$EXECUTABLE_PATH" "${TARGET_USER}@${TARGET_HOST}:${REMOTE_DIR}/${REMOTE_EXECUTABLE}"
+scp "${SSH_OPTS[@]}" "${SCRIPT_DIR}/install-skill-configurator.ps1" "${TARGET_USER}@${TARGET_HOST}:${REMOTE_DIR}/${REMOTE_SCRIPT}"
+
+ssh "${SSH_OPTS[@]}" "${TARGET_USER}@${TARGET_HOST}" \
+  "powershell -NoProfile -ExecutionPolicy Bypass -File ${REMOTE_DIR}\\${REMOTE_SCRIPT}"
 
 ssh "${SSH_OPTS[@]}" "${TARGET_USER}@${TARGET_HOST}" \
   "powershell -NoProfile -Command \"Get-Process | Where-Object { \$_.Path -like '*skill-configurator.exe' -or \$_.ProcessName -eq 'skill-configurator' -or \$_.ProcessName -eq 'Skill Configurator' } | Select-Object -First 5 ProcessName,Id,Path | ConvertTo-Json -Compress\""
