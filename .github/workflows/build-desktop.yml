@@ -3,6 +3,12 @@ name: Build Desktop Scaffold
 on:
   push:
   workflow_dispatch:
+    inputs:
+      release_build:
+        description: Create a signed release build
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: write
@@ -42,7 +48,7 @@ jobs:
           cache: npm
       - uses: dtolnay/rust-toolchain@stable
       - run: npm ci
-      - if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+      - if: (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')
         name: Validate updater signing secrets
         shell: bash
         env:
@@ -62,7 +68,7 @@ jobs:
             printf 'Missing required updater signing secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'
+      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true'
         name: Validate macOS signing secrets
         shell: bash
         env:
@@ -92,7 +98,7 @@ jobs:
             printf 'Missing required macOS signing/notarization secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'
+      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true'
         name: Write App Store Connect API key
         shell: bash
         env:
@@ -105,7 +111,7 @@ jobs:
           EOF
           chmod 600 "$key_path"
           echo "APPLE_API_KEY_PATH=$key_path" >> "$GITHUB_ENV"
-      - if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+      - if: (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')
         name: Write release updater config
         shell: bash
         env:
@@ -119,7 +125,7 @@ jobs:
           config.plugins.updater.pubkey = process.env.TAURI_UPDATER_PUBLIC_KEY
           fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
           EOF
-      - if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+      - if: (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -142,7 +148,7 @@ jobs:
             Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
           releaseDraft: false
           prerelease: false
-      - if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-latest'
+      - if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build != 'true')) && !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-latest'
         name: Build macOS desktop bundle on push with ad-hoc signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
@@ -150,7 +156,7 @@ jobs:
           APPLE_SIGNING_IDENTITY: '-'
         with:
           uploadWorkflowArtifacts: false
-      - if: github.event_name != 'workflow_dispatch' && !startsWith(github.ref, 'refs/tags/v') && matrix.os != 'macos-latest'
+      - if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build != 'true')) && !startsWith(github.ref, 'refs/tags/v') && matrix.os != 'macos-latest'
         name: Build desktop bundle on push without release signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:

@@ -25,14 +25,21 @@ rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
 rg -n 'bundle/dmg/\*\.dmg' .github/workflows/build-desktop.yml
 rg -n 'bundle/nsis/\*\.exe' .github/workflows/build-desktop.yml
 ! rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
+rg -n 'workflow_dispatch:' .github/workflows/build-desktop.yml
+rg -n 'release_build:' .github/workflows/build-desktop.yml
+rg -n 'default:\s*false' .github/workflows/build-desktop.yml
+rg -n "github\.event\.inputs\.release_build" .github/workflows/build-desktop.yml
+! rg -n "if: github\.event_name == 'workflow_dispatch' \|\| startsWith\(github\.ref, 'refs/tags/v'\)" .github/workflows/build-desktop.yml
 rg -n 'uploadWorkflowArtifacts:\s*false' .github/workflows/build-desktop.yml
 rg -n 'uploadUpdaterJson:\s*true' .github/workflows/build-desktop.yml
 rg -n 'uploadUpdaterSignatures:\s*true' .github/workflows/build-desktop.yml
 rg -n 'releaseDraft:\s*false' .github/workflows/build-desktop.yml
 rg -n 'tagName:' .github/workflows/build-desktop.yml
 rg -n 'args:\s*--config src-tauri/tauri.release.conf.json' .github/workflows/build-desktop.yml
-rg -n "if: github\.event_name == 'workflow_dispatch' \|\| startsWith\(github\.ref, 'refs/tags/v'\)" .github/workflows/build-desktop.yml
-rg -n "if: matrix\.os == 'macos-latest' && github\.event_name == 'workflow_dispatch'" .github/workflows/build-desktop.yml
+rg -n "if: \(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build == 'true'\) \|\| startsWith\(github\.ref, 'refs/tags/v'\)" .github/workflows/build-desktop.yml
+rg -n "if: matrix\.os == 'macos-latest' && github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build == 'true'" .github/workflows/build-desktop.yml
+rg -n "if: \(github\.event_name == 'push' \|\| \(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build != 'true'\)\) && !startsWith\(github\.ref, 'refs/tags/v'\) && matrix\.os == 'macos-latest'" .github/workflows/build-desktop.yml
+rg -n "if: \(github\.event_name == 'push' \|\| \(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build != 'true'\)\) && !startsWith\(github\.ref, 'refs/tags/v'\) && matrix\.os != 'macos-latest'" .github/workflows/build-desktop.yml
 rg -n "APPLE_SIGNING_IDENTITY: '-'" .github/workflows/build-desktop.yml
 rg -n 'APPLE_CERTIFICATE' .github/workflows/build-desktop.yml
 rg -n 'APPLE_API_ISSUER' .github/workflows/build-desktop.yml
