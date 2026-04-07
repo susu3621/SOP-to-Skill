@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import {
   buildGeneratedSkillIdsForRoleUseCase,
+  createCustomRoleUseCaseContent,
   createDefaultRoleUseCaseContents,
   defaultOnboardingRoleId,
-  getApplicableUseCasesForRole,
   getCredentialFields,
   getRoleNameById,
   onboardingBaseSkills,
@@ -60,16 +60,121 @@ function isRoleId(roleId: string) {
   return Object.prototype.hasOwnProperty.call(sharedConfig.roles, roleId)
 }
 
-function buildManagedSkillIds(roleId: string, baseSkillIds: string[]) {
+function buildManagedSkillIds(
+  roleId: string,
+  baseSkillIds: string[],
+  roleUseCaseContents: OnboardingEditableUseCaseRecord[]
+) {
   const selectedBaseSkillIds = unique(
     baseSkillIds.filter((skillId) => onboardingBaseSkills.some((skill) => skill.id === skillId))
   )
-  const generatedSkillIds = getApplicableUseCasesForRole(roleId).flatMap((useCase) => {
-    const generated = buildGeneratedSkillIdsForRoleUseCase(roleId, useCase.directory)
-    return [generated.production_skill_id, generated.test_skill_id]
-  })
+  const generatedSkillIds = roleUseCaseContents
+    .filter((record) => record.role_id === roleId)
+    .flatMap((record) => {
+      const generated = buildGeneratedSkillIdsForRoleUseCase(roleId, record.use_case_id)
+      return [generated.production_skill_id, generated.test_skill_id]
+    })
 
   return unique([...selectedBaseSkillIds, ...generatedSkillIds])
+}
+
+function buildSelectedUseCases(
+  roleUseCaseContents: OnboardingEditableUseCaseRecord[]
+): OnboardingUseCase[] {
+  const useCasesById = new Map<string, OnboardingUseCase>()
+
+  roleUseCaseContents.forEach((record) => {
+    const configuredUseCase = onboardingUseCases.find((useCase) => useCase.id === record.use_case_id)
+    const existingUseCase = useCasesById.get(record.use_case_id)
+
+    if (existingUseCase) {
+      if (!existingUseCase.applicable_role_ids.includes(record.role_id)) {
+        existingUseCase.applicable_role_ids.push(record.role_id)
+      }
+      return
+    }
+
+    useCasesById.set(record.use_case_id, {
+      id: record.use_case_id,
+      name: record.use_case_name,
+      directory: configuredUseCase?.directory ?? record.use_case_id,
+      applicable_role_ids: [record.role_id],
+    })
+  })
+
+  return Array.from(useCasesById.values())
+}
+
+function buildInstallCandidateGroups(
+  roleId: string,
+  roleUseCaseContents: OnboardingEditableUseCaseRecord[]
+): OnboardingInstallCandidateGroup[] {
+  return roleUseCaseContents
+    .filter((record) => record.role_id === roleId)
+    .map((record) => ({
+      use_case_id: record.use_case_id,
+      use_case_name: record.use_case_name,
+      ...buildGeneratedSkillIdsForRoleUseCase(roleId, record.use_case_id),
+    }))
+}
+
+function reconcileInstallSelection(
+  state: OnboardingState,
+  nextRoleId: string,
+  nextBaseSkillIds: string[],
+  nextRoleUseCaseContents: OnboardingEditableUseCaseRecord[]
+) {
+  const currentManagedSkillIds = buildManagedSkillIds(
+    state.selected_role_id,
+    state.selected_base_skill_ids,
+    state.role_use_case_contents
+  )
+  const currentSelectedSkillIds = resolveSelectedInstallSkillIds(state, currentManagedSkillIds)
+  const nextManagedSkillIds = buildManagedSkillIds(
+    nextRoleId,
+    nextBaseSkillIds,
+    nextRoleUseCaseContents
+  )
+  const explicitlyDeselectedIds = currentManagedSkillIds.filter(
+    (skillId) => !currentSelectedSkillIds.includes(skillId) && nextManagedSkillIds.includes(skillId)
+  )
+  const nextSelectedSkillIds = nextManagedSkillIds.filter(
+    (skillId) => !explicitlyDeselectedIds.includes(skillId)
+  )
+
+  return {
+    selected_install_skill_ids: nextSelectedSkillIds,
+    selected_install_candidate_skill_ids: nextManagedSkillIds,
+    selected_install_skill_ids_initialized: true,
+  }
+}
+
+function buildPersistedStateForScope(
+  scope: string,
+  currentState: OnboardingState,
+  savedState: OnboardingState
+) {
+  if (scope === 'role') {
+    const nextRoleUseCaseContents = createDefaultRoleUseCaseContents(
+      currentState.selected_role_id,
+      savedState.role_use_case_contents
+    )
+    const nextSelection = reconcileInstallSelection(
+      savedState,
+      currentState.selected_role_id,
+      savedState.selected_base_skill_ids,
+      nextRoleUseCaseContents
+    )
+
+    return normalizeState({
+      ...savedState,
+      selected_role_id: currentState.selected_role_id,
+      role_use_case_contents: nextRoleUseCaseContents,
+      ...nextSelection,
+    })
+  }
+
+  return normalizeState(currentState)
 }
 
 function areSameStringSets(left: string[], right: string[]) {
@@ -232,70 +337,6 @@ function normalizeState(state: OnboardingState): OnboardingState {
   }
 }
 
-function buildSelectedUseCases(): OnboardingUseCase[] {
-  return onboardingUseCases.map((useCase) => ({
-    id: useCase.id,
-    name: useCase.name,
-    directory: useCase.directory,
-    applicable_role_ids: useCase.applicable_role_ids,
-  }))
-}
-
-function buildInstallCandidateGroups(roleId: string): OnboardingInstallCandidateGroup[] {
-  return getApplicableUseCasesForRole(roleId).map((useCase) => ({
-    use_case_id: useCase.id,
-    use_case_name: useCase.name,
-    ...buildGeneratedSkillIdsForRoleUseCase(roleId, useCase.directory),
-  }))
-}
-
-function reconcileInstallSelection(
-  state: OnboardingState,
-  nextRoleId: string,
-  nextBaseSkillIds: string[]
-) {
-  const currentManagedSkillIds = buildManagedSkillIds(state.selected_role_id, state.selected_base_skill_ids)
-  const currentSelectedSkillIds = resolveSelectedInstallSkillIds(state, currentManagedSkillIds)
-  const nextManagedSkillIds = buildManagedSkillIds(nextRoleId, nextBaseSkillIds)
-  const explicitlyDeselectedIds = currentManagedSkillIds.filter(
-    (skillId) => !currentSelectedSkillIds.includes(skillId) && nextManagedSkillIds.includes(skillId)
-  )
-  const nextSelectedSkillIds = nextManagedSkillIds.filter(
-    (skillId) => !explicitlyDeselectedIds.includes(skillId)
-  )
-
-  return {
-    selected_install_skill_ids: nextSelectedSkillIds,
-    selected_install_candidate_skill_ids: nextManagedSkillIds,
-    selected_install_skill_ids_initialized: true,
-  }
-}
-
-function buildPersistedStateForScope(
-  scope: string,
-  currentState: OnboardingState,
-  savedState: OnboardingState
-) {
-  if (scope === 'role') {
-    const nextSelection = reconcileInstallSelection(
-      savedState,
-      currentState.selected_role_id,
-      savedState.selected_base_skill_ids
-    )
-
-    return normalizeState({
-      ...savedState,
-      selected_role_id: currentState.selected_role_id,
-      role_use_case_contents: createDefaultRoleUseCaseContents(
-        currentState.selected_role_id,
-        savedState.role_use_case_contents
-      ),
-      ...nextSelection,
-    })
-  }
-
-  return normalizeState(currentState)
-}
 
 export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const [state, setState] = useState<OnboardingState>(() => createEmptyState())
@@ -309,27 +350,40 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const [saveFeedbacks, setSaveFeedbacks] = useState<Record<string, SaveFeedback>>({})
   const [savingScope, setSavingScope] = useState<string | null>(null)
 
-  const selectedUseCases = useMemo(() => buildSelectedUseCases(), [])
+  const selectedUseCases = useMemo(
+    () => buildSelectedUseCases(state.role_use_case_contents),
+    [state.role_use_case_contents]
+  )
   const agentStates = useMemo(() => buildAgentStates(installedSkills), [installedSkills])
   const managedSkillIds = useMemo(
-    () => buildManagedSkillIds(state.selected_role_id, state.selected_base_skill_ids),
-    [state.selected_base_skill_ids, state.selected_role_id]
+    () =>
+      buildManagedSkillIds(
+        state.selected_role_id,
+        state.selected_base_skill_ids,
+        state.role_use_case_contents
+      ),
+    [state.role_use_case_contents, state.selected_base_skill_ids, state.selected_role_id]
   )
   const resolvedSelectedInstallSkillIds = useMemo(
     () => resolveSelectedInstallSkillIds(state, managedSkillIds),
     [managedSkillIds, state]
   )
   const savedManagedSkillIds = useMemo(
-    () => buildManagedSkillIds(savedState.selected_role_id, savedState.selected_base_skill_ids),
-    [savedState.selected_base_skill_ids, savedState.selected_role_id]
+    () =>
+      buildManagedSkillIds(
+        savedState.selected_role_id,
+        savedState.selected_base_skill_ids,
+        savedState.role_use_case_contents
+      ),
+    [savedState.role_use_case_contents, savedState.selected_base_skill_ids, savedState.selected_role_id]
   )
   const savedResolvedSelectedInstallSkillIds = useMemo(
     () => resolveSelectedInstallSkillIds(savedState, savedManagedSkillIds),
     [savedManagedSkillIds, savedState]
   )
   const installCandidateGroups = useMemo(
-    () => buildInstallCandidateGroups(state.selected_role_id),
-    [state.selected_role_id]
+    () => buildInstallCandidateGroups(state.selected_role_id, state.role_use_case_contents),
+    [state.role_use_case_contents, state.selected_role_id]
   )
   const credentialFields = useMemo(
     () => getCredentialFields(state.selected_base_skill_ids),
@@ -589,12 +643,21 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const selectRole = useCallback(
     (roleId: string) => {
       updateState((current) => {
-        const nextSelection = reconcileInstallSelection(current, roleId, current.selected_base_skill_ids)
+        const nextRoleUseCaseContents = createDefaultRoleUseCaseContents(
+          roleId,
+          current.role_use_case_contents
+        )
+        const nextSelection = reconcileInstallSelection(
+          current,
+          roleId,
+          current.selected_base_skill_ids,
+          nextRoleUseCaseContents
+        )
 
         return {
           ...current,
           selected_role_id: roleId,
-          role_use_case_contents: createDefaultRoleUseCaseContents(roleId, current.role_use_case_contents),
+          role_use_case_contents: nextRoleUseCaseContents,
           ...nextSelection,
         }
       })
@@ -608,7 +671,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
         const nextBaseSkillIds = current.selected_base_skill_ids.includes(skillId)
           ? current.selected_base_skill_ids.filter((selectedSkillId) => selectedSkillId !== skillId)
           : [...current.selected_base_skill_ids, skillId]
-        const nextSelection = reconcileInstallSelection(current, current.selected_role_id, nextBaseSkillIds)
+        const nextSelection = reconcileInstallSelection(
+          current,
+          current.selected_role_id,
+          nextBaseSkillIds,
+          current.role_use_case_contents
+        )
         const allowedCredentialFieldIds = new Set(
           getCredentialFields(nextBaseSkillIds).map((field) => field.id)
         )
@@ -644,12 +712,51 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     [updateState]
   )
 
+  const addUseCase = useCallback(
+    (useCaseName: string) => {
+      const trimmedName = useCaseName.trim()
+      if (!trimmedName) {
+        return null
+      }
+
+      const nextUseCase = createCustomRoleUseCaseContent(
+        state.selected_role_id,
+        trimmedName,
+        state.role_use_case_contents
+          .filter((record) => record.role_id === state.selected_role_id)
+          .map((record) => record.use_case_id)
+      )
+      const nextRoleUseCaseContents = [...state.role_use_case_contents, nextUseCase]
+      const nextSelection = reconcileInstallSelection(
+        state,
+        state.selected_role_id,
+        state.selected_base_skill_ids,
+        nextRoleUseCaseContents
+      )
+
+      setState((current) =>
+        normalizeState({
+          ...current,
+          role_use_case_contents: nextRoleUseCaseContents,
+          ...nextSelection,
+        })
+      )
+      setSaveFeedbacks({})
+      setSyncResult(null)
+      setSyncError(null)
+
+      return nextUseCase.use_case_id
+    },
+    [state]
+  )
+
   const toggleInstallSkill = useCallback(
     (skillId: string) => {
       updateState((current) => {
         const currentManagedSkillIds = buildManagedSkillIds(
           current.selected_role_id,
-          current.selected_base_skill_ids
+          current.selected_base_skill_ids,
+          current.role_use_case_contents
         )
         const currentSelectedSkillIds = resolveSelectedInstallSkillIds(current, currentManagedSkillIds)
 
@@ -657,7 +764,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
           const nextBaseSkillIds = current.selected_base_skill_ids.filter(
             (selectedSkillId) => selectedSkillId !== skillId
           )
-          const nextSelection = reconcileInstallSelection(current, current.selected_role_id, nextBaseSkillIds)
+          const nextSelection = reconcileInstallSelection(
+            current,
+            current.selected_role_id,
+            nextBaseSkillIds,
+            current.role_use_case_contents
+          )
           const allowedCredentialFieldIds = new Set(
             getCredentialFields(nextBaseSkillIds).map((field) => field.id)
           )
@@ -792,6 +904,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     updateCredentialValue,
     updateUseCaseContent,
     selectRole,
+    addUseCase,
     getUseCaseSaveScope,
   }
 }

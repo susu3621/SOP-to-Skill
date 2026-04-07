@@ -1,4 +1,5 @@
 import {
+  buildGeneratedSkillIdsForRoleUseCase,
   createDefaultRoleUseCaseContents,
   getRoleNameById,
   onboardingBaseSkillGroups,
@@ -55,18 +56,18 @@ describe('workbuddy agent apps', () => {
   })
 
   it('keeps only the retained project-manager use cases after pruning the removed scenarios', () => {
-    expect(sharedConfig.roles['project-manager']?.useCases.length).toBe(8)
+    expect(sharedConfig.roles['project-manager']?.useCases.length).toBe(5)
     expect(sharedConfig.roles['project-manager']?.useCases).toEqual(
-      expect.arrayContaining(['需求评估', '立项准备', '需求变更评估', '项目复盘'])
+      ['需求评估', '记录日志', '记录计划', '项目周报', '问题跟踪']
     )
     expect(sharedConfig.roles['project-manager']?.useCases).not.toEqual(
-      expect.arrayContaining(['成本核算', '交期评估', '资源协调', '风险升级', '样机准备', '测试问题闭环', '试产导入'])
+      expect.arrayContaining(['立项准备', '需求变更评估', '项目复盘', '成本核算', '交期评估'])
     )
     expect(onboardingUseCases.map((useCase) => useCase.name)).toEqual(
-      expect.arrayContaining(['需求评估', '立项准备', '需求变更评估', '项目复盘'])
+      expect.arrayContaining(['需求评估', '记录日志', '记录计划', '项目周报', '问题跟踪'])
     )
     expect(onboardingUseCases.map((useCase) => useCase.name)).not.toEqual(
-      expect.arrayContaining(['成本核算', '交期评估', '资源协调', '风险升级', '样机准备', '测试问题闭环', '试产导入'])
+      expect.arrayContaining(['成本核算', '交期评估', '资源协调', '风险升级', '样机准备'])
     )
   })
 
@@ -121,5 +122,30 @@ describe('workbuddy agent apps', () => {
         rules: '保留自定义流程',
       })
     )
+  })
+
+  it('preserves custom use cases when rebuilding the selected role content list', () => {
+    const generatedIds = buildGeneratedSkillIdsForRoleUseCase('project-manager', '客户回访')
+    const defaults = createDefaultRoleUseCaseContents('project-manager', [
+      {
+        role_id: 'project-manager',
+        use_case_id: '客户回访',
+        use_case_name: '客户回访',
+        description: '回顾客户反馈并输出后续动作。',
+        info_sources: '客户邮件、会议纪要',
+        rules: '按客户优先级排序',
+      },
+    ])
+
+    expect(defaults.some((useCase) => useCase.use_case_id === '客户回访')).toBe(true)
+    expect(defaults.find((useCase) => useCase.use_case_id === '客户回访')).toEqual(
+      expect.objectContaining({
+        use_case_name: '客户回访',
+        description: '回顾客户反馈并输出后续动作。',
+        rules: '按客户优先级排序',
+      })
+    )
+    expect(generatedIds.production_skill_id).toBe('project-manager-客户回访')
+    expect(generatedIds.test_skill_id).toBe('test-project-manager-客户回访')
   })
 })

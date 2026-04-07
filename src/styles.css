@@ -1100,6 +1100,29 @@ textarea {
   font-size: 0.82rem;
 }
 
+.onboarding-use-case-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.onboarding-use-case-panel-header > div {
+  min-width: 0;
+}
+
+.onboarding-use-case-create-panel {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.onboarding-use-case-create-panel .button-row {
+  margin-top: 14px;
+}
+
 .onboarding-use-cases {
   display: grid;
   gap: 16px;

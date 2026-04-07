@@ -101,6 +101,18 @@ function getUseCaseNameById(useCaseId: string): string {
   return match?.[1]?.name ?? useCaseId
 }
 
+function normalizeUseCaseId(value: string) {
+  const normalized = value
+    .trim()
+    .replace(/[\s/\\|]+/g, '-')
+    .replace(/[：:]+/g, '-')
+    .replace(/[，,。.!?？、；;（）()【】[\]{}'"`]+/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+
+  return normalized.length > 0 ? normalized : 'custom-use-case'
+}
+
 // Transform shared config to wizard options
 export const workbuddyAgentApps: WizardOption[] = Object.entries(typedConfig.agentApps).map(
   ([key, app]) => ({
@@ -303,6 +315,36 @@ export function getOnboardingUseCaseOptionById(useCaseId: string) {
   return onboardingUseCases.find((useCase) => useCase.id === useCaseId) ?? null
 }
 
+export function buildCustomUseCaseId(useCaseName: string, existingUseCaseIds: string[] = []) {
+  const baseId = normalizeUseCaseId(useCaseName)
+  let nextId = baseId
+  let suffix = 2
+
+  while (existingUseCaseIds.includes(nextId)) {
+    nextId = `${baseId}-${suffix}`
+    suffix += 1
+  }
+
+  return nextId
+}
+
+export function createCustomRoleUseCaseContent(
+  roleId: string,
+  useCaseName: string,
+  existingUseCaseIds: string[] = []
+): OnboardingEditableUseCaseRecord {
+  const trimmedName = useCaseName.trim()
+
+  return {
+    role_id: roleId,
+    use_case_id: buildCustomUseCaseId(trimmedName, existingUseCaseIds),
+    use_case_name: trimmedName,
+    description: '',
+    info_sources: '',
+    rules: '',
+  }
+}
+
 export function buildGeneratedSkillIdsForRoleUseCase(roleId: string, useCaseDirectory: string) {
   return {
     production_skill_id: `${roleId}-${useCaseDirectory}`,
@@ -314,7 +356,7 @@ export function createDefaultRoleUseCaseContents(
   roleId: string,
   existing: OnboardingEditableUseCaseRecord[] = []
 ): OnboardingEditableUseCaseRecord[] {
-  return getApplicableUseCasesForRole(roleId).map((useCase) => {
+  const configuredDefaults = getApplicableUseCasesForRole(roleId).map((useCase) => {
     const existingRecord = existing.find(
       (record) => record.role_id === roleId && record.use_case_id === useCase.id
     )
@@ -333,6 +375,13 @@ export function createDefaultRoleUseCaseContents(
       rules: clearLegacyAutofillText(existingRecord?.rules, [useCase.rules_prompt]),
     }
   })
+
+  const customUseCases = existing.filter(
+    (record) =>
+      record.role_id === roleId && getOnboardingUseCaseOptionById(record.use_case_id) == null
+  )
+
+  return [...configuredDefaults, ...customUseCases]
 }
 
 export function getUseCaseNameFromId(useCaseId: string): string {

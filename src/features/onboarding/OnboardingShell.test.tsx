@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from '../../App'
+import { buildGeneratedSkillIdsForRoleUseCase } from '../../content/workbuddy'
 import type {
   OnboardingAgentSyncResult,
   OnboardingBatchSyncResult,
@@ -914,6 +915,51 @@ describe('OnboardingShell', () => {
     expect(screen.getAllByText('未变化技能').length).toBeGreaterThan(0)
     expect(screen.getByText('claude-code sync failed')).toBeInTheDocument()
     expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
+  })
+
+  it('lets users add a custom use case from 选择工作 and carries it into install skills', async () => {
+    const user = userEvent.setup()
+    const customUseCaseName = '客户回访'
+    const generatedSkillIds = buildGeneratedSkillIdsForRoleUseCase(
+      'project-manager',
+      customUseCaseName
+    )
+
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
+    await user.click(screen.getByRole('button', { name: '新增用例' }))
+    await user.type(screen.getByLabelText('新用例名称'), customUseCaseName)
+    await user.click(screen.getByRole('button', { name: '添加用例' }))
+
+    expect(screen.getByRole('button', { name: customUseCaseName })).toBeInTheDocument()
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toBe('')
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    const [, payload] = getSetStateCalls()[0] as [string, { state: OnboardingState }]
+    expect(payload.state.role_use_case_contents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role_id: 'project-manager',
+          use_case_id: customUseCaseName,
+          use_case_name: customUseCaseName,
+        }),
+      ])
+    )
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    const table = await screen.findByRole('table', { name: '岗位生成技能列表' })
+    const customRow = within(table).getByText(customUseCaseName).closest('tr') as HTMLTableRowElement
+    expect(customRow).not.toBeNull()
+    expect(within(customRow).getByText(generatedSkillIds.production_skill_id)).toBeInTheDocument()
+    expect(within(customRow).getByText(generatedSkillIds.test_skill_id)).toBeInTheDocument()
   })
 
   it('renders generated install skills as one row per use case with production and test columns', async () => {

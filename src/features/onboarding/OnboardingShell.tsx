@@ -10,9 +10,9 @@ import {
   buildGeneratedSkillIdsForRoleUseCase,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
+  getOnboardingUseCaseOptionById,
   getRoleNameById,
   onboardingRoles,
-  onboardingUseCases,
 } from '../../content/workbuddy'
 import type {
   InstalledSkillInfo,
@@ -345,23 +345,31 @@ function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: Us
   return (
     <div className="onboarding-use-case-list">
       {useCases.map((useCase, index) => (
-        <button
-          aria-label={useCase.use_case_name}
-          className="onboarding-use-case-list__item"
-          data-active={activeUseCaseId === useCase.use_case_id}
-          key={useCase.use_case_id}
-          type="button"
-          onClick={() => onSelect(useCase.use_case_id)}
-        >
-          <span className="onboarding-use-case-list__index">{`${index + 1}`}</span>
-          <span className="onboarding-use-case-list__copy">
-            <span className="onboarding-use-case-list__title-row">
-              <span className="onboarding-use-case-list__title">{useCase.use_case_name}</span>
-              {configuredById[useCase.use_case_id] && <StatusBadge />}
-            </span>
-            <span className="onboarding-use-case-list__subtitle">{useCase.use_case_id}</span>
-          </span>
-        </button>
+        (() => {
+          const isCustomUseCase = getOnboardingUseCaseOptionById(useCase.use_case_id) == null
+
+          return (
+            <button
+              aria-label={useCase.use_case_name}
+              className="onboarding-use-case-list__item"
+              data-active={activeUseCaseId === useCase.use_case_id}
+              key={useCase.use_case_id}
+              type="button"
+              onClick={() => onSelect(useCase.use_case_id)}
+            >
+              <span className="onboarding-use-case-list__index">{`${index + 1}`}</span>
+              <span className="onboarding-use-case-list__copy">
+                <span className="onboarding-use-case-list__title-row">
+                  <span className="onboarding-use-case-list__title">{useCase.use_case_name}</span>
+                  {configuredById[useCase.use_case_id] && <StatusBadge />}
+                </span>
+                <span className="onboarding-use-case-list__subtitle">
+                  {isCustomUseCase ? '自定义用例' : useCase.use_case_id}
+                </span>
+              </span>
+            </button>
+          )
+        })()
       ))}
     </div>
   )
@@ -496,6 +504,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     toggleBaseSkill,
     getUseCaseSaveScope,
     toggleInstallSkill,
+    addUseCase,
     updateCredentialValue,
     updateUseCaseContent,
     selectRole,
@@ -505,6 +514,9 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   const [activeUseCaseTab, setActiveUseCaseTab] = useState<UseCaseTab>('role')
   const [hoveredHomeEntry, setHoveredHomeEntry] = useState<Exclude<OnboardingView, 'home'> | null>(null)
   const [selectedUseCaseId, setSelectedUseCaseId] = useState<string | null>(null)
+  const [showNewUseCaseForm, setShowNewUseCaseForm] = useState(false)
+  const [newUseCaseName, setNewUseCaseName] = useState('')
+  const [newUseCaseError, setNewUseCaseError] = useState<string | null>(null)
 
   const openView = (nextView: OnboardingView) => {
     setView(nextView)
@@ -528,6 +540,36 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     [selectedUseCaseId, state.role_use_case_contents]
   )
   const activeUseCaseScope = activeUseCase ? getUseCaseSaveScope(activeUseCase.use_case_id) : null
+  const handleAddUseCase = () => {
+    const trimmedUseCaseName = newUseCaseName.trim()
+
+    if (!trimmedUseCaseName) {
+      setNewUseCaseError('请输入新用例名称。')
+      return
+    }
+
+    if (
+      state.role_use_case_contents.some(
+        (useCase) =>
+          useCase.role_id === state.selected_role_id &&
+          useCase.use_case_name.trim() === trimmedUseCaseName
+      )
+    ) {
+      setNewUseCaseError('这个用例名称已经存在。')
+      return
+    }
+
+    const createdUseCaseId = addUseCase(trimmedUseCaseName)
+    if (!createdUseCaseId) {
+      setNewUseCaseError('新增用例失败，请重试。')
+      return
+    }
+
+    setSelectedUseCaseId(createdUseCaseId)
+    setNewUseCaseName('')
+    setNewUseCaseError(null)
+    setShowNewUseCaseForm(false)
+  }
   const homeSummaryGroups = useMemo<HomeSummaryGroup[]>(
     () => [
       {
@@ -807,8 +849,66 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
               >
                 <div className="onboarding-module-grid onboarding-module-grid--work">
                   <div className="onboarding-module-grid__sidebar onboarding-subeditor-panel">
-                    <h3>选择工作</h3>
-                    <p>当前岗位下可以交给 AI 的工作。</p>
+                    <div className="onboarding-use-case-panel-header">
+                      <div>
+                        <h3>选择工作</h3>
+                        <p>当前岗位下可以交给 AI 的工作。</p>
+                      </div>
+                      <button
+                        className="button--ghost"
+                        type="button"
+                        onClick={() => {
+                          setShowNewUseCaseForm((current) => !current)
+                          setNewUseCaseError(null)
+                          if (showNewUseCaseForm) {
+                            setNewUseCaseName('')
+                          }
+                        }}
+                      >
+                        新增用例
+                      </button>
+                    </div>
+                    {showNewUseCaseForm && (
+                      <form
+                        className="onboarding-use-case-create-panel"
+                        onSubmit={(event) => {
+                          event.preventDefault()
+                          handleAddUseCase()
+                        }}
+                      >
+                        <div className="field">
+                          <label htmlFor="new-onboarding-use-case-name">新用例名称</label>
+                          <input
+                            id="new-onboarding-use-case-name"
+                            placeholder="例如：客户回访"
+                            value={newUseCaseName}
+                            onChange={(event) => {
+                              setNewUseCaseName(event.target.value)
+                              if (newUseCaseError) {
+                                setNewUseCaseError(null)
+                              }
+                            }}
+                          />
+                        </div>
+                        {newUseCaseError && <p className="error">{newUseCaseError}</p>}
+                        <div className="button-row">
+                          <button className="button" type="submit">
+                            添加用例
+                          </button>
+                          <button
+                            className="button--ghost"
+                            type="button"
+                            onClick={() => {
+                              setShowNewUseCaseForm(false)
+                              setNewUseCaseName('')
+                              setNewUseCaseError(null)
+                            }}
+                          >
+                            取消
+                          </button>
+                        </div>
+                      </form>
+                    )}
                     <UseCaseList
                       activeUseCaseId={activeUseCase?.use_case_id ?? null}
                       configuredById={completion.useCaseIds}
