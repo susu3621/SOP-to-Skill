@@ -300,7 +300,6 @@ describe('OnboardingShell', () => {
 
     expect(await screen.findByRole('heading', { name: '选择公司 IT 工具' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '选择岗位' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
     expect(screen.getByRole('checkbox', { name: 'Jira' })).not.toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).not.toBeChecked()
 
@@ -421,7 +420,7 @@ describe('OnboardingShell', () => {
     expect(within(installSkillTable).getAllByText('未安装').length).toBeGreaterThan(0)
   })
 
-  it('shows only the company IT tools entry in the first module and avoids nested boxed guidance', async () => {
+  it('opens 公司 IT 工具 as a direct editor without a second-level entry card', async () => {
     const user = userEvent.setup()
 
     render(<App />)
@@ -429,20 +428,11 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
-    const baseSkillEntry = await screen.findByRole('button', { name: '选择公司 IT 工具' })
 
-    expect(screen.queryByRole('button', { name: '选择岗位' })).not.toBeInTheDocument()
-    await user.click(baseSkillEntry)
-
-    const detailPanel = document.querySelector('.onboarding-detail-panel')
-    expect(detailPanel).not.toBeNull()
-    const detailHeading = within(detailPanel as HTMLElement).getByRole('heading', {
-      name: '选择公司 IT 工具',
-    })
-    expect(detailHeading.closest('.summary-card')).toBeNull()
-    expect(within(detailPanel as HTMLElement).getByText('Jira')).toBeInTheDocument()
-    expect(within(detailPanel as HTMLElement).getByText('Confluence')).toBeInTheDocument()
-    expect(document.querySelector('.summary-card--nested')).toBeNull()
+    expect(await screen.findByRole('heading', { name: '选择公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
+    expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {
@@ -531,7 +521,6 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
-    await user.click(await screen.findByRole('button', { name: '选择公司 IT 工具' }))
     await user.click(screen.getByRole('checkbox', { name: 'Confluence' }))
 
     expect(getSetStateCalls()).toHaveLength(0)
@@ -701,7 +690,6 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
-    await user.click(await screen.findByRole('button', { name: '选择公司 IT 工具' }))
     await user.click(screen.getByRole('checkbox', { name: 'Confluence' }))
 
     expect(getSetStateCalls()).toHaveLength(0)

@@ -241,7 +241,7 @@ describe('onboarding shell smoke coverage', () => {
     expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
-        name: '把公司的 SOP 交给 AI 执行，省下时间去做真正有价值的事。',
+        name: '公司的 SOP 交给 AI 执行，省下时间去做真正有价值的事。',
       })
     ).toBeInTheDocument()
     expect(

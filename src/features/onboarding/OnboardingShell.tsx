@@ -20,7 +20,6 @@ import type {
 } from '../../types'
 
 type OnboardingView = 'home' | 'basic' | 'useCases' | 'install'
-type BasicEntryView = 'baseSkills'
 
 interface EntryCopy {
   title: string
@@ -47,15 +46,6 @@ const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> 
     summary: '选择工具并开始安装',
     description: '把前面整理好的 Skill 安装到你正在使用的 AI 工具里，之后就可以直接调用。',
     items: ['选择 AI 工具', '确认安装内容', '开始安装'],
-  },
-}
-
-const basicInfoEntries: Record<BasicEntryView, EntryCopy> = {
-  baseSkills: {
-    title: '选择公司 IT 工具',
-    summary: '先选公司常用系统',
-    description: '先选公司里已经在用的 IT 工具。AI 后面要从这些工具里取信息，才能按公司的 SOP 做事。',
-    items: onboardingBaseSkills.map((skill) => skill.name),
   },
 }
 
@@ -353,51 +343,6 @@ function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: Us
   )
 }
 
-interface BasicEditorPanelProps {
-  basicEntryView: BasicEntryView | null
-  selectedBaseSkillIds: string[]
-  saveFeedback: { kind: 'success' | 'error'; message: string } | null | undefined
-  saveDisabled: boolean
-  saving: boolean
-  onSave: () => void
-  onToggleBaseSkill: (skillId: string) => void
-}
-
-function BasicEditorPanel({
-  basicEntryView,
-  selectedBaseSkillIds,
-  saveFeedback,
-  saveDisabled,
-  saving,
-  onSave,
-  onToggleBaseSkill,
-}: BasicEditorPanelProps) {
-  if (!basicEntryView) {
-    return (
-      <p className="hint-callout">
-        先选择“选择公司 IT 工具”，再进入对应的编辑界面。
-      </p>
-    )
-  }
-
-  return (
-    <section className="summary-card onboarding-subeditor-panel">
-      <SaveFeedbackBanner feedback={saveFeedback} />
-      <h3>{basicInfoEntries[basicEntryView].title}</h3>
-      <p>{basicInfoEntries[basicEntryView].description}</p>
-      <BaseSkillSelectionPanel
-        selectedBaseSkillIds={selectedBaseSkillIds}
-        onToggleBaseSkill={onToggleBaseSkill}
-      />
-      <div className="button-row">
-        <button className="button" disabled={saveDisabled} type="button" onClick={onSave}>
-          {saving ? '保存中...' : '保存设置'}
-        </button>
-      </div>
-    </section>
-  )
-}
-
 interface InstallModuleProps {
   credentialFields: ReturnType<typeof useOnboarding>['credentialFields']
   installCandidateGroups: ReturnType<typeof useOnboarding>['installCandidateGroups']
@@ -534,8 +479,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
 
   const [view, setView] = useState<OnboardingView>('home')
   const [hoveredHomeEntry, setHoveredHomeEntry] = useState<Exclude<OnboardingView, 'home'> | null>(null)
-  const [basicEntryView, setBasicEntryView] = useState<BasicEntryView | null>(null)
-  const [hoveredBasicEntry, setHoveredBasicEntry] = useState<BasicEntryView | null>(null)
   const [selectedUseCaseId, setSelectedUseCaseId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -551,8 +494,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       null,
     [selectedUseCaseId, state.role_use_case_contents]
   )
-  const activeBasicScope: 'baseSkills' | null =
-    basicEntryView === 'baseSkills' ? basicEntryView : null
   const activeUseCaseScope = activeUseCase ? getUseCaseSaveScope(activeUseCase.use_case_id) : null
   const homeSummaryGroups = useMemo<HomeSummaryGroup[]>(
     () => [
@@ -638,11 +579,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
               index="01"
               summary={onboardingHomeEntries.basic.summary}
               title={onboardingHomeEntries.basic.title}
-              onClick={() => {
-                setView('basic')
-                setBasicEntryView(null)
-                setHoveredBasicEntry(null)
-              }}
+              onClick={() => setView('basic')}
               onFocus={() => setHoveredHomeEntry('basic')}
               onHover={() => setHoveredHomeEntry('basic')}
               onLeave={() => setHoveredHomeEntry(null)}
@@ -687,8 +624,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   }
 
   if (view === 'basic') {
-    const detail = hoveredBasicEntry ? basicInfoEntries[hoveredBasicEntry] : null
-
     return (
       <div className="onboarding-shell">
         <section className="onboarding-section">
@@ -701,45 +636,25 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             onOpenInstalled={onOpenInstalled}
           />
 
-          <div className="onboarding-entry-grid onboarding-entry-grid--nested">
-            <EntryCard
-              active={hoveredBasicEntry === 'baseSkills'}
-              complete={completion.baseSkills}
-              index="1"
-              summary={basicInfoEntries.baseSkills.summary}
-              title={basicInfoEntries.baseSkills.title}
-              onClick={() => {
-                setBasicEntryView('baseSkills')
-                setHoveredBasicEntry('baseSkills')
-              }}
-              onFocus={() => setHoveredBasicEntry('baseSkills')}
-              onHover={() => setHoveredBasicEntry('baseSkills')}
-              onLeave={() => setHoveredBasicEntry(null)}
+          <section className="summary-card onboarding-subeditor-panel">
+            <SaveFeedbackBanner feedback={saveFeedbacks.baseSkills} />
+            <h3>公司 IT 工具</h3>
+            <p>选择公司里已经在用的 IT 工具。后续 AI 会从这些工具中获取信息。</p>
+            <BaseSkillSelectionPanel
+              selectedBaseSkillIds={state.selected_base_skill_ids}
+              onToggleBaseSkill={toggleBaseSkill}
             />
-          </div>
-
-          {detail && (
-            <DetailPanel
-              description={detail.description}
-              eyebrow="二级入口说明"
-              items={detail.items}
-              title={detail.title}
-            />
-          )}
-
-          <BasicEditorPanel
-            basicEntryView={basicEntryView}
-            saveDisabled={!activeBasicScope || !dirty[activeBasicScope] || savingScope === activeBasicScope}
-            saveFeedback={activeBasicScope ? saveFeedbacks[activeBasicScope] : null}
-            saving={activeBasicScope ? savingScope === activeBasicScope : false}
-            selectedBaseSkillIds={state.selected_base_skill_ids}
-            onSave={() => {
-              if (activeBasicScope) {
-                void saveState(activeBasicScope)
-              }
-            }}
-            onToggleBaseSkill={toggleBaseSkill}
-          />
+            <div className="button-row">
+              <button
+                className="button"
+                disabled={!dirty.baseSkills || savingScope === 'baseSkills'}
+                type="button"
+                onClick={() => void saveState('baseSkills')}
+              >
+                {savingScope === 'baseSkills' ? '保存中...' : '保存设置'}
+              </button>
+            </div>
+          </section>
         </section>
       </div>
     )
