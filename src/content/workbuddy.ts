@@ -151,6 +151,13 @@ export interface OnboardingBaseSkillOption {
   credential_field_ids: string[]
 }
 
+export interface OnboardingBaseSkillGroup {
+  id: string
+  name: string
+  description: string
+  skills: OnboardingBaseSkillOption[]
+}
+
 export interface OnboardingUseCaseOption {
   id: string
   name: string
@@ -191,6 +198,45 @@ export const onboardingBaseSkills: OnboardingBaseSkillOption[] = Object.entries(
   description: skill.description,
   credential_field_ids: Object.keys(skill.credentials),
 }))
+
+const onboardingBaseSkillById = new Map(
+  onboardingBaseSkills.map((skill) => [skill.id, skill] as const)
+)
+
+const onboardingBaseSkillGroupDefinitions = [
+  {
+    id: 'wiki',
+    name: 'Wiki 系统',
+    description: '集中放 SOP、项目文档和会议纪要，方便 AI 读取稳定资料。',
+    skill_ids: ['confluence'],
+  },
+  {
+    id: 'issue-management',
+    name: '问题管理系统',
+    description: '同步任务、缺陷和负责人状态，方便 AI 跟进执行进度。',
+    skill_ids: ['jira'],
+  },
+  {
+    id: 'communication',
+    name: '通信系统',
+    description: '处理邮件往来和通知，方便 AI 整理沟通记录。',
+    skill_ids: ['mail'],
+  },
+] as const
+
+export const onboardingBaseSkillGroups: OnboardingBaseSkillGroup[] =
+  onboardingBaseSkillGroupDefinitions.map((group) => ({
+    id: group.id,
+    name: group.name,
+    description: group.description,
+    skills: group.skill_ids.map((skillId) => {
+      const skill = onboardingBaseSkillById.get(skillId)
+      if (!skill) {
+        throw new Error(`Unknown onboarding base skill: ${skillId}`)
+      }
+      return skill
+    }),
+  }))
 
 export const onboardingUseCases: OnboardingUseCaseOption[] = Object.entries(typedConfig.useCases).map(
   ([useCaseName, useCase]) => ({

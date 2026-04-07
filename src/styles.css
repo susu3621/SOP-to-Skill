@@ -516,6 +516,43 @@ textarea {
   gap: 10px;
 }
 
+.onboarding-base-skill-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.onboarding-base-skill-group {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(22, 48, 41, 0.1);
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.onboarding-base-skill-group__header {
+  display: grid;
+  gap: 6px;
+}
+
+.onboarding-base-skill-group__header h4 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #163029;
+}
+
+.onboarding-base-skill-group__header p {
+  margin: 0;
+  color: rgba(22, 48, 41, 0.66);
+  font-size: 0.88rem;
+}
+
+.onboarding-base-skill-group__options {
+  grid-template-columns: 1fr;
+}
+
 .field-option {
   position: relative;
   display: grid;
@@ -752,6 +789,8 @@ textarea {
 
 .onboarding-entry-card-shell {
   position: relative;
+  width: fit-content;
+  max-width: 100%;
 }
 
 .onboarding-entry-card {

@@ -6,11 +6,11 @@ import { InstallSelectionStep } from './steps/InstallSelectionStep'
 import { UseCaseConfigStep } from './steps/UseCaseConfigStep'
 import { useOnboarding } from './useOnboarding'
 import {
+  onboardingBaseSkillGroups,
   buildGeneratedSkillIdsForRoleUseCase,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
   getRoleNameById,
-  onboardingBaseSkills,
   onboardingRoles,
   onboardingUseCases,
 } from '../../content/workbuddy'
@@ -304,20 +304,30 @@ function BaseSkillSelectionPanel({
   return (
     <div className="field">
       <label>公司 IT 工具</label>
-      <div className="options options--cards">
-        {onboardingBaseSkills.map((skill) => (
-          <label className="field-option" key={skill.id}>
-            <input
-              aria-label={skill.name}
-              checked={selectedBaseSkillIds.includes(skill.id)}
-              type="checkbox"
-              onChange={() => onToggleBaseSkill(skill.id)}
-            />
-            <span>
-              <span>{skill.name}</span>
-              <span className="field-option__hint">{skill.description}</span>
-            </span>
-          </label>
+      <div className="onboarding-base-skill-groups">
+        {onboardingBaseSkillGroups.map((group) => (
+          <section className="onboarding-base-skill-group" key={group.id}>
+            <div className="onboarding-base-skill-group__header">
+              <h4>{group.name}</h4>
+              <p>{group.description}</p>
+            </div>
+            <div className="options options--cards onboarding-base-skill-group__options">
+              {group.skills.map((skill) => (
+                <label className="field-option" key={skill.id}>
+                  <input
+                    aria-label={skill.name}
+                    checked={selectedBaseSkillIds.includes(skill.id)}
+                    type="checkbox"
+                    onChange={() => onToggleBaseSkill(skill.id)}
+                  />
+                  <span>
+                    <span>{skill.name}</span>
+                    <span className="field-option__hint">{skill.description}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </section>
         ))}
       </div>
     </div>

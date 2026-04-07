@@ -499,8 +499,12 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '选择公司 IT 工具' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
     expect(screen.getByText('公司 IT 工具', { selector: 'label' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Wiki 系统' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '问题管理系统' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '通信系统' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Mail' })).toBeInTheDocument()
     expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
     expect(
       screen.queryByText('先选择“选择公司 IT 工具”，再进入对应的编辑界面。')

@@ -1,6 +1,7 @@
 import {
   createDefaultRoleUseCaseContents,
   getRoleNameById,
+  onboardingBaseSkillGroups,
   onboardingUseCases,
   onboardingRoles,
   sharedConfig,
@@ -23,6 +24,19 @@ describe('workbuddy agent apps', () => {
       'Confluence',
       'Jira',
       'Mail',
+    ])
+  })
+
+  it('groups company IT tools by system type for future expansion', () => {
+    expect(onboardingBaseSkillGroups.map((group) => group.name)).toEqual([
+      'Wiki 系统',
+      '问题管理系统',
+      '通信系统',
+    ])
+    expect(onboardingBaseSkillGroups.map((group) => group.skills.map((skill) => skill.id))).toEqual([
+      ['confluence'],
+      ['jira'],
+      ['mail'],
     ])
   })
 
