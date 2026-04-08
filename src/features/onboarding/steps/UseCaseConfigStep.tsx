@@ -35,7 +35,7 @@ export function UseCaseConfigStep({ useCases, onUpdate }: UseCaseConfigStepProps
               </div>
               <div className="field">
                 <label htmlFor={`${useCase.use_case_id}-rules`}>当前流程 / SOP / 模板</label>
-                <p className="field__hint">如果公司内部已经有固定流程、模板、语气或输出格式，在这里补充。</p>
+                <p className="field__hint">直接把流程 / SOP / 模板的链接贴到这里就行。</p>
                 <textarea
                   id={`${useCase.use_case_id}-rules`}
                   rows={4}

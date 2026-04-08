@@ -363,6 +363,7 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('tab', { name: '选择工作', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
     expect(screen.getByLabelText('用例描述')).toBeInTheDocument()
+    expect(screen.getByText('直接把流程 / SOP / 模板的链接贴到这里就行。')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存设置' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '保存岗位' })).not.toBeInTheDocument()
   })
@@ -776,21 +777,51 @@ describe('OnboardingShell', () => {
       '需要提前说明它会读取哪些公司现有技术积累'
     )
     expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '输入：客户原始需求'
+      '输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字'
     )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '\n输出：需求拆解'
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '其他相关信息由 AI 自己从系统中查找。'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '客户原始需求、销售澄清记录'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '范围边界和待确认问题'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '输出（Skill输出的结果）：'
     )
     await user.click(screen.getByRole('button', { name: '记录日志' }))
     expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '问题管理系统变化'
+      '输入（每次执行都需要提供给Skill的信息）：具体哪一天。'
     )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain('Jira')
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '会议纪要、聊天记录和问题管理系统变化'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '输出（Skill输出的结果）：'
+    )
+    await user.click(screen.getByRole('button', { name: '记录计划' }))
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
+      '输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '项目里程碑、任务拆解和跨团队依赖'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '输出（Skill输出的结果）：'
+    )
     await user.click(screen.getByRole('button', { name: '问题跟踪' }))
     expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '问题管理系统'
+      '输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。'
     )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain('Jira')
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '问题管理系统中的缺陷、测试反馈和会议行动项'
+    )
+    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
+      '输出（Skill输出的结果）：'
+    )
+    await user.click(screen.getByRole('button', { name: '需求评估' }))
     expect(screen.getByLabelText('用例描述')).toHaveAttribute('rows', '10')
     expect(screen.queryByText('适合配置成帮你做售前需求初评的助手。')).not.toBeInTheDocument()
     expect(screen.queryByText('需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。')).not.toBeInTheDocument()
@@ -798,7 +829,23 @@ describe('OnboardingShell', () => {
     expect((screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).value).toBe('')
     expect(
       (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).toContain('当前流程 / SOP / 模板')
+    ).toContain('例如：\n当前流程 / SOP / 模板：')
+    expect(
+      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
+    ).toContain('较好的例子：')
+    expect(
+      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
+    ).toContain('技术积累库：')
+    expect(
+      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
+    ).not.toContain('查找')
+    await user.click(screen.getByRole('button', { name: '记录计划' }))
+    expect(
+      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
+    ).toContain('较好的例子：')
+    expect(
+      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
+    ).toContain('其他：')
     expect(screen.queryByText('当前岗位没有可配置的工作。')).not.toBeInTheDocument()
   })
 
