@@ -585,9 +585,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     }
   }, [agentStates, selectedUseCases, state])
 
-  const saveState = useCallback(
-    async (scope: string) => {
-      const nextState = buildPersistedStateForScope(scope, state, savedState, locale)
+  const persistState = useCallback(
+    async (scope: string, nextState: OnboardingState) => {
       setSavingScope(scope)
       setSyncError(null)
 
@@ -611,29 +610,50 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
               message: getOnboardingCopy(locale, onboardingCopy.saveSuccess),
             },
           }))
-          return
+          return {
+            state: normalizedState,
+            error: null,
+          }
         }
 
+        const errorMessage = result.error ?? getOnboardingCopy(locale, onboardingCopy.saveFailed)
         setSaveFeedbacks((current) => ({
           ...current,
           [scope]: {
             kind: 'error',
-            message: result.error ?? getOnboardingCopy(locale, onboardingCopy.saveFailed),
+            message: errorMessage,
           },
         }))
+        return {
+          state: null,
+          error: errorMessage,
+        }
       } catch (error) {
+        const errorMessage = String(error)
         setSaveFeedbacks((current) => ({
           ...current,
           [scope]: {
             kind: 'error',
-            message: String(error),
+            message: errorMessage,
           },
         }))
+        return {
+          state: null,
+          error: errorMessage,
+        }
       } finally {
         setSavingScope((current) => (current === scope ? null : current))
       }
     },
-    [locale, savedState, state]
+    [locale]
+  )
+
+  const saveState = useCallback(
+    async (scope: string) => {
+      const nextState = buildPersistedStateForScope(scope, state, savedState, locale)
+      await persistState(scope, nextState)
+    },
+    [locale, persistState, savedState, state]
   )
 
   const toggleAgent = useCallback(
@@ -822,25 +842,32 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   )
 
   const startSync = useCallback(async () => {
-    if (dirty.install) {
-      setSyncResult(null)
-      setSyncError(getOnboardingCopy(locale, onboardingCopy.syncSaveInstallFirst))
-      return
-    }
+    let stateToSync = state
 
     if (dirty.any) {
-      setSyncResult(null)
-      setSyncError(getOnboardingCopy(locale, onboardingCopy.syncSaveOtherFirst))
-      return
+      const persistedState = await persistState(
+        'install',
+        buildPersistedStateForScope('install', state, savedState, locale)
+      )
+
+      if (!persistedState.state) {
+        setSyncResult(null)
+        setSyncError(persistedState.error ?? getOnboardingCopy(locale, onboardingCopy.saveFailed))
+        return
+      }
+
+      stateToSync = persistedState.state
     }
 
     setSyncing(true)
     setSyncError(null)
 
     try {
+      const selectedUseCasesToSync = buildSelectedUseCases(stateToSync.role_use_case_contents)
+      const agentStatesToSync = buildAgentStates(installedSkills)
       const stagedPackages = (
         await Promise.all(
-          state.role_use_case_contents.map(async (useCaseContent) => {
+          stateToSync.role_use_case_contents.map(async (useCaseContent) => {
             const matchingUseCase = onboardingUseCases.find(
               (useCase) => useCase.id === useCaseContent.use_case_id
             )
@@ -849,10 +876,10 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
               'stage_onboarding_generated_packages',
               {
                 input: {
-                  role_id: state.selected_role_id,
-                  role_name: getRoleNameById(state.selected_role_id),
-                  selected_agent_ids: state.selected_agent_ids,
-                  selected_base_skill_ids: state.selected_base_skill_ids,
+                  role_id: stateToSync.selected_role_id,
+                  role_name: getRoleNameById(stateToSync.selected_role_id),
+                  selected_agent_ids: stateToSync.selected_agent_ids,
+                  selected_base_skill_ids: stateToSync.selected_base_skill_ids,
                   use_case: useCaseContent,
                   use_case_directory: matchingUseCase?.directory ?? useCaseContent.use_case_id,
                 },
@@ -868,9 +895,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
         'sync_onboarding_installation',
         {
           input: {
-            state,
-            selected_use_cases: selectedUseCases,
-            agents: agentStates,
+            state: stateToSync,
+            selected_use_cases: selectedUseCasesToSync,
+            agents: agentStatesToSync,
             staged_packages: stagedPackages,
           },
         }
@@ -886,7 +913,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     } finally {
       setSyncing(false)
     }
-  }, [agentStates, dirty.any, dirty.install, locale, selectedUseCases, state])
+  }, [dirty.any, installedSkills, locale, persistState, savedState, state])
 
   return {
     completion,

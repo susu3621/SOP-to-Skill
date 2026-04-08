@@ -162,51 +162,55 @@ function App() {
             <p className="masthead__subtitle">{getCopy(locale, pageCopy.heroBody)}</p>
           </div>
           <div className="masthead__actions">
-            {hasUpdates && appUpdate ? (
-              <>
+            <div className="masthead__utility">
+              <div className="masthead__update">
+                {hasUpdates && appUpdate ? (
+                  <>
+                    <button
+                      className="tag tag--button"
+                      type="button"
+                      onClick={() => {
+                        void installUpdate()
+                      }}
+                      disabled={installingUpdate}
+                    >
+                      {installingUpdate
+                        ? getCopy(locale, pageCopy.installingUpdate)
+                        : getCopy(locale, pageCopy.installUpdate)}
+                      <span className="update-badge">{getCopy(locale, pageCopy.updateAvailable)}</span>
+                    </button>
+                    <p className="update-hint">
+                      {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
+                    </p>
+                  </>
+                ) : (
+                  <button className="tag tag--button" type="button" onClick={checkUpdates}>
+                    {getCopy(locale, pageCopy.localeTag)}
+                  </button>
+                )}
+              </div>
+              <div className="locale-switcher" role="group" aria-label="Locale switcher">
                 <button
-                  className="tag tag--button"
+                  className="button--ghost"
                   type="button"
+                  aria-pressed={locale === 'zh-CN'}
                   onClick={() => {
-                    void installUpdate()
+                    void setLocale('zh-CN')
                   }}
-                  disabled={installingUpdate}
                 >
-                  {installingUpdate
-                    ? getCopy(locale, pageCopy.installingUpdate)
-                    : getCopy(locale, pageCopy.installUpdate)}
-                  <span className="update-badge">{getCopy(locale, pageCopy.updateAvailable)}</span>
+                  {getCopy(locale, pageCopy.localeZh)}
                 </button>
-                <p className="update-hint">
-                  {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
-                </p>
-              </>
-            ) : (
-              <button className="tag tag--button" type="button" onClick={checkUpdates}>
-                {getCopy(locale, pageCopy.localeTag)}
-              </button>
-            )}
-            <div className="locale-switcher" role="group" aria-label="Locale switcher">
-              <button
-                className="button--ghost"
-                type="button"
-                aria-pressed={locale === 'zh-CN'}
-                onClick={() => {
-                  void setLocale('zh-CN')
-                }}
-              >
-                {getCopy(locale, pageCopy.localeZh)}
-              </button>
-              <button
-                className="button--ghost"
-                type="button"
-                aria-pressed={locale === 'en-US'}
-                onClick={() => {
-                  void setLocale('en-US')
-                }}
-              >
-                {getCopy(locale, pageCopy.localeEn)}
-              </button>
+                <button
+                  className="button--ghost"
+                  type="button"
+                  aria-pressed={locale === 'en-US'}
+                  onClick={() => {
+                    void setLocale('en-US')
+                  }}
+                >
+                  {getCopy(locale, pageCopy.localeEn)}
+                </button>
+              </div>
             </div>
             <div className="header-nav">
               <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>

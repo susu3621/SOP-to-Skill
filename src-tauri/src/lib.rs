@@ -6,6 +6,7 @@ mod tray;
 mod update;
 
 use commands::skill::SkillState;
+use tauri::Manager;
 use update::app::{updater_is_configured, PendingAppUpdate};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -38,6 +39,12 @@ pub fn run() {
             // Setup system tray
             if let Err(e) = tray::setup_tray(app.handle()) {
                 tracing::error!("Failed to setup tray: {}", e);
+            }
+
+            if let Ok(resource_dir) = app.path().resource_dir() {
+                if let Err(e) = template::sync_bundled_skills_from_resource_dir(&resource_dir) {
+                    tracing::error!("Failed to sync bundled skills: {}", e);
+                }
             }
 
             // Ensure directories exist

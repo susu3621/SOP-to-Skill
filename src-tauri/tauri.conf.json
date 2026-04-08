@@ -34,6 +34,9 @@
   "bundle": {
     "active": true,
     "category": "DeveloperTool",
+    "resources": [
+      "../skills"
+    ],
     "shortDescription": "Turn SOPs into installable skills.",
     "longDescription": "A desktop app that guides non-technical users through turning SOPs into reusable, installable skills.",
     "icon": [

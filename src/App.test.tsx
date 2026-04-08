@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import type {
@@ -379,5 +379,26 @@ describe('onboarding shell smoke coverage', () => {
     expect(fixtures.runtime.updatedLocales).toEqual(['en-US'])
     expect(screen.getByRole('button', { name: 'Company IT Tools' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
+  })
+
+  it('groups check updates and locale switching in the same header utility area', async () => {
+    render(<App />)
+
+    await waitForOnboardingHome()
+
+    const utility = document.querySelector('.masthead__utility')
+    expect(utility).not.toBeNull()
+    expect(
+      within(utility as HTMLElement).getByRole('button', { name: '检查更新' })
+    ).toBeInTheDocument()
+    expect(
+      within(utility as HTMLElement).getByRole('group', { name: 'Locale switcher' })
+    ).toBeInTheDocument()
+    expect(
+      within(utility as HTMLElement).getByRole('button', { name: '中文' })
+    ).toBeInTheDocument()
+    expect(
+      within(utility as HTMLElement).getByRole('button', { name: 'English' })
+    ).toBeInTheDocument()
   })
 })

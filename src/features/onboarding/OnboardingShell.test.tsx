@@ -234,6 +234,10 @@ function getSetStateCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'set_onboarding_state')
 }
 
+function getSyncCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_installation')
+}
+
 async function waitForOnboardingHome() {
   return screen.findByRole('button', { name: '选择公司 IT 工具' })
 }
@@ -885,7 +889,7 @@ describe('OnboardingShell', () => {
     expect(within(weeklyReportItem).getByText('已设置')).toBeInTheDocument()
   })
 
-  it('requires an explicit save on the install page before syncing and keeps sync results inside the module', async () => {
+  it('auto-saves install changes before syncing and keeps sync results inside the module', async () => {
     const user = userEvent.setup()
 
     render(<App />)
@@ -907,14 +911,10 @@ describe('OnboardingShell', () => {
 
     await user.click(screen.getByRole('button', { name: '开始同步安装' }))
 
-    expect(screen.getByText('请先保存当前安装设置。')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '保存设置' }))
-
     expect(getSetStateCalls()).toHaveLength(1)
+    expect(getSyncCalls()).toHaveLength(1)
+    expect(screen.queryByText('请先保存当前安装设置。')).not.toBeInTheDocument()
     expect(await screen.findByText('保存成功')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '开始同步安装' }))
 
     expect(await screen.findByRole('heading', { name: '同步结果' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Codex' })).toBeInTheDocument()
@@ -924,6 +924,29 @@ describe('OnboardingShell', () => {
     expect(screen.getAllByText('未变化技能').length).toBeGreaterThan(0)
     expect(screen.getByText('claude-code sync failed')).toBeInTheDocument()
     expect(screen.queryByLabelText('Jira 用户名')).not.toBeInTheDocument()
+  })
+
+  it('shows official product links inside the agent selection cards', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Codex 官网' })).toHaveAttribute(
+      'href',
+      'https://openai.com/codex'
+    )
+    expect(screen.getByRole('link', { name: 'Claude Code 官网' })).toHaveAttribute(
+      'href',
+      'https://www.anthropic.com/claude-code'
+    )
+    expect(screen.getByRole('link', { name: 'WorkBuddy 官网' })).toHaveAttribute(
+      'href',
+      'https://susu3621.github.io/skills-for-no-engineer/'
+    )
   })
 
   it('lets users add a custom use case from 选择工作 and carries it into install skills', async () => {

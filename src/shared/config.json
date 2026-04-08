@@ -9,7 +9,8 @@
       "description": {
         "zh-CN": "企业级 AI 助手",
         "en-US": "Enterprise AI assistant"
-      }
+      },
+      "websiteUrl": "https://susu3621.github.io/skills-for-no-engineer/"
     },
     "claude-code": {
       "name": {
@@ -19,7 +20,8 @@
       "description": {
         "zh-CN": "Anthropic 官方 CLI 工具",
         "en-US": "Anthropic official CLI tool"
-      }
+      },
+      "websiteUrl": "https://www.anthropic.com/claude-code"
     },
     "codex": {
       "name": {
@@ -29,7 +31,8 @@
       "description": {
         "zh-CN": "OpenAI 代码助手",
         "en-US": "OpenAI coding agent"
-      }
+      },
+      "websiteUrl": "https://openai.com/codex"
     },
     "gemini-cli": {
       "name": {
@@ -39,7 +42,8 @@
       "description": {
         "zh-CN": "Google Gemini 命令行工具",
         "en-US": "Google Gemini command-line tool"
-      }
+      },
+      "websiteUrl": "https://github.com/google-gemini/gemini-cli"
     }
   },
   "roles": {

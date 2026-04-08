@@ -80,6 +80,29 @@ fn get_workspace_skills_dir() -> Option<PathBuf> {
     skills_dir.is_dir().then_some(skills_dir)
 }
 
+fn sync_bundled_skills_dir(
+    bundled_skills_dir: &Path,
+    destination_skills_dir: &Path,
+) -> Result<(), SkillError> {
+    if !bundled_skills_dir.is_dir() {
+        return Ok(());
+    }
+
+    fs::create_dir_all(destination_skills_dir).map_err(|e| {
+        SkillError::WriteError(format!(
+            "Failed to create directory {:?}: {}",
+            destination_skills_dir, e
+        ))
+    })?;
+    copy_directory_contents(bundled_skills_dir, destination_skills_dir)
+}
+
+pub fn sync_bundled_skills_from_resource_dir(resource_dir: &Path) -> Result<(), SkillError> {
+    let bundled_skills_dir = resource_dir.join("skills");
+    let destination_skills_dir = get_data_root().join("skills");
+    sync_bundled_skills_dir(&bundled_skills_dir, &destination_skills_dir)
+}
+
 /// Get the skills directory path for the application
 pub fn get_skills_dir() -> PathBuf {
     if let Ok(path) = env::var("SKILL_CONFIGURATOR_SKILLS_DIR") {
@@ -501,5 +524,51 @@ description: Use when reading Jira issue details.
         assert_eq!(resolved, new_root);
         assert_eq!(fs::read_to_string(new_root.join("config.json")).unwrap(), "new");
         assert!(!new_root.join("installed").join("jira").exists());
+    }
+
+    #[test]
+    fn syncs_bundled_skills_into_data_root_without_removing_existing_custom_skills() {
+        let bundled_skills_dir = temp_dir("loader-bundled-skills");
+        let destination_skills_dir = temp_dir("loader-data-skills");
+
+        fs::create_dir_all(bundled_skills_dir.join("jira").join("scripts")).unwrap();
+        fs::write(
+            bundled_skills_dir.join("jira").join("SKILL.md"),
+            "# Jira\n",
+        )
+        .unwrap();
+        fs::write(
+            bundled_skills_dir.join("jira").join("scripts").join("search_jira.py"),
+            "print('jira')\n",
+        )
+        .unwrap();
+        fs::write(
+            bundled_skills_dir.join("manifest.json"),
+            r#"{"schemaVersion":1,"skills":[{"id":"jira","path":"skills/jira","version":"1.0.0","targets":["codex"],"contentHash":"sha256:test"}]}"#,
+        )
+        .unwrap();
+
+        fs::create_dir_all(destination_skills_dir.join("custom-skill")).unwrap();
+        fs::write(
+            destination_skills_dir.join("custom-skill").join("SKILL.md"),
+            "# Custom Skill\n",
+        )
+        .unwrap();
+
+        sync_bundled_skills_dir(&bundled_skills_dir, &destination_skills_dir).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(destination_skills_dir.join("manifest.json")).unwrap(),
+            r#"{"schemaVersion":1,"skills":[{"id":"jira","path":"skills/jira","version":"1.0.0","targets":["codex"],"contentHash":"sha256:test"}]}"#
+        );
+        assert!(destination_skills_dir.join("jira").join("SKILL.md").exists());
+        assert!(
+            destination_skills_dir
+                .join("jira")
+                .join("scripts")
+                .join("search_jira.py")
+                .exists()
+        );
+        assert!(destination_skills_dir.join("custom-skill").join("SKILL.md").exists());
     }
 }

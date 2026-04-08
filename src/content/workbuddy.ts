@@ -28,6 +28,7 @@ interface BaseSkillConfig {
 interface AgentAppConfig {
   name: ConfigText
   description: ConfigText
+  websiteUrl?: string
 }
 
 interface RoleConfig {
@@ -194,6 +195,7 @@ export interface OnboardingAgentOption {
   id: string
   name: string
   description: string
+  website_url?: string
 }
 
 export interface OnboardingRoleOption {
@@ -237,6 +239,7 @@ function buildOnboardingAgentOption(
     id,
     name: readConfigText(app.name, locale),
     description: readConfigText(app.description, locale),
+    website_url: app.websiteUrl,
   }
 }
 

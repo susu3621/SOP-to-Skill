@@ -183,6 +183,10 @@ export const onboardingCopy = {
     'zh-CN': '选择 Agent 应用',
     'en-US': 'Choose AI apps',
   },
+  officialSite: {
+    'zh-CN': '官网',
+    'en-US': 'Official site',
+  },
   noCredentials: {
     'zh-CN': '当前没有需要补充的凭证字段。',
     'en-US': 'No extra credential fields are required right now.',

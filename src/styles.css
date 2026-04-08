@@ -587,16 +587,43 @@ textarea {
   margin: 0;
 }
 
-.field-option > span {
+.field-option__content {
   display: grid;
   gap: 6px;
   padding-right: 24px;
 }
 
-.field-option > span > span:first-child {
+.field-option__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.field-option__title,
+.field-option__body {
+  cursor: pointer;
+}
+
+.field-option__title {
   font-weight: 600;
   color: #163029;
   font-size: 0.9rem;
+}
+
+.field-option__body {
+  display: block;
+}
+
+.field-option__link {
+  color: #145e53;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.field-option__link:hover {
+  text-decoration: underline;
 }
 
 .field-option__hint {
@@ -671,9 +698,24 @@ textarea {
   justify-self: end;
 }
 
+.masthead__utility {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.masthead__update {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
 .locale-switcher {
   display: inline-flex;
   gap: 8px;
+  align-items: center;
   justify-self: end;
 }
 
@@ -1418,6 +1460,7 @@ textarea {
   }
 
   .masthead__actions,
+  .masthead__utility,
   .locale-switcher,
   .header-nav {
     justify-items: stretch;
