@@ -139,9 +139,7 @@ jobs:
           APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
         with:
           args: --config src-tauri/tauri.release.conf.json
-          uploadWorkflowArtifacts: false
-          uploadUpdaterJson: true
-          uploadUpdaterSignatures: true
+          includeUpdaterJson: true
           tagName: v__VERSION__
           releaseName: SOP to Skill v__VERSION__
           releaseBody: |
@@ -154,15 +152,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           APPLE_SIGNING_IDENTITY: '-'
-        with:
-          uploadWorkflowArtifacts: false
       - if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build != 'true')) && !startsWith(github.ref, 'refs/tags/v') && matrix.os != 'macos-latest'
         name: Build desktop bundle on push without release signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          uploadWorkflowArtifacts: false
       - if: matrix.os == 'macos-latest'
         name: Rename macOS DMG artifact to sop-to-skill slug
         shell: bash

@@ -30,9 +30,10 @@ rg -n 'release_build:' .github/workflows/build-desktop.yml
 rg -n 'default:\s*false' .github/workflows/build-desktop.yml
 rg -n "github\.event\.inputs\.release_build" .github/workflows/build-desktop.yml
 ! rg -n "if: github\.event_name == 'workflow_dispatch' \|\| startsWith\(github\.ref, 'refs/tags/v'\)" .github/workflows/build-desktop.yml
-rg -n 'uploadWorkflowArtifacts:\s*false' .github/workflows/build-desktop.yml
-rg -n 'uploadUpdaterJson:\s*true' .github/workflows/build-desktop.yml
-rg -n 'uploadUpdaterSignatures:\s*true' .github/workflows/build-desktop.yml
+! rg -n 'uploadWorkflowArtifacts:' .github/workflows/build-desktop.yml
+! rg -n 'uploadUpdaterJson:' .github/workflows/build-desktop.yml
+! rg -n 'uploadUpdaterSignatures:' .github/workflows/build-desktop.yml
+rg -n 'includeUpdaterJson:\s*true' .github/workflows/build-desktop.yml
 rg -n 'releaseDraft:\s*false' .github/workflows/build-desktop.yml
 rg -n 'tagName:' .github/workflows/build-desktop.yml
 rg -n 'args:\s*--config src-tauri/tauri.release.conf.json' .github/workflows/build-desktop.yml
