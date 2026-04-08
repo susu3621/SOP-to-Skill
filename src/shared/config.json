@@ -146,6 +146,18 @@
         "en-US": "Read weekly report templates, project docs, and meeting notes."
       },
       "credentials": {
+        "confluenceUrl": {
+          "label": {
+            "zh-CN": "Confluence URL",
+            "en-US": "Confluence URL"
+          },
+          "placeholder": {
+            "zh-CN": "https://your-company.atlassian.net/wiki",
+            "en-US": "https://your-company.atlassian.net/wiki"
+          },
+          "type": "text",
+          "required": true
+        },
         "confluenceUsername": {
           "label": {
             "zh-CN": "Confluence 用户名",
@@ -182,6 +194,18 @@
         "en-US": "Sync project tasks, defects, owners, and status changes."
       },
       "credentials": {
+        "jiraUrl": {
+          "label": {
+            "zh-CN": "Jira URL",
+            "en-US": "Jira URL"
+          },
+          "placeholder": {
+            "zh-CN": "https://your-company.atlassian.net",
+            "en-US": "https://your-company.atlassian.net"
+          },
+          "type": "text",
+          "required": true
+        },
         "jiraUsername": {
           "label": {
             "zh-CN": "Jira 用户名",
@@ -210,60 +234,36 @@
     },
     "mail": {
       "name": {
-        "zh-CN": "Mail",
-        "en-US": "Mail"
+        "zh-CN": "腾讯企业邮箱",
+        "en-US": "Tencent Exmail"
       },
       "description": {
-        "zh-CN": "发送周报邮件并复用邮件收发账号配置",
-        "en-US": "Send weekly report emails and reuse your mail account setup."
+        "zh-CN": "通过腾讯企业邮箱发送邮件，并复用企业邮箱账号配置",
+        "en-US": "Send email through Tencent Exmail and reuse the enterprise mailbox account."
       },
       "credentials": {
-        "mailHost": {
-          "label": {
-            "zh-CN": "Mail SMTP Host",
-            "en-US": "Mail SMTP Host"
-          },
-          "placeholder": {
-            "zh-CN": "smtp.example.com",
-            "en-US": "smtp.example.com"
-          },
-          "type": "text",
-          "required": true
-        },
         "mailUsername": {
           "label": {
-            "zh-CN": "Mail 用户名",
-            "en-US": "Mail Username"
+            "zh-CN": "腾讯企业邮箱用户名",
+            "en-US": "Tencent Exmail Username"
           },
           "placeholder": {
-            "zh-CN": "bot@example.com",
-            "en-US": "bot@example.com"
+            "zh-CN": "name@your-company.com",
+            "en-US": "name@your-company.com"
           },
           "type": "text",
           "required": true
         },
         "mailPassword": {
           "label": {
-            "zh-CN": "Mail 密码 / App Password",
-            "en-US": "Mail Password / App Password"
+            "zh-CN": "腾讯企业邮箱密码 / 授权码",
+            "en-US": "Tencent Exmail Password / App Password"
           },
           "placeholder": {
-            "zh-CN": "输入 Mail 密码或应用专用密码",
-            "en-US": "Enter your Mail password or app-specific password"
+            "zh-CN": "输入腾讯企业邮箱密码或 SMTP 授权码",
+            "en-US": "Enter your Tencent Exmail password or SMTP app password"
           },
           "type": "password",
-          "required": true
-        },
-        "mailFrom": {
-          "label": {
-            "zh-CN": "Mail 发件邮箱",
-            "en-US": "Mail From Address"
-          },
-          "placeholder": {
-            "zh-CN": "bot@example.com",
-            "en-US": "bot@example.com"
-          },
-          "type": "text",
           "required": true
         }
       }

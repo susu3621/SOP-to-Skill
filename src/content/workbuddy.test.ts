@@ -1,6 +1,7 @@
 import {
   buildGeneratedSkillIdsForRoleUseCase,
   createDefaultRoleUseCaseContents,
+  getCredentialFields,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
   getRoleNameById,
@@ -32,13 +33,13 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyAgentApps.map((app) => app.label['zh-CN'])).not.toContain('Antigravity')
   })
 
-  it('exposes only Confluence, Jira, and Mail as base skills', () => {
+  it('exposes only Confluence, Jira, and Tencent Exmail as base skills', () => {
     expect(Object.keys(sharedConfig.baseSkills)).toEqual(['confluence', 'jira', 'mail'])
     expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual(['confluence', 'jira', 'mail'])
     expect(workbuddyBaseSkills.map((skill) => skill.label['zh-CN'])).toEqual([
       'Confluence',
       'Jira',
-      'Mail',
+      '腾讯企业邮箱',
     ])
   })
 
@@ -53,6 +54,29 @@ describe('workbuddy agent apps', () => {
       ['jira'],
       ['mail'],
     ])
+  })
+
+  it('exposes Atlassian URLs and Tencent Exmail-only credential fields from shared config', () => {
+    const allCredentialFields = getCredentialFields(['confluence', 'jira', 'mail'])
+
+    expect(allCredentialFields.map((field) => field.id)).toEqual([
+      'confluenceUrl',
+      'confluenceUsername',
+      'confluencePassword',
+      'jiraUrl',
+      'jiraUsername',
+      'jiraPassword',
+      'mailUsername',
+      'mailPassword',
+    ])
+    expect(sharedConfig.baseSkills.confluence?.credentials).toHaveProperty('confluenceUrl')
+    expect(sharedConfig.baseSkills.jira?.credentials).toHaveProperty('jiraUrl')
+    expect(sharedConfig.baseSkills.mail?.name).toEqual({
+      'zh-CN': '腾讯企业邮箱',
+      'en-US': 'Tencent Exmail',
+    })
+    expect(sharedConfig.baseSkills.mail?.credentials).not.toHaveProperty('mailHost')
+    expect(sharedConfig.baseSkills.mail?.credentials).not.toHaveProperty('mailFrom')
   })
 
   it('exposes only project manager in visible role selectors while keeping legacy role labels', () => {

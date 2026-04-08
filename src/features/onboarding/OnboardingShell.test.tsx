@@ -545,11 +545,34 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('heading', { name: '通信系统' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
-    expect(screen.getByRole('checkbox', { name: 'Mail' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: '腾讯企业邮箱' })).toBeInTheDocument()
     expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
     expect(
       screen.queryByText('先选择“选择公司 IT 工具”，再进入对应的编辑界面。')
     ).not.toBeInTheDocument()
+  })
+
+  it('shows Confluence and Jira URL fields and keeps Tencent Exmail credentials to username/password only', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['jira', 'confluence', 'mail'],
+      selected_install_skill_ids: ['jira', 'confluence', 'mail'],
+    }
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+    expect(screen.getByLabelText('Confluence URL')).toBeInTheDocument()
+    expect(screen.getByLabelText('Jira URL')).toBeInTheDocument()
+    expect(screen.getByLabelText('腾讯企业邮箱用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('腾讯企业邮箱密码 / 授权码')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Mail SMTP Host')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Mail 发件邮箱')).not.toBeInTheDocument()
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {

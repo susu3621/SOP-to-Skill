@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingInstallPreview {
@@ -54,6 +54,8 @@ pub struct OnboardingSyncCommandInput {
     #[serde(default)]
     pub staged_packages: Vec<StagedOnboardingPackages>,
 }
+
+const HOME_ENV_FILE_NAME: &str = ".env";
 
 fn get_onboarding_state_path() -> PathBuf {
     crate::template::get_config_path().with_file_name("onboarding-state.json")
@@ -98,6 +100,174 @@ fn validate_selected_agent_ids(
             invalid_agent_ids.join(", ")
         ))
     }
+}
+
+fn get_onboarding_home_env_path() -> Result<PathBuf, String> {
+    dirs::home_dir()
+        .map(|home_dir| home_dir.join(HOME_ENV_FILE_NAME))
+        .ok_or_else(|| "Failed to resolve home directory for ~/.env".to_string())
+}
+
+fn require_non_empty_credential_value(
+    credential_values: &HashMap<String, String>,
+    field_id: &str,
+) -> Result<String, String> {
+    credential_values
+        .get(field_id)
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+        .ok_or_else(|| format!("Missing required credential field: {}", field_id))
+}
+
+fn build_onboarding_home_env_entries(
+    state: &OnboardingState,
+) -> Result<Vec<(String, String)>, String> {
+    let mut entries = Vec::new();
+
+    for base_skill_id in &state.selected_base_skill_ids {
+        match base_skill_id.as_str() {
+            "confluence" => {
+                entries.push((
+                    "CONFLUENCE_URL".to_string(),
+                    require_non_empty_credential_value(&state.credential_values, "confluenceUrl")?,
+                ));
+                entries.push((
+                    "CONFLUENCE_USERNAME".to_string(),
+                    require_non_empty_credential_value(
+                        &state.credential_values,
+                        "confluenceUsername",
+                    )?,
+                ));
+                entries.push((
+                    "CONFLUENCE_PASSWORD".to_string(),
+                    require_non_empty_credential_value(
+                        &state.credential_values,
+                        "confluencePassword",
+                    )?,
+                ));
+            }
+            "jira" => {
+                entries.push((
+                    "JIRA_URL".to_string(),
+                    require_non_empty_credential_value(&state.credential_values, "jiraUrl")?,
+                ));
+                entries.push((
+                    "JIRA_USERNAME".to_string(),
+                    require_non_empty_credential_value(&state.credential_values, "jiraUsername")?,
+                ));
+                entries.push((
+                    "JIRA_PASSWORD".to_string(),
+                    require_non_empty_credential_value(&state.credential_values, "jiraPassword")?,
+                ));
+            }
+            "mail" => {
+                let username =
+                    require_non_empty_credential_value(&state.credential_values, "mailUsername")?;
+                let password =
+                    require_non_empty_credential_value(&state.credential_values, "mailPassword")?;
+
+                entries.push(("MAIL_HOST".to_string(), "smtp.exmail.qq.com".to_string()));
+                entries.push(("MAIL_PORT".to_string(), "465".to_string()));
+                entries.push(("MAIL_USERNAME".to_string(), username.clone()));
+                entries.push(("MAIL_PASSWORD".to_string(), password));
+                entries.push(("MAIL_FROM".to_string(), username));
+                entries.push(("MAIL_USE_SSL".to_string(), "true".to_string()));
+                entries.push(("MAIL_USE_STARTTLS".to_string(), "false".to_string()));
+            }
+            _ => {}
+        }
+    }
+
+    Ok(entries)
+}
+
+fn parse_env_assignment_key(line: &str) -> Option<&str> {
+    let trimmed = line.trim_start();
+    let trimmed = trimmed.strip_prefix("export ").unwrap_or(trimmed);
+    let (key, _) = trimmed.split_once('=')?;
+
+    if key.is_empty()
+        || !key
+            .chars()
+            .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        return None;
+    }
+
+    Some(key)
+}
+
+fn escape_env_value(value: &str) -> String {
+    value
+        .replace('\\', "\\\\")
+        .replace('"', "\\\"")
+        .replace('\n', "\\n")
+}
+
+fn format_env_assignment(key: &str, value: &str) -> String {
+    format!(r#"{key}="{}""#, escape_env_value(value))
+}
+
+fn write_managed_home_env_entries(
+    env_path: &Path,
+    managed_entries: &[(String, String)],
+) -> Result<(), String> {
+    if managed_entries.is_empty() {
+        return Ok(());
+    }
+
+    let existing_content = match fs::read_to_string(env_path) {
+        Ok(content) => content,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
+        Err(error) => return Err(format!("Failed to read {:?}: {}", env_path, error)),
+    };
+
+    let managed_map = managed_entries
+        .iter()
+        .map(|(key, value)| (key.as_str(), value.as_str()))
+        .collect::<HashMap<_, _>>();
+    let mut written_keys = HashSet::new();
+    let mut output_lines = Vec::new();
+
+    for line in existing_content.lines() {
+        if let Some(key) = parse_env_assignment_key(line) {
+            if let Some(value) = managed_map.get(key) {
+                if written_keys.insert(key.to_string()) {
+                    output_lines.push(format_env_assignment(key, value));
+                }
+                continue;
+            }
+        }
+
+        output_lines.push(line.to_string());
+    }
+
+    for (key, value) in managed_entries {
+        if written_keys.insert(key.clone()) {
+            output_lines.push(format_env_assignment(key, value));
+        }
+    }
+
+    let mut rendered = output_lines.join("\n");
+    if !rendered.is_empty() {
+        rendered.push('\n');
+    }
+
+    fs::write(env_path, rendered).map_err(|error| format!("Failed to write {:?}: {}", env_path, error))
+}
+
+fn sync_onboarding_credentials_to_env_path(
+    state: &OnboardingState,
+    env_path: &Path,
+) -> Result<(), String> {
+    let managed_entries = build_onboarding_home_env_entries(state)?;
+    write_managed_home_env_entries(env_path, &managed_entries)
+}
+
+fn sync_onboarding_credentials_to_home_env(state: &OnboardingState) -> Result<(), String> {
+    let env_path = get_onboarding_home_env_path()?;
+    sync_onboarding_credentials_to_env_path(state, &env_path)
 }
 
 #[tauri::command]
@@ -147,6 +317,10 @@ pub async fn sync_onboarding_installation(
     input: OnboardingSyncCommandInput,
 ) -> SkillResult<OnboardingBatchSyncResult> {
     if let Err(error) = validate_selected_agent_ids(&input.agents, &input.state.selected_agent_ids) {
+        return SkillResult::Error { error };
+    }
+
+    if let Err(error) = sync_onboarding_credentials_to_home_env(&input.state) {
         return SkillResult::Error { error };
     }
 
@@ -350,6 +524,20 @@ mod tests {
     };
     use crate::onboarding::state::default_selected_install_skill_ids;
     use super::OnboardingSyncCommandInput;
+    use std::collections::HashMap;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("time went backwards")
+            .as_nanos();
+        let path = std::env::temp_dir().join(format!("onboarding-command-{prefix}-{unique}"));
+        fs::create_dir_all(&path).expect("create temp dir");
+        path
+    }
 
     #[test]
     fn onboarding_preview_returns_both_generated_package_ids() {
@@ -783,6 +971,91 @@ mod tests {
             result,
             crate::commands::skill::SkillResult::Error { ref error }
             if error == "Unsupported agent ids: staging"
+        ));
+    }
+
+    #[test]
+    fn onboarding_sync_writes_selected_base_skill_credentials_to_home_env_file() {
+        let home_dir = temp_dir("home-env");
+        let env_path = home_dir.join(".env");
+        fs::write(
+            &env_path,
+            "EXISTING_VAR=keep\nJIRA_URL=\"https://stale.example.com\"\n",
+        )
+        .expect("write existing env");
+
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec![
+                "confluence".to_string(),
+                "jira".to_string(),
+                "mail".to_string(),
+            ],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
+            credential_values: HashMap::from([
+                ("confluenceUrl".to_string(), "https://wiki.example.com".to_string()),
+                ("confluenceUsername".to_string(), "wiki.user".to_string()),
+                ("confluencePassword".to_string(), "wiki-secret".to_string()),
+                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                ("jiraUsername".to_string(), "jira.user".to_string()),
+                ("jiraPassword".to_string(), "jira-secret".to_string()),
+                ("mailUsername".to_string(), "pm@example.com".to_string()),
+                ("mailPassword".to_string(), "mail-secret".to_string()),
+            ]),
+        };
+
+        super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
+
+        let content = fs::read_to_string(&env_path).expect("read env");
+        assert!(content.contains("EXISTING_VAR=keep"));
+        assert!(content.contains("CONFLUENCE_URL=\"https://wiki.example.com\""));
+        assert!(content.contains("CONFLUENCE_USERNAME=\"wiki.user\""));
+        assert!(content.contains("CONFLUENCE_PASSWORD=\"wiki-secret\""));
+        assert!(content.contains("JIRA_URL=\"https://jira.example.com\""));
+        assert!(content.contains("JIRA_USERNAME=\"jira.user\""));
+        assert!(content.contains("JIRA_PASSWORD=\"jira-secret\""));
+        assert!(content.contains("MAIL_HOST=\"smtp.exmail.qq.com\""));
+        assert!(content.contains("MAIL_PORT=\"465\""));
+        assert!(content.contains("MAIL_USERNAME=\"pm@example.com\""));
+        assert!(content.contains("MAIL_PASSWORD=\"mail-secret\""));
+        assert!(content.contains("MAIL_FROM=\"pm@example.com\""));
+        assert!(content.contains("MAIL_USE_SSL=\"true\""));
+        assert!(content.contains("MAIL_USE_STARTTLS=\"false\""));
+        assert!(!content.contains("https://stale.example.com"));
+    }
+
+    #[tokio::test]
+    async fn onboarding_sync_requires_required_atlassian_urls_before_installing() {
+        let state = OnboardingState {
+            selected_agent_ids: vec![],
+            selected_role_id: "".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
+            credential_values: HashMap::from([
+                ("jiraUsername".to_string(), "jira.user".to_string()),
+                ("jiraPassword".to_string(), "jira-secret".to_string()),
+            ]),
+        };
+
+        let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
+            state,
+            selected_use_cases: vec![],
+            agents: vec![],
+            staged_packages: vec![],
+        })
+        .await;
+
+        assert!(matches!(
+            result,
+            crate::commands::skill::SkillResult::Error { ref error }
+            if error.contains("jiraUrl")
         ));
     }
 
