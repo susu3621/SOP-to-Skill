@@ -3,21 +3,20 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { OnboardingShell } from './features/onboarding/OnboardingShell'
 import { pageCopy, getCopy } from './content/copy'
-import { useSkills } from './hooks/useSkills'
+import { useLocale, useSkills } from './hooks/useSkills'
 import { useUpdates } from './hooks/useUpdates'
 import type {
   InstalledSkillInfo,
   InstallWizardState,
+  Locale,
   SkillInfo,
   ViewType,
 } from './types'
 import './styles.css'
 
-const locale = 'zh-CN' as const
-
-function formatVersionLabel(version?: string) {
+function formatVersionLabel(locale: Locale, version?: string) {
   if (!version) return '-'
-  return version === 'local' ? '本地包' : `v${version}`
+  return version === 'local' ? getCopy(locale, pageCopy.localPackage) : `v${version}`
 }
 
 function App() {
@@ -39,6 +38,7 @@ function App() {
     installSkill,
     uninstallSkill,
   } = useSkills()
+  const { locale, setLocale } = useLocale()
   const {
     appUpdate,
     hasUpdates,
@@ -98,25 +98,25 @@ function App() {
     if (result.success) {
       setInstallResult({
         success: true,
-        message: `成功安装到 ${result.success.app_name}`,
+        message: `${getCopy(locale, pageCopy.installSuccessPrefix)} ${result.success.app_name}`,
       })
       return
     }
 
     setInstallResult({
       success: false,
-      message: result.error || '安装失败',
+      message: result.error || getCopy(locale, pageCopy.installFailed),
     })
-  }, [installSkill, wizardState])
+  }, [installSkill, locale, wizardState])
 
   const handleUninstall = useCallback(
     async (skill: InstalledSkillInfo) => {
       const result = await uninstallSkill(skill.skill_id, skill.app_id)
       if (result.error) {
-        alert(`卸载失败: ${result.error}`)
+        alert(`${getCopy(locale, pageCopy.uninstallFailedPrefix)}: ${result.error}`)
       }
     },
-    [uninstallSkill]
+    [locale, uninstallSkill]
   )
 
   const goBack = useCallback(() => {
@@ -172,16 +172,42 @@ function App() {
                   }}
                   disabled={installingUpdate}
                 >
-                  {installingUpdate ? '安装更新中...' : '下载并安装更新'}
-                  <span className="update-badge">更新</span>
+                  {installingUpdate
+                    ? getCopy(locale, pageCopy.installingUpdate)
+                    : getCopy(locale, pageCopy.installUpdate)}
+                  <span className="update-badge">{getCopy(locale, pageCopy.updateAvailable)}</span>
                 </button>
-                <p className="update-hint">发现新版本 v{appUpdate.version}</p>
+                <p className="update-hint">
+                  {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
+                </p>
               </>
             ) : (
               <button className="tag tag--button" type="button" onClick={checkUpdates}>
                 {getCopy(locale, pageCopy.localeTag)}
               </button>
             )}
+            <div className="locale-switcher" role="group" aria-label="Locale switcher">
+              <button
+                className="button--ghost"
+                type="button"
+                aria-pressed={locale === 'zh-CN'}
+                onClick={() => {
+                  void setLocale('zh-CN')
+                }}
+              >
+                {getCopy(locale, pageCopy.localeZh)}
+              </button>
+              <button
+                className="button--ghost"
+                type="button"
+                aria-pressed={locale === 'en-US'}
+                onClick={() => {
+                  void setLocale('en-US')
+                }}
+              >
+                {getCopy(locale, pageCopy.localeEn)}
+              </button>
+            </div>
             <div className="header-nav">
               <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>
                 {getCopy(locale, pageCopy.navOnboarding)}
@@ -203,6 +229,7 @@ function App() {
                 <div className="page-content__scroll">
                   {view === 'onboarding' && (
                     <OnboardingShell
+                      locale={locale}
                       installedSkills={installed}
                       onOpenInstalled={() => setView('installed')}
                     />
@@ -214,7 +241,7 @@ function App() {
                       <h2 className="panel__title">{getCopy(locale, pageCopy.skillsLibraryTitle)}</h2>
                       <p className="panel__body">{getCopy(locale, pageCopy.skillsLibraryBody)}</p>
 
-                      {loading && <p>加载中...</p>}
+                      {loading && <p>{getCopy(locale, pageCopy.loading)}</p>}
                       {error && <p className="error">{error}</p>}
 
                       <div className="skills-grid">
@@ -225,12 +252,14 @@ function App() {
                             onClick={() => handleSelectSkill(skill)}
                           >
                             <span className="app-card__status">
-                              {skill.is_installed ? '已安装' : '未安装'}
+                              {skill.is_installed
+                                ? getCopy(locale, pageCopy.installedStatus)
+                                : getCopy(locale, pageCopy.notInstalledStatus)}
                             </span>
-                            <h3>{skill.name['zh-CN'] || skill.id}</h3>
-                            <p>{skill.description?.['zh-CN'] || '暂无描述'}</p>
+                            <h3>{skill.name[locale] || skill.name['zh-CN'] || skill.id}</h3>
+                            <p>{skill.description?.[locale] || skill.description?.['zh-CN'] || getCopy(locale, pageCopy.noDescription)}</p>
                             <div className="skill-meta">
-                              <span>{formatVersionLabel(skill.version)}</span>
+                              <span>{formatVersionLabel(locale, skill.version)}</span>
                               <span>{skill.targets.join(', ')}</span>
                             </div>
                           </section>
@@ -245,33 +274,38 @@ function App() {
 
                   {view === 'skill-detail' && selectedSkill && (
                     <>
-                      <span className="panel__eyebrow">Skill 详情</span>
+                      <span className="panel__eyebrow">{getCopy(locale, pageCopy.skillDetailEyebrow)}</span>
                       <h2 className="panel__title">
-                        {selectedSkill.name['zh-CN'] || selectedSkill.id}
+                        {selectedSkill.name[locale] || selectedSkill.name['zh-CN'] || selectedSkill.id}
                       </h2>
                       <p className="panel__body">
-                        {selectedSkill.description?.['zh-CN'] || '暂无描述'}
+                        {selectedSkill.description?.[locale] ||
+                          selectedSkill.description?.['zh-CN'] ||
+                          getCopy(locale, pageCopy.noDescription)}
                       </p>
 
                       <div className="detail-grid">
                         <div>
-                          <strong>版本</strong>
-                          <p>{formatVersionLabel(selectedSkill.version)}</p>
+                          <strong>{getCopy(locale, pageCopy.versionLabel)}</strong>
+                          <p>{formatVersionLabel(locale, selectedSkill.version)}</p>
                         </div>
                         <div>
-                          <strong>作者</strong>
-                          <p>{selectedSkill.author || '未知'}</p>
+                          <strong>{getCopy(locale, pageCopy.authorLabel)}</strong>
+                          <p>{selectedSkill.author || getCopy(locale, pageCopy.unknownAuthor)}</p>
                         </div>
                         <div>
-                          <strong>支持的目标</strong>
+                          <strong>{getCopy(locale, pageCopy.targetsLabel)}</strong>
                           <p>{selectedSkill.targets.join(', ')}</p>
                         </div>
                         <div>
-                          <strong>状态</strong>
+                          <strong>{getCopy(locale, pageCopy.statusLabel)}</strong>
                           <p>
                             {selectedSkill.is_installed
-                              ? `已安装 (${formatVersionLabel(selectedSkill.installed_version)})`
-                              : '未安装'}
+                              ? `${getCopy(locale, pageCopy.installedStatus)} (${formatVersionLabel(
+                                  locale,
+                                  selectedSkill.installed_version
+                                )})`
+                              : getCopy(locale, pageCopy.notInstalledStatus)}
                           </p>
                         </div>
                       </div>
@@ -285,7 +319,9 @@ function App() {
                           type="button"
                           onClick={() => handleStartInstall(selectedSkill)}
                         >
-                          {selectedSkill.is_installed ? '重新安装' : '安装'}
+                          {selectedSkill.is_installed
+                            ? getCopy(locale, pageCopy.reinstall)
+                            : getCopy(locale, pageCopy.install)}
                         </button>
                       </div>
                     </>
@@ -294,17 +330,17 @@ function App() {
                   {view === 'install-wizard' && selectedSkill && wizardState && (
                     <>
                       <span className="panel__eyebrow">
-                        安装向导 · {wizardState.currentStep + 1} / 3
+                        {getCopy(locale, pageCopy.installWizardEyebrow)} · {wizardState.currentStep + 1} / 3
                       </span>
                       <h2 className="panel__title">
-                        {getCopy(locale, pageCopy.wizardTitle)} - {selectedSkill.name['zh-CN']}
+                        {getCopy(locale, pageCopy.wizardTitle)} - {selectedSkill.name[locale] || selectedSkill.name['zh-CN']}
                       </h2>
 
                       {!installResult ? (
                         <>
                           {wizardState.currentStep === 0 && (
                             <>
-                              <p className="panel__body">选择目标应用程序：</p>
+                              <p className="panel__body">{getCopy(locale, pageCopy.chooseTargetApp)}</p>
                               <div className="options">
                                 {availableApps
                                   .filter((app) => selectedSkill.targets.includes(app.id))
@@ -335,12 +371,12 @@ function App() {
 
                           {wizardState.currentStep === 1 && (
                             <>
-                              <p className="panel__body">填写配置变量：</p>
+                              <p className="panel__body">{getCopy(locale, pageCopy.fillVariables)}</p>
                               <div className="field-stack">
                                 {selectedSkill.variables.map((variable) => (
                                   <div className="field" key={variable.id}>
                                     <label htmlFor={variable.id}>
-                                      {variable.label['zh-CN'] || variable.id}
+                                      {variable.label[locale] || variable.label['zh-CN'] || variable.id}
                                     </label>
 
                                     {variable.var_type === 'select' && variable.options.length > 0 ? (
@@ -358,7 +394,7 @@ function App() {
                                                 updateInstallVariable(variable.id, event.target.value)
                                               }
                                             />
-                                            <span>{option.label['zh-CN'] || option.value}</span>
+                                            <span>{option.label[locale] || option.label['zh-CN'] || option.value}</span>
                                           </label>
                                         ))}
                                       </div>
@@ -369,7 +405,7 @@ function App() {
                                         value={
                                           wizardState.variables[variable.id] || variable.default || ''
                                         }
-                                        placeholder={variable.placeholder?.['zh-CN'] || ''}
+                                        placeholder={variable.placeholder?.[locale] || variable.placeholder?.['zh-CN'] || ''}
                                         onChange={(event) =>
                                           updateInstallVariable(variable.id, event.target.value)
                                         }
@@ -383,10 +419,10 @@ function App() {
 
                           {wizardState.currentStep === 2 && (
                             <>
-                              <p className="panel__body">确认安装配置：</p>
+                              <p className="panel__body">{getCopy(locale, pageCopy.confirmInstallConfig)}</p>
                               <div className="summary-grid">
                                 <section className="summary-card">
-                                  <h3>目标应用</h3>
+                                  <h3>{getCopy(locale, pageCopy.targetAppLabel)}</h3>
                                   <p>
                                     {availableApps.find((app) => app.id === wizardState.selectedAppId)
                                       ?.name || wizardState.selectedAppId}
@@ -394,11 +430,11 @@ function App() {
                                 </section>
                                 <section className="summary-card">
                                   <h3>Skill</h3>
-                                  <p>{selectedSkill.name['zh-CN']}</p>
+                                  <p>{selectedSkill.name[locale] || selectedSkill.name['zh-CN']}</p>
                                 </section>
                                 <section className="summary-card">
-                                  <h3>版本</h3>
-                                  <p>{formatVersionLabel(selectedSkill.version)}</p>
+                                  <h3>{getCopy(locale, pageCopy.versionLabel)}</h3>
+                                  <p>{formatVersionLabel(locale, selectedSkill.version)}</p>
                                 </section>
                               </div>
                             </>
@@ -443,7 +479,9 @@ function App() {
                                 onClick={handleInstall}
                                 disabled={installing}
                               >
-                                {installing ? '安装中...' : '确认安装'}
+                                {installing
+                                  ? getCopy(locale, pageCopy.installing)
+                                  : getCopy(locale, pageCopy.confirmInstall)}
                               </button>
                             )}
                           </div>
@@ -453,7 +491,7 @@ function App() {
                           <p className="panel__body">{installResult.message}</p>
                           <div className="button-row">
                             <button className="button" type="button" onClick={goBack}>
-                              完成
+                              {getCopy(locale, pageCopy.finish)}
                             </button>
                           </div>
                         </>
@@ -476,7 +514,7 @@ function App() {
                               <div>
                                 <h3>{skill.skill_id}</h3>
                                 <p className="muted">
-                                  {skill.app_name} · {formatVersionLabel(skill.installed_version)}
+                                  {skill.app_name} · {formatVersionLabel(locale, skill.installed_version)}
                                 </p>
                                 <p className="muted" style={{ fontSize: '0.8rem' }}>
                                   {skill.output_path}
@@ -487,7 +525,7 @@ function App() {
                                 type="button"
                                 onClick={() => handleUninstall(skill)}
                               >
-                                卸载
+                                {getCopy(locale, pageCopy.uninstall)}
                               </button>
                             </section>
                           ))}
@@ -504,17 +542,19 @@ function App() {
 
                   {view === 'settings' && (
                     <>
-                      <span className="panel__eyebrow">设置</span>
-                      <h2 className="panel__title">应用设置</h2>
-                      <p className="panel__body">配置 SOP to Skill。</p>
+                      <span className="panel__eyebrow">{getCopy(locale, pageCopy.settingsEyebrow)}</span>
+                      <h2 className="panel__title">{getCopy(locale, pageCopy.settingsTitle)}</h2>
+                      <p className="panel__body">{getCopy(locale, pageCopy.settingsBody)}</p>
 
                       <div className="settings-grid">
                         <section className="summary-card">
-                          <h3>应用更新</h3>
+                          <h3>{getCopy(locale, pageCopy.appUpdatesTitle)}</h3>
                           {hasUpdates && appUpdate ? (
                             <>
-                              <p className="muted">当前版本 v{appUpdate.currentVersion}</p>
-                              <p>新版本 v{appUpdate.version}</p>
+                              <p className="muted">
+                                {getCopy(locale, pageCopy.currentVersionPrefix)} v{appUpdate.currentVersion}
+                              </p>
+                              <p>{getCopy(locale, pageCopy.newVersionPrefix)} v{appUpdate.version}</p>
                               {appUpdate.body && <p className="muted">{appUpdate.body}</p>}
                               <button
                                 className="button"
@@ -524,21 +564,25 @@ function App() {
                                 }}
                                 disabled={installingUpdate}
                               >
-                                {installingUpdate ? '安装更新中...' : '下载并安装更新'}
+                                {installingUpdate
+                                  ? getCopy(locale, pageCopy.installingUpdate)
+                                  : getCopy(locale, pageCopy.installUpdate)}
                               </button>
                             </>
                           ) : (
                             <>
-                              <p className="muted">当前没有检测到可用的新版本。</p>
+                              <p className="muted">{getCopy(locale, pageCopy.noNewVersion)}</p>
                               <button className="button--ghost" type="button" onClick={checkUpdates}>
-                                {updateError ? '重新检查更新' : '检查更新'}
+                                {updateError
+                                  ? getCopy(locale, pageCopy.recheckUpdates)
+                                  : getCopy(locale, pageCopy.localeTag)}
                               </button>
                             </>
                           )}
                           {updateError && <p className="error">{updateError}</p>}
                         </section>
                         <section className="summary-card">
-                          <h3>数据目录</h3>
+                          <h3>{getCopy(locale, pageCopy.dataDirectoryTitle)}</h3>
                           <p className="muted" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
                             ~/Library/Application Support/sop-to-skill
                           </p>
@@ -549,7 +593,7 @@ function App() {
                               await invoke('open_data_directory')
                             }}
                           >
-                            在 Finder 中打开
+                            {getCopy(locale, pageCopy.openInFinder)}
                           </button>
                         </section>
                       </div>

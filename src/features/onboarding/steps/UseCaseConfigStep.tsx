@@ -1,7 +1,12 @@
-import type { OnboardingEditableUseCaseRecord } from '../../../types'
-import { getOnboardingUseCaseOptionById } from '../../../content/workbuddy'
+import type { Locale, OnboardingEditableUseCaseRecord } from '../../../types'
+import {
+  getOnboardingUseCaseNameById,
+  getOnboardingUseCaseOptionById,
+} from '../../../content/workbuddy'
+import { getOnboardingCopy, onboardingCopy } from '../copy'
 
 interface UseCaseConfigStepProps {
+  locale: Locale
   useCases: OnboardingEditableUseCaseRecord[]
   onUpdate: (
     useCaseId: string,
@@ -10,19 +15,23 @@ interface UseCaseConfigStepProps {
   ) => void
 }
 
-export function UseCaseConfigStep({ useCases, onUpdate }: UseCaseConfigStepProps) {
+export function UseCaseConfigStep({ locale, useCases, onUpdate }: UseCaseConfigStepProps) {
   return (
     <div className="onboarding-use-cases">
       {useCases.map((useCase) => {
-        const useCaseOption = getOnboardingUseCaseOptionById(useCase.use_case_id)
+        const useCaseOption = getOnboardingUseCaseOptionById(useCase.use_case_id, locale)
 
         return (
           <section className="onboarding-use-case-card" key={useCase.use_case_id}>
-            <h3>{useCase.use_case_name}</h3>
+            <h3>{getOnboardingUseCaseNameById(useCase.use_case_id, locale) || useCase.use_case_name}</h3>
             <div className="field-stack">
               <div className="field">
-                <label htmlFor={`${useCase.use_case_id}-description`}>用例描述</label>
-                <p className="field__hint">已预置一版描述，可按实际业务改写；重点写清输入是什么，最终要输出什么。</p>
+                <label htmlFor={`${useCase.use_case_id}-description`}>
+                  {getOnboardingCopy(locale, onboardingCopy.useCaseDescription)}
+                </label>
+                <p className="field__hint">
+                  {getOnboardingCopy(locale, onboardingCopy.useCaseDescriptionHint)}
+                </p>
                 <textarea
                   className="field__textarea--description"
                   id={`${useCase.use_case_id}-description`}
@@ -34,8 +43,10 @@ export function UseCaseConfigStep({ useCases, onUpdate }: UseCaseConfigStepProps
                 />
               </div>
               <div className="field">
-                <label htmlFor={`${useCase.use_case_id}-rules`}>当前流程 / SOP / 模板</label>
-                <p className="field__hint">直接把流程 / SOP / 模板的链接贴到这里就行。</p>
+                <label htmlFor={`${useCase.use_case_id}-rules`}>
+                  {getOnboardingCopy(locale, onboardingCopy.sopLabel)}
+                </label>
+                <p className="field__hint">{getOnboardingCopy(locale, onboardingCopy.sopHint)}</p>
                 <textarea
                   id={`${useCase.use_case_id}-rules`}
                   rows={4}

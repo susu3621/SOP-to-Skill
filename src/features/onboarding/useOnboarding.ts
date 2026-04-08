@@ -4,7 +4,6 @@ import {
   buildGeneratedSkillIdsForRoleUseCase,
   createCustomRoleUseCaseContent,
   createDefaultRoleUseCaseContents,
-  defaultOnboardingRoleId,
   getCredentialFields,
   getRoleNameById,
   onboardingBaseSkills,
@@ -14,6 +13,7 @@ import {
 } from '../../content/workbuddy'
 import type {
   InstalledSkillInfo,
+  Locale,
   OnboardingAgentState,
   OnboardingAgentSyncPreview,
   OnboardingBatchSyncResult,
@@ -25,6 +25,7 @@ import type {
   SkillResult,
   StagedOnboardingPackages,
 } from '../../types'
+import { getOnboardingCopy, onboardingCopy } from './copy'
 
 interface SaveFeedback {
   kind: 'success' | 'error'
@@ -152,12 +153,14 @@ function reconcileInstallSelection(
 function buildPersistedStateForScope(
   scope: string,
   currentState: OnboardingState,
-  savedState: OnboardingState
+  savedState: OnboardingState,
+  locale: Locale
 ) {
   if (scope === 'role') {
     const nextRoleUseCaseContents = createDefaultRoleUseCaseContents(
       currentState.selected_role_id,
-      savedState.role_use_case_contents
+      savedState.role_use_case_contents,
+      locale
     )
     const nextSelection = reconcileInstallSelection(
       savedState,
@@ -171,10 +174,10 @@ function buildPersistedStateForScope(
       selected_role_id: currentState.selected_role_id,
       role_use_case_contents: nextRoleUseCaseContents,
       ...nextSelection,
-    })
+    }, locale)
   }
 
-  return normalizeState(currentState)
+  return normalizeState(currentState, locale)
 }
 
 function areSameStringSets(left: string[], right: string[]) {
@@ -293,9 +296,9 @@ function buildAgentPreviews(
 function createEmptyState(): OnboardingState {
   return {
     selected_agent_ids: [],
-    selected_role_id: defaultOnboardingRoleId,
+    selected_role_id: '',
     selected_base_skill_ids: [],
-    role_use_case_contents: createDefaultRoleUseCaseContents(defaultOnboardingRoleId),
+    role_use_case_contents: [],
     selected_install_skill_ids: [],
     selected_install_skill_ids_initialized: false,
     selected_install_candidate_skill_ids: [],
@@ -303,10 +306,10 @@ function createEmptyState(): OnboardingState {
   }
 }
 
-function normalizeState(state: OnboardingState): OnboardingState {
+function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): OnboardingState {
   const selected_role_id = isRoleId(state.selected_role_id)
     ? state.selected_role_id
-    : defaultOnboardingRoleId
+    : ''
   const selected_agent_ids = unique(
     state.selected_agent_ids.filter((agentId) =>
       onboardingSupportedAgents.some((agent) => agent.id === agentId)
@@ -327,7 +330,7 @@ function normalizeState(state: OnboardingState): OnboardingState {
     selected_agent_ids,
     selected_base_skill_ids,
     role_use_case_contents: selected_role_id
-      ? createDefaultRoleUseCaseContents(selected_role_id, state.role_use_case_contents)
+      ? createDefaultRoleUseCaseContents(selected_role_id, state.role_use_case_contents, locale)
       : [],
     selected_install_skill_ids: unique(state.selected_install_skill_ids),
     selected_install_candidate_skill_ids: unique(state.selected_install_candidate_skill_ids),
@@ -338,7 +341,7 @@ function normalizeState(state: OnboardingState): OnboardingState {
 }
 
 
-export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
+export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Locale = 'zh-CN') {
   const [state, setState] = useState<OnboardingState>(() => createEmptyState())
   const [savedState, setSavedState] = useState<OnboardingState>(() => createEmptyState())
   const [loading, setLoading] = useState(true)
@@ -498,13 +501,13 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const updateState = useCallback(
     (updater: (current: OnboardingState) => OnboardingState) => {
       setState((current) => {
-        return normalizeState(updater(current))
+        return normalizeState(updater(current), locale)
       })
       setSaveFeedbacks({})
       setSyncResult(null)
       setSyncError(null)
     },
-    []
+    [locale]
   )
 
   useEffect(() => {
@@ -516,7 +519,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
       try {
         const result = await invoke<SkillResult<OnboardingState>>('get_onboarding_state')
         if (!cancelled && result.success) {
-          const nextState = normalizeState(result.success)
+          const nextState = normalizeState(result.success, locale)
           setState(nextState)
           setSavedState(nextState)
           setSaveFeedbacks({})
@@ -540,6 +543,11 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    setState((current) => normalizeState(current, locale))
+    setSavedState((current) => normalizeState(current, locale))
+  }, [locale])
 
   useEffect(() => {
     let cancelled = false
@@ -579,7 +587,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
 
   const saveState = useCallback(
     async (scope: string) => {
-      const nextState = buildPersistedStateForScope(scope, state, savedState)
+      const nextState = buildPersistedStateForScope(scope, state, savedState, locale)
       setSavingScope(scope)
       setSyncError(null)
 
@@ -589,9 +597,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
         })
 
         if (result.success) {
-          const normalizedState = normalizeState(result.success)
+          const normalizedState = normalizeState(result.success, locale)
           if (scope === 'role') {
-            setState((current) => normalizeState(current))
+            setState((current) => normalizeState(current, locale))
           } else {
             setState(normalizedState)
           }
@@ -600,7 +608,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
             ...current,
             [scope]: {
               kind: 'success',
-              message: '保存成功',
+              message: getOnboardingCopy(locale, onboardingCopy.saveSuccess),
             },
           }))
           return
@@ -610,7 +618,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
           ...current,
           [scope]: {
             kind: 'error',
-            message: result.error ?? '保存失败',
+            message: result.error ?? getOnboardingCopy(locale, onboardingCopy.saveFailed),
           },
         }))
       } catch (error) {
@@ -625,7 +633,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
         setSavingScope((current) => (current === scope ? null : current))
       }
     },
-    [savedState, state]
+    [locale, savedState, state]
   )
 
   const toggleAgent = useCallback(
@@ -645,7 +653,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
       updateState((current) => {
         const nextRoleUseCaseContents = createDefaultRoleUseCaseContents(
           roleId,
-          current.role_use_case_contents
+          current.role_use_case_contents,
+          locale
         )
         const nextSelection = reconcileInstallSelection(
           current,
@@ -662,7 +671,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
         }
       })
     },
-    [updateState]
+    [locale, updateState]
   )
 
   const toggleBaseSkill = useCallback(
@@ -715,7 +724,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const addUseCase = useCallback(
     (useCaseName: string) => {
       const trimmedName = useCaseName.trim()
-      if (!trimmedName) {
+      if (!trimmedName || !state.selected_role_id) {
         return null
       }
 
@@ -739,7 +748,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
           ...current,
           role_use_case_contents: nextRoleUseCaseContents,
           ...nextSelection,
-        })
+        }, locale)
       )
       setSaveFeedbacks({})
       setSyncResult(null)
@@ -747,7 +756,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
 
       return nextUseCase.use_case_id
     },
-    [state]
+    [locale, state]
   )
 
   const toggleInstallSkill = useCallback(
@@ -815,13 +824,13 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
   const startSync = useCallback(async () => {
     if (dirty.install) {
       setSyncResult(null)
-      setSyncError('请先保存当前安装设置。')
+      setSyncError(getOnboardingCopy(locale, onboardingCopy.syncSaveInstallFirst))
       return
     }
 
     if (dirty.any) {
       setSyncResult(null)
-      setSyncError('请先保存其他页面的设置。')
+      setSyncError(getOnboardingCopy(locale, onboardingCopy.syncSaveOtherFirst))
       return
     }
 
@@ -877,7 +886,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[]) {
     } finally {
       setSyncing(false)
     }
-  }, [agentStates, dirty.any, dirty.install, selectedUseCases, state])
+  }, [agentStates, dirty.any, dirty.install, locale, selectedUseCases, state])
 
   return {
     completion,

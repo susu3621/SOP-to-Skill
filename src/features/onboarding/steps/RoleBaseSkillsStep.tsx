@@ -1,6 +1,12 @@
-import { onboardingBaseSkills, onboardingRoles } from '../../../content/workbuddy'
+import {
+  getOnboardingBaseSkillOptions,
+  getOnboardingRoleOptions,
+} from '../../../content/workbuddy'
+import type { Locale } from '../../../types'
+import { getOnboardingCopy, onboardingCopy } from '../copy'
 
 interface RoleBaseSkillsStepProps {
+  locale: Locale
   selectedRoleId: string
   selectedBaseSkillIds: string[]
   onSelectRole: (roleId: string) => void
@@ -8,17 +14,21 @@ interface RoleBaseSkillsStepProps {
 }
 
 export function RoleBaseSkillsStep({
+  locale,
   selectedRoleId,
   selectedBaseSkillIds,
   onSelectRole,
   onToggleBaseSkill,
 }: RoleBaseSkillsStepProps) {
+  const roles = getOnboardingRoleOptions(locale)
+  const baseSkills = getOnboardingBaseSkillOptions(locale)
+
   return (
     <>
       <div className="field">
-        <label>选择岗位</label>
+        <label>{getOnboardingCopy(locale, onboardingCopy.roleTab)}</label>
         <div className="options options--cards">
-          {onboardingRoles.map((role) => (
+          {roles.map((role) => (
             <label className="field-option" key={role.id}>
               <input
                 aria-label={role.name}
@@ -37,9 +47,9 @@ export function RoleBaseSkillsStep({
       </div>
 
       <div className="field">
-        <label>基础技能</label>
+        <label>{getOnboardingCopy(locale, onboardingCopy.homeBaseSkills)}</label>
         <div className="options options--cards">
-          {onboardingBaseSkills.map((skill) => (
+          {baseSkills.map((skill) => (
             <label className="field-option" key={skill.id}>
               <input
                 aria-label={skill.name}

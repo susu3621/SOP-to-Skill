@@ -38,7 +38,10 @@ rg -n 'releaseDraft:\s*false' .github/workflows/build-desktop.yml
 rg -n 'tagName:' .github/workflows/build-desktop.yml
 rg -n 'args:\s*--config src-tauri/tauri.release.conf.json' .github/workflows/build-desktop.yml
 rg -n "if: \(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build == 'true'\) \|\| startsWith\(github\.ref, 'refs/tags/v'\)" .github/workflows/build-desktop.yml
-rg -n "if: matrix\.os == 'macos-latest' && github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build == 'true'" .github/workflows/build-desktop.yml
+rg -n "if: matrix\.os == 'macos-latest' && \(\(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build == 'true'\) \|\| startsWith\(github\.ref, 'refs/tags/v'\)\) && secrets\.APPLE_CERTIFICATE != ''" .github/workflows/build-desktop.yml
+rg -n 'Build release macOS desktop bundle with Apple signing' .github/workflows/build-desktop.yml
+rg -n 'Build release macOS desktop bundle with ad-hoc signing' .github/workflows/build-desktop.yml
+rg -n "if: \(\(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build == 'true'\) \|\| startsWith\(github\.ref, 'refs/tags/v'\)\) && matrix\.os == 'windows-latest'" .github/workflows/build-desktop.yml
 rg -n "if: \(github\.event_name == 'push' \|\| \(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build != 'true'\)\) && !startsWith\(github\.ref, 'refs/tags/v'\) && matrix\.os == 'macos-latest'" .github/workflows/build-desktop.yml
 rg -n "if: \(github\.event_name == 'push' \|\| \(github\.event_name == 'workflow_dispatch' && github\.event\.inputs\.release_build != 'true'\)\) && !startsWith\(github\.ref, 'refs/tags/v'\) && matrix\.os != 'macos-latest'" .github/workflows/build-desktop.yml
 rg -n "APPLE_SIGNING_IDENTITY: '-'" .github/workflows/build-desktop.yml

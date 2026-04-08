@@ -733,13 +733,16 @@ describe('build desktop all workflow dispatch', () => {
     expect(verifyScript).toContain("test -f scripts/install-sop-to-skill.ps1")
   })
 
-  it('keeps push macOS builds on ad-hoc signing while gating notarization secrets behind workflow_dispatch', () => {
+  it('keeps push macOS builds on ad-hoc signing while allowing tag releases to fall back to ad-hoc signing', () => {
     const workflow = fs.readFileSync(
       path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
       'utf8',
     )
 
-    expect(workflow).toContain("if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch'")
+    expect(workflow).toContain('Build release macOS desktop bundle with Apple signing')
+    expect(workflow).toContain('Build release macOS desktop bundle with ad-hoc signing')
+    expect(workflow).toContain("startsWith(github.ref, 'refs/tags/v')")
+    expect(workflow).toContain("secrets.APPLE_CERTIFICATE != ''")
     expect(workflow).toContain("APPLE_SIGNING_IDENTITY: '-'")
   })
 

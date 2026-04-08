@@ -6,18 +6,21 @@ import { InstallSelectionStep } from './steps/InstallSelectionStep'
 import { UseCaseConfigStep } from './steps/UseCaseConfigStep'
 import { useOnboarding } from './useOnboarding'
 import {
-  onboardingBaseSkillGroups,
   buildGeneratedSkillIdsForRoleUseCase,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
+  getOnboardingBaseSkillGroupOptions,
+  getOnboardingRoleOptions,
+  getOnboardingUseCaseNameById,
   getOnboardingUseCaseOptionById,
   getRoleNameById,
-  onboardingRoles,
 } from '../../content/workbuddy'
 import type {
   InstalledSkillInfo,
+  Locale,
   OnboardingEditableUseCaseRecord,
 } from '../../types'
+import { getOnboardingCopy, getOnboardingList, onboardingCopy } from './copy'
 
 type OnboardingView = 'home' | 'basic' | 'useCases' | 'install'
 type UseCaseTab = 'role' | 'work'
@@ -29,28 +32,31 @@ interface EntryCopy {
   items: string[]
 }
 
-const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> = {
-  basic: {
-    title: '选择公司 IT 工具',
-    summary: '先选公司常用系统',
-    description: '先选公司里已经在用的 IT 工具。AI 后面要从这些工具里取信息，才能按公司的 SOP 做事。',
-    items: ['选择公司 IT 工具'],
-  },
-  useCases: {
-    title: '配置要交给 AI 的工作',
-    summary: '先选岗位，再选工作',
-    description: '先选岗位，再决定哪些工作要交给 AI 去做，并补充对应的 SOP、信息来源和执行要求。',
-    items: ['选择岗位', '选择工作', '补充 SOP / 信息来源 / 执行要求'],
-  },
-  install: {
-    title: '安装到 AI 工具',
-    summary: '选择工具并开始安装',
-    description: '把前面整理好的 Skill 安装到你正在使用的 AI 工具里，之后就可以直接调用。',
-    items: ['选择 AI 工具', '确认安装内容', '开始安装'],
-  },
+function getOnboardingHomeEntries(locale: Locale): Record<Exclude<OnboardingView, 'home'>, EntryCopy> {
+  return {
+    basic: {
+      title: getOnboardingCopy(locale, onboardingCopy.homeEntries.basic.title),
+      summary: getOnboardingCopy(locale, onboardingCopy.homeEntries.basic.summary),
+      description: getOnboardingCopy(locale, onboardingCopy.homeEntries.basic.description),
+      items: getOnboardingList(locale, onboardingCopy.homeEntries.basic.items),
+    },
+    useCases: {
+      title: getOnboardingCopy(locale, onboardingCopy.homeEntries.useCases.title),
+      summary: getOnboardingCopy(locale, onboardingCopy.homeEntries.useCases.summary),
+      description: getOnboardingCopy(locale, onboardingCopy.homeEntries.useCases.description),
+      items: getOnboardingList(locale, onboardingCopy.homeEntries.useCases.items),
+    },
+    install: {
+      title: getOnboardingCopy(locale, onboardingCopy.homeEntries.install.title),
+      summary: getOnboardingCopy(locale, onboardingCopy.homeEntries.install.summary),
+      description: getOnboardingCopy(locale, onboardingCopy.homeEntries.install.description),
+      items: getOnboardingList(locale, onboardingCopy.homeEntries.install.items),
+    },
+  }
 }
 
 interface ModuleHeaderProps {
+  locale: Locale
   eyebrow: string
   title?: string
   description: string
@@ -60,6 +66,7 @@ interface ModuleHeaderProps {
 }
 
 function ModuleHeader({
+  locale,
   eyebrow,
   title,
   description,
@@ -71,7 +78,7 @@ function ModuleHeader({
     <div className="onboarding-section__header">
       <div className="field-stack onboarding-module-header__copy">
         <button className="button--ghost onboarding-back-button" type="button" onClick={onBack}>
-          返回首页
+          {getOnboardingCopy(locale, onboardingCopy.backHome)}
         </button>
         <div>
           <span className="panel__eyebrow">{eyebrow}</span>
@@ -80,13 +87,14 @@ function ModuleHeader({
         </div>
       </div>
       <button className="button--ghost" type="button" onClick={onOpenInstalled}>
-        {`已安装 (${installedCount})`}
+        {`${getOnboardingCopy(locale, onboardingCopy.installedCount)} (${installedCount})`}
       </button>
     </div>
   )
 }
 
 interface EntryCardProps {
+  locale: Locale
   index: string
   title: string
   summary: string
@@ -110,11 +118,16 @@ function SaveFeedbackBanner({ feedback }: SaveFeedbackBannerProps) {
   return <p className={feedback.kind === 'error' ? 'error onboarding-save-banner' : 'success onboarding-save-banner'}>{feedback.message}</p>
 }
 
-function StatusBadge() {
-  return <span className="onboarding-status-badge">已设置</span>
+function StatusBadge({ locale }: { locale: Locale }) {
+  return (
+    <span className="onboarding-status-badge">
+      {getOnboardingCopy(locale, onboardingCopy.configured)}
+    </span>
+  )
 }
 
 function EntryCard({
+  locale,
   index,
   title,
   summary,
@@ -139,7 +152,7 @@ function EntryCard({
     >
       <span className="onboarding-entry-card__meta">
         <span className="onboarding-entry-card__index">{index}</span>
-        {complete && <StatusBadge />}
+        {complete && <StatusBadge locale={locale} />}
       </span>
       <span className="onboarding-entry-card__title">{title}</span>
       <span aria-hidden="true" className="onboarding-entry-card__summary">
@@ -201,14 +214,14 @@ function DetailPanel({
   )
 }
 
-function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
+function HomeSummarySection({ groups, locale }: { groups: HomeSummaryGroup[]; locale: Locale }) {
   return (
     <section
       aria-labelledby="onboarding-home-summary-title"
       className="onboarding-home-summary"
     >
       <h3 className="onboarding-home-summary__title" id="onboarding-home-summary-title">
-        已设置内容
+        {getOnboardingCopy(locale, onboardingCopy.homeSummaryTitle)}
       </h3>
       <div className="onboarding-home-summary__grid">
         {groups.map((group) => (
@@ -220,29 +233,41 @@ function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
             {group.kind === 'installTable' ? (
               group.rows && group.rows.length > 0 ? (
                 <div className="onboarding-home-install-table-wrap">
-                  <table aria-label="安装技能汇总" className="onboarding-home-install-table">
+                  <table
+                    aria-label={getOnboardingCopy(locale, onboardingCopy.homeInstalledSkillsTable)}
+                    className="onboarding-home-install-table"
+                  >
                     <thead>
                       <tr>
-                        <th scope="col">岗位用例</th>
-                        <th scope="col">生产用</th>
-                        <th scope="col">测试用</th>
+                        <th scope="col">{getOnboardingCopy(locale, onboardingCopy.useCaseColumn)}</th>
+                        <th scope="col">{getOnboardingCopy(locale, onboardingCopy.productionColumn)}</th>
+                        <th scope="col">{getOnboardingCopy(locale, onboardingCopy.testColumn)}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {group.rows.map((row) => (
                         <tr key={row.useCaseName}>
-                          <th data-label="岗位用例" scope="row">
+                          <th
+                            data-label={getOnboardingCopy(locale, onboardingCopy.useCaseColumn)}
+                            scope="row"
+                          >
                             {row.useCaseName}
                           </th>
-                          <td data-label="生产用">{row.productionLabel}</td>
-                          <td data-label="测试用">{row.testLabel}</td>
+                          <td data-label={getOnboardingCopy(locale, onboardingCopy.productionColumn)}>
+                            {row.productionLabel}
+                          </td>
+                          <td data-label={getOnboardingCopy(locale, onboardingCopy.testColumn)}>
+                            {row.testLabel}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               ) : (
-                <p className="onboarding-home-summary__empty">未设置</p>
+                <p className="onboarding-home-summary__empty">
+                  {getOnboardingCopy(locale, onboardingCopy.empty)}
+                </p>
               )
             ) : group.values && group.values.length > 0 ? (
               <div className="onboarding-home-summary__values">
@@ -253,7 +278,9 @@ function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
                 ))}
               </div>
             ) : (
-              <p className="onboarding-home-summary__empty">未设置</p>
+              <p className="onboarding-home-summary__empty">
+                {getOnboardingCopy(locale, onboardingCopy.empty)}
+              </p>
             )}
           </section>
         ))}
@@ -263,15 +290,18 @@ function HomeSummarySection({ groups }: { groups: HomeSummaryGroup[] }) {
 }
 
 interface RoleSelectionPanelProps {
+  locale: Locale
   selectedRoleId: string
   onSelectRole: (roleId: string) => void
 }
 
-function RoleSelectionPanel({ selectedRoleId, onSelectRole }: RoleSelectionPanelProps) {
+function RoleSelectionPanel({ locale, selectedRoleId, onSelectRole }: RoleSelectionPanelProps) {
+  const roles = getOnboardingRoleOptions(locale)
+
   return (
     <div className="field">
       <div className="options options--cards">
-        {onboardingRoles.map((role) => (
+        {roles.map((role) => (
           <label className="field-option" key={role.id}>
             <input
               aria-label={role.name}
@@ -292,18 +322,22 @@ function RoleSelectionPanel({ selectedRoleId, onSelectRole }: RoleSelectionPanel
 }
 
 interface BaseSkillSelectionPanelProps {
+  locale: Locale
   selectedBaseSkillIds: string[]
   onToggleBaseSkill: (skillId: string) => void
 }
 
 function BaseSkillSelectionPanel({
+  locale,
   selectedBaseSkillIds,
   onToggleBaseSkill,
 }: BaseSkillSelectionPanelProps) {
+  const groups = getOnboardingBaseSkillGroupOptions(locale)
+
   return (
     <div className="field">
       <div className="onboarding-base-skill-groups">
-        {onboardingBaseSkillGroups.map((group) => (
+        {groups.map((group) => (
           <section className="onboarding-base-skill-group" key={group.id}>
             <div className="onboarding-base-skill-group__header">
               <h4>{group.name}</h4>
@@ -333,13 +367,20 @@ function BaseSkillSelectionPanel({
 }
 
 interface UseCaseListProps {
+  locale: Locale
   activeUseCaseId: string | null
   configuredById: Record<string, boolean>
   useCases: OnboardingEditableUseCaseRecord[]
   onSelect: (useCaseId: string) => void
 }
 
-function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: UseCaseListProps) {
+function UseCaseList({
+  locale,
+  activeUseCaseId,
+  configuredById,
+  useCases,
+  onSelect,
+}: UseCaseListProps) {
   return (
     <div className="onboarding-use-case-list">
       {useCases.map((useCase, index) => (
@@ -348,7 +389,9 @@ function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: Us
 
           return (
             <button
-              aria-label={useCase.use_case_name}
+              aria-label={
+                getOnboardingUseCaseNameById(useCase.use_case_id, locale) || useCase.use_case_name
+              }
               className="onboarding-use-case-list__item"
               data-active={activeUseCaseId === useCase.use_case_id}
               key={useCase.use_case_id}
@@ -358,11 +401,16 @@ function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: Us
               <span className="onboarding-use-case-list__index">{`${index + 1}`}</span>
               <span className="onboarding-use-case-list__copy">
                 <span className="onboarding-use-case-list__title-row">
-                  <span className="onboarding-use-case-list__title">{useCase.use_case_name}</span>
-                  {configuredById[useCase.use_case_id] && <StatusBadge />}
+                  <span className="onboarding-use-case-list__title">
+                    {getOnboardingUseCaseNameById(useCase.use_case_id, locale) ||
+                      useCase.use_case_name}
+                  </span>
+                  {configuredById[useCase.use_case_id] && <StatusBadge locale={locale} />}
                 </span>
                 <span className="onboarding-use-case-list__subtitle">
-                  {isCustomUseCase ? '自定义用例' : useCase.use_case_id}
+                  {isCustomUseCase
+                    ? getOnboardingCopy(locale, onboardingCopy.customUseCase)
+                    : useCase.use_case_id}
                 </span>
               </span>
             </button>
@@ -374,6 +422,7 @@ function UseCaseList({ activeUseCaseId, configuredById, useCases, onSelect }: Us
 }
 
 interface InstallModuleProps {
+  locale: Locale
   credentialFields: ReturnType<typeof useOnboarding>['credentialFields']
   installCandidateGroups: ReturnType<typeof useOnboarding>['installCandidateGroups']
   installedCount: number
@@ -398,6 +447,7 @@ interface InstallModuleProps {
 }
 
 function InstallModule({
+  locale,
   credentialFields,
   installCandidateGroups,
   installedCount,
@@ -424,17 +474,23 @@ function InstallModule({
     <div className="onboarding-shell">
       <section className="onboarding-section">
         <ModuleHeader
-          description="先选择要安装到的 AI 工具，再确认公司 IT 工具和岗位生成技能的安装内容，最后开始安装。"
-          eyebrow="安装到 AI 工具"
+          locale={locale}
+          description={getOnboardingCopy(locale, onboardingCopy.installModuleDescription)}
+          eyebrow={getOnboardingCopy(locale, onboardingCopy.homeEntries.install.title)}
           installedCount={installedCount}
           onBack={onBack}
           onOpenInstalled={onOpenInstalled}
         />
         <SaveFeedbackBanner feedback={saveFeedback} />
         <div className="field-stack">
-          <AgentSelectionStep selectedAgentIds={selectedAgentIds} onToggleAgent={onToggleAgent} />
+          <AgentSelectionStep
+            locale={locale}
+            selectedAgentIds={selectedAgentIds}
+            onToggleAgent={onToggleAgent}
+          />
           {previewError && <p className="error">{previewError}</p>}
           <InstallSelectionStep
+            locale={locale}
             agentPreviews={preview.agent_previews}
             installCandidateGroups={installCandidateGroups}
             selectedAgentIds={selectedAgentIds}
@@ -443,9 +499,10 @@ function InstallModule({
             onToggleInstallSkill={onToggleInstallSkill}
           />
           <section className="summary-card onboarding-subeditor-panel">
-            <h3>账号凭证</h3>
-            <p>只显示当前仍被选择的公司 IT 工具所需的凭证字段。</p>
+            <h3>{getOnboardingCopy(locale, onboardingCopy.credentialsTitle)}</h3>
+            <p>{getOnboardingCopy(locale, onboardingCopy.credentialsBody)}</p>
             <CredentialsStep
+              locale={locale}
               credentialFields={credentialFields}
               credentialValues={credentialValues}
               onUpdateCredential={onUpdateCredential}
@@ -453,7 +510,9 @@ function InstallModule({
           </section>
           <div className="button-row">
             <button className="button--ghost" disabled={saveDisabled} type="button" onClick={onSave}>
-              {saving ? '保存中...' : '保存设置'}
+              {saving
+                ? getOnboardingCopy(locale, onboardingCopy.saving)
+                : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
             </button>
             <button
               className="button"
@@ -461,11 +520,13 @@ function InstallModule({
               onClick={onStartSync}
               disabled={syncing || selectedAgentIds.length === 0}
             >
-              {syncing ? '同步中...' : '开始同步安装'}
+              {syncing
+                ? getOnboardingCopy(locale, onboardingCopy.syncing)
+                : getOnboardingCopy(locale, onboardingCopy.sync)}
             </button>
           </div>
           <section className="summary-card onboarding-subeditor-panel">
-            <CompletionStep syncError={syncError} syncResult={syncResult} />
+            <CompletionStep locale={locale} syncError={syncError} syncResult={syncResult} />
           </section>
         </div>
       </section>
@@ -474,11 +535,12 @@ function InstallModule({
 }
 
 interface OnboardingShellProps {
+  locale: Locale
   installedSkills: InstalledSkillInfo[]
   onOpenInstalled: () => void
 }
 
-export function OnboardingShell({ installedSkills, onOpenInstalled }: OnboardingShellProps) {
+export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: OnboardingShellProps) {
   const {
     completion,
     credentialFields,
@@ -505,7 +567,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     updateCredentialValue,
     updateUseCaseContent,
     selectRole,
-  } = useOnboarding(installedSkills)
+  } = useOnboarding(installedSkills, locale)
 
   const [view, setView] = useState<OnboardingView>('home')
   const [activeUseCaseTab, setActiveUseCaseTab] = useState<UseCaseTab>('role')
@@ -514,6 +576,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   const [showNewUseCaseForm, setShowNewUseCaseForm] = useState(false)
   const [newUseCaseName, setNewUseCaseName] = useState('')
   const [newUseCaseError, setNewUseCaseError] = useState<string | null>(null)
+  const onboardingHomeEntries = useMemo(() => getOnboardingHomeEntries(locale), [locale])
 
   const openView = (nextView: OnboardingView) => {
     setView(nextView)
@@ -541,7 +604,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
     const trimmedUseCaseName = newUseCaseName.trim()
 
     if (!trimmedUseCaseName) {
-      setNewUseCaseError('请输入新用例名称。')
+      setNewUseCaseError(getOnboardingCopy(locale, onboardingCopy.newUseCaseEmptyError))
       return
     }
 
@@ -552,13 +615,13 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
           useCase.use_case_name.trim() === trimmedUseCaseName
       )
     ) {
-      setNewUseCaseError('这个用例名称已经存在。')
+      setNewUseCaseError(getOnboardingCopy(locale, onboardingCopy.newUseCaseDuplicateError))
       return
     }
 
     const createdUseCaseId = addUseCase(trimmedUseCaseName)
     if (!createdUseCaseId) {
-      setNewUseCaseError('新增用例失败，请重试。')
+      setNewUseCaseError(getOnboardingCopy(locale, onboardingCopy.newUseCaseFailedError))
       return
     }
 
@@ -570,29 +633,33 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
   const homeSummaryGroups = useMemo<HomeSummaryGroup[]>(
     () => [
       {
-        label: '已选岗位',
+        label: getOnboardingCopy(locale, onboardingCopy.homeSelectedRole),
         kind: 'values',
-        values: savedState.selected_role_id ? [getRoleNameById(savedState.selected_role_id)] : [],
+        values: savedState.selected_role_id ? [getRoleNameById(savedState.selected_role_id, locale)] : [],
       },
       {
-        label: '公司 IT 工具',
+        label: getOnboardingCopy(locale, onboardingCopy.homeBaseSkills),
         kind: 'values',
-        values: savedState.selected_base_skill_ids.map((skillId) => getBaseSkillNameById(skillId)),
+        values: savedState.selected_base_skill_ids.map((skillId) =>
+          getBaseSkillNameById(skillId, locale)
+        ),
       },
       {
-        label: '已配置工作',
+        label: getOnboardingCopy(locale, onboardingCopy.homeConfiguredWork),
         kind: 'values',
         values: savedState.role_use_case_contents
           .filter((useCase) => completion.useCaseIds[useCase.use_case_id])
-          .map((useCase) => useCase.use_case_name),
+          .map((useCase) => getOnboardingUseCaseNameById(useCase.use_case_id, locale) || useCase.use_case_name),
       },
       {
-        label: '安装目标',
+        label: getOnboardingCopy(locale, onboardingCopy.homeInstallTargets),
         kind: 'values',
-        values: savedState.selected_agent_ids.map((agentId) => getOnboardingAgentNameById(agentId)),
+        values: savedState.selected_agent_ids.map((agentId) =>
+          getOnboardingAgentNameById(agentId, locale)
+        ),
       },
       {
-        label: '安装技能',
+        label: getOnboardingCopy(locale, onboardingCopy.homeInstalledSkills),
         kind: 'installTable',
         fullWidth: true,
         rows: savedState.selected_role_id
@@ -602,27 +669,28 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 useCase.use_case_id
               )
               return {
-                useCaseName: useCase.use_case_name,
+                useCaseName:
+                  getOnboardingUseCaseNameById(useCase.use_case_id, locale) || useCase.use_case_name,
                 productionLabel: savedResolvedSelectedInstallSkillIds.includes(
                   generatedSkillIds.production_skill_id
                 )
                   ? generatedSkillIds.production_skill_id
-                  : '未安装',
+                  : getOnboardingCopy(locale, onboardingCopy.notInstalled),
                 testLabel: savedResolvedSelectedInstallSkillIds.includes(
                   generatedSkillIds.test_skill_id
                 )
                   ? generatedSkillIds.test_skill_id
-                  : '未安装',
+                  : getOnboardingCopy(locale, onboardingCopy.notInstalled),
               }
             })
           : [],
       },
     ],
-    [completion.useCaseIds, savedResolvedSelectedInstallSkillIds, savedState]
+    [completion.useCaseIds, locale, savedResolvedSelectedInstallSkillIds, savedState]
   )
 
   if (loading) {
-    return <p className="muted">正在加载设置内容...</p>
+    return <p className="muted">{getOnboardingCopy(locale, onboardingCopy.loading)}</p>
   }
 
   if (view === 'home') {
@@ -631,19 +699,22 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
         <section className="onboarding-section">
           <div className="onboarding-section__header">
             <div>
-              <span className="panel__eyebrow">开始设置</span>
+              <span className="panel__eyebrow">
+                {getOnboardingCopy(locale, onboardingCopy.homeEyebrow)}
+              </span>
               <p className="panel__body">
-                按下面 3 步设置好以后，AI 就能按公司的 SOP 去完成你选好的工作。
+                {getOnboardingCopy(locale, onboardingCopy.homeBody)}
               </p>
             </div>
             <button className="button--ghost" type="button" onClick={onOpenInstalled}>
-              {`已安装 (${installedSkills.length})`}
+              {`${getOnboardingCopy(locale, onboardingCopy.installedCount)} (${installedSkills.length})`}
             </button>
           </div>
 
           <div className="onboarding-entry-grid">
             <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
               <EntryCard
+                locale={locale}
                 active={hoveredHomeEntry === 'basic'}
                 complete={completion.baseSkills}
                 index="01"
@@ -658,7 +729,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 <DetailPanel
                   className="onboarding-detail-panel--bubble"
                   description={onboardingHomeEntries.basic.description}
-                  eyebrow="模块说明"
+                  eyebrow={getOnboardingCopy(locale, onboardingCopy.moduleGuideEyebrow)}
                   items={onboardingHomeEntries.basic.items}
                   placement="right"
                   title={onboardingHomeEntries.basic.title}
@@ -667,6 +738,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             </div>
             <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
               <EntryCard
+                locale={locale}
                 active={hoveredHomeEntry === 'useCases'}
                 complete={completion.role && completion.useCases}
                 index="02"
@@ -681,7 +753,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 <DetailPanel
                   className="onboarding-detail-panel--bubble"
                   description={onboardingHomeEntries.useCases.description}
-                  eyebrow="模块说明"
+                  eyebrow={getOnboardingCopy(locale, onboardingCopy.moduleGuideEyebrow)}
                   items={onboardingHomeEntries.useCases.items}
                   placement="right"
                   title={onboardingHomeEntries.useCases.title}
@@ -690,6 +762,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             </div>
             <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
               <EntryCard
+                locale={locale}
                 active={hoveredHomeEntry === 'install'}
                 complete={completion.install}
                 index="03"
@@ -704,7 +777,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 <DetailPanel
                   className="onboarding-detail-panel--bubble"
                   description={onboardingHomeEntries.install.description}
-                  eyebrow="模块说明"
+                  eyebrow={getOnboardingCopy(locale, onboardingCopy.moduleGuideEyebrow)}
                   items={onboardingHomeEntries.install.items}
                   placement="left"
                   title={onboardingHomeEntries.install.title}
@@ -713,7 +786,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             </div>
           </div>
 
-          <HomeSummarySection groups={homeSummaryGroups} />
+          <HomeSummarySection groups={homeSummaryGroups} locale={locale} />
         </section>
       </div>
     )
@@ -724,8 +797,9 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       <div className="onboarding-shell">
         <section className="onboarding-section">
           <ModuleHeader
-            description="先选择公司里已经在用的 IT 工具。后续 AI 会从这些工具中获取信息。"
-            eyebrow="选择公司 IT 工具"
+            locale={locale}
+            description={getOnboardingCopy(locale, onboardingCopy.basicModuleDescription)}
+            eyebrow={getOnboardingCopy(locale, onboardingCopy.homeEntries.basic.title)}
             installedCount={installedSkills.length}
             onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
@@ -734,6 +808,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
           <section className="summary-card onboarding-subeditor-panel">
             <SaveFeedbackBanner feedback={saveFeedbacks.baseSkills} />
             <BaseSkillSelectionPanel
+              locale={locale}
               selectedBaseSkillIds={state.selected_base_skill_ids}
               onToggleBaseSkill={toggleBaseSkill}
             />
@@ -744,7 +819,9 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 type="button"
                 onClick={() => void saveState('baseSkills')}
               >
-                {savingScope === 'baseSkills' ? '保存中...' : '保存设置'}
+                {savingScope === 'baseSkills'
+                  ? getOnboardingCopy(locale, onboardingCopy.saving)
+                  : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
               </button>
             </div>
           </section>
@@ -758,8 +835,9 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
       <div className="onboarding-shell">
         <section className="onboarding-section">
           <ModuleHeader
-            description="先选岗位，再补充这个岗位下要交给 AI 的具体工作内容和 SOP 要求。"
-            eyebrow="配置要交给 AI 的工作"
+            locale={locale}
+            description={getOnboardingCopy(locale, onboardingCopy.useCasesModuleDescription)}
+            eyebrow={getOnboardingCopy(locale, onboardingCopy.homeEntries.useCases.title)}
             installedCount={installedSkills.length}
             onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
@@ -767,7 +845,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
 
           <div className="onboarding-work-tabs">
             <div
-              aria-label="工作配置导航"
+              aria-label={getOnboardingCopy(locale, onboardingCopy.workTabAriaLabel)}
               className="onboarding-tablist"
               role="tablist"
             >
@@ -786,7 +864,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                   }
                 }}
               >
-                选择岗位
+                {getOnboardingCopy(locale, onboardingCopy.roleTab)}
               </button>
               <button
                 aria-controls="onboarding-work-tabpanel"
@@ -803,7 +881,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                   }
                 }}
               >
-                选择工作
+                {getOnboardingCopy(locale, onboardingCopy.workTab)}
               </button>
             </div>
 
@@ -815,6 +893,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 role="tabpanel"
               >
                 <RoleSelectionPanel
+                  locale={locale}
                   selectedRoleId={state.selected_role_id}
                   onSelectRole={selectRole}
                 />
@@ -826,7 +905,9 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                     type="button"
                     onClick={() => void saveState('role')}
                   >
-                    {savingScope === 'role' ? '保存中...' : '保存岗位'}
+                    {savingScope === 'role'
+                      ? getOnboardingCopy(locale, onboardingCopy.saving)
+                      : getOnboardingCopy(locale, onboardingCopy.saveRole)}
                   </button>
                 </div>
               </section>
@@ -841,8 +922,8 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                   <div className="onboarding-module-grid__sidebar onboarding-subeditor-panel">
                     <div className="onboarding-use-case-panel-header">
                       <div>
-                        <h3>选择工作</h3>
-                        <p>当前岗位下可以交给 AI 的工作。</p>
+                        <h3>{getOnboardingCopy(locale, onboardingCopy.useCasePanelTitle)}</h3>
+                        <p>{getOnboardingCopy(locale, onboardingCopy.useCasePanelBody)}</p>
                       </div>
                       <button
                         className="button--ghost"
@@ -855,7 +936,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                           }
                         }}
                       >
-                        新增用例
+                        {getOnboardingCopy(locale, onboardingCopy.addUseCase)}
                       </button>
                     </div>
                     {showNewUseCaseForm && (
@@ -867,10 +948,12 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                         }}
                       >
                         <div className="field">
-                          <label htmlFor="new-onboarding-use-case-name">新用例名称</label>
+                          <label htmlFor="new-onboarding-use-case-name">
+                            {getOnboardingCopy(locale, onboardingCopy.newUseCaseName)}
+                          </label>
                           <input
                             id="new-onboarding-use-case-name"
-                            placeholder="例如：客户回访"
+                            placeholder={getOnboardingCopy(locale, onboardingCopy.newUseCasePlaceholder)}
                             value={newUseCaseName}
                             onChange={(event) => {
                               setNewUseCaseName(event.target.value)
@@ -883,7 +966,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                         {newUseCaseError && <p className="error">{newUseCaseError}</p>}
                         <div className="button-row">
                           <button className="button" type="submit">
-                            添加用例
+                            {getOnboardingCopy(locale, onboardingCopy.addUseCaseSubmit)}
                           </button>
                           <button
                             className="button--ghost"
@@ -894,12 +977,13 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                               setNewUseCaseError(null)
                             }}
                           >
-                            取消
+                            {getOnboardingCopy(locale, onboardingCopy.cancel)}
                           </button>
                         </div>
                       </form>
                     )}
                     <UseCaseList
+                      locale={locale}
                       activeUseCaseId={activeUseCase?.use_case_id ?? null}
                       configuredById={completion.useCaseIds}
                       useCases={state.role_use_case_contents}
@@ -914,6 +998,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                           feedback={activeUseCaseScope ? saveFeedbacks[activeUseCaseScope] : null}
                         />
                         <UseCaseConfigStep
+                          locale={locale}
                           useCases={[activeUseCase]}
                           onUpdate={updateUseCaseContent}
                         />
@@ -932,12 +1017,16 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                               }
                             }}
                           >
-                            {savingScope === activeUseCaseScope ? '保存中...' : '保存设置'}
+                            {savingScope === activeUseCaseScope
+                              ? getOnboardingCopy(locale, onboardingCopy.saving)
+                              : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <p className="hint-callout">当前岗位没有可配置的工作。</p>
+                      <p className="hint-callout">
+                        {getOnboardingCopy(locale, onboardingCopy.useCaseEmptyHint)}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -951,6 +1040,7 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
 
   return (
     <InstallModule
+      locale={locale}
       credentialFields={credentialFields}
       credentialValues={state.credential_values}
       installCandidateGroups={installCandidateGroups}

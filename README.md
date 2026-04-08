@@ -4,11 +4,16 @@
 
 Turn existing SOPs into AI-runnable skills with a setup flow simple enough for non-engineers.
 
-## What This Project Does
+## Highlights
 
-- Converts company SOPs, templates, and examples into runnable AI skills.
-- Uses guided configuration instead of manual prompt or config editing.
-- Helps non-engineering teams package repeatable work into AI workflows quickly.
+- Turns company SOPs, templates, links, and examples into runnable AI skills.
+- Uses guided setup instead of manual prompt writing or config editing.
+- Keeps role defaults, use case defaults, and IT tool bindings in configuration.
+- Supports a full English and Chinese desktop interface.
+
+## Screenshot
+
+![App home in English](./docs/images/app-home-en.png)
 
 ## Install
 

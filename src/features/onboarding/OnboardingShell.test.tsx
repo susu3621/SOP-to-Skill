@@ -247,7 +247,7 @@ async function waitForInstallModule() {
 }
 
 describe('OnboardingShell', () => {
-  it('shows the default role while leaving unsaved sections incomplete for a fresh state', async () => {
+  it('shows no selected role while leaving all onboarding sections incomplete for a fresh state', async () => {
     mockControls.stateOverride = {
       selected_agent_ids: [],
       selected_role_id: '',
@@ -277,13 +277,14 @@ describe('OnboardingShell', () => {
     expect(within(installCard).queryByText('已设置')).not.toBeInTheDocument()
 
     const summary = screen.getByRole('region', { name: '已设置内容' })
-    expect(within(summary).getAllByText('未设置')).toHaveLength(3)
-    expect(within(summary).getByText('项目经理')).toBeInTheDocument()
+    expect(within(summary).getAllByText('未设置')).toHaveLength(5)
+    expect(within(summary).queryByText('项目经理')).not.toBeInTheDocument()
+    expect(within(summary).queryByText('记录日志')).not.toBeInTheDocument()
     expect(within(summary).queryByText('Jira')).not.toBeInTheDocument()
     expect(within(summary).queryByText('Codex')).not.toBeInTheDocument()
   })
 
-  it('defaults fresh unsaved state to project manager while keeping other selectors unselected', async () => {
+  it('keeps fresh unsaved state with no selected role and no generated use cases', async () => {
     mockControls.stateOverride = {
       selected_agent_ids: [],
       selected_role_id: '',
@@ -307,10 +308,15 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('heading', { name: '配置要交给 AI 的工作' })).not.toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '选择岗位', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '选择工作', selected: false })).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: '项目经理' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: '项目经理' })).not.toBeChecked()
     expect(screen.queryByRole('radio', { name: '产品经理' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '需求评估' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('用例描述')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
+    expect(screen.queryByRole('button', { name: '需求评估' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '记录日志' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('用例描述')).not.toBeInTheDocument()
+    expect(screen.getByText('当前岗位没有可配置的工作。')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '返回首页' }))
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
 
@@ -718,7 +724,7 @@ describe('OnboardingShell', () => {
     expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(temporaryEdit)
   })
 
-  it('keeps default project manager use cases available when loading onboarding state fails', async () => {
+  it('falls back to an empty onboarding role state when loading onboarding state fails', async () => {
     mockControls.stateOverride = null
     const user = userEvent.setup()
 
@@ -760,93 +766,14 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('tab', { name: '选择岗位', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '选择工作', selected: false })).toBeInTheDocument()
     expect(screen.queryByText('先选岗位，再看这个岗位下可以交给 AI 的工作。')).not.toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '项目经理' })).not.toBeChecked()
     await user.click(screen.getByRole('tab', { name: '选择工作' }))
-    expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '记录计划' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '记录日志' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '项目周报' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '成本核算' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: '风险升级' })).not.toBeInTheDocument()
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '梳理售前需求、企业技术积累和约束边界'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '适合配置成帮你做售前需求初评的助手'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '需要提前说明它会读取哪些公司现有技术积累'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '其他相关信息由 AI 自己从系统中查找。'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '客户原始需求、销售澄清记录'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '范围边界和待确认问题'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '输出（Skill输出的结果）：'
-    )
-    await user.click(screen.getByRole('button', { name: '记录日志' }))
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '输入（每次执行都需要提供给Skill的信息）：具体哪一天。'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '会议纪要、聊天记录和问题管理系统变化'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '输出（Skill输出的结果）：'
-    )
-    await user.click(screen.getByRole('button', { name: '记录计划' }))
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '项目里程碑、任务拆解和跨团队依赖'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '输出（Skill输出的结果）：'
-    )
-    await user.click(screen.getByRole('button', { name: '问题跟踪' }))
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(
-      '输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '问题管理系统中的缺陷、测试反馈和会议行动项'
-    )
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).not.toContain(
-      '输出（Skill输出的结果）：'
-    )
-    await user.click(screen.getByRole('button', { name: '需求评估' }))
-    expect(screen.getByLabelText('用例描述')).toHaveAttribute('rows', '10')
-    expect(screen.queryByText('适合配置成帮你做售前需求初评的助手。')).not.toBeInTheDocument()
-    expect(screen.queryByText('需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('基础信息来源')).not.toBeInTheDocument()
-    expect((screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).value).toBe('')
-    expect(
-      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).toContain('例如：\n当前流程 / SOP / 模板：')
-    expect(
-      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).toContain('较好的例子：')
-    expect(
-      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).toContain('技术积累库：')
-    expect(
-      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).not.toContain('查找')
-    await user.click(screen.getByRole('button', { name: '记录计划' }))
-    expect(
-      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).toContain('较好的例子：')
-    expect(
-      (screen.getByLabelText('当前流程 / SOP / 模板') as HTMLTextAreaElement).placeholder
-    ).toContain('其他：')
-    expect(screen.queryByText('当前岗位没有可配置的工作。')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '需求评估' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '记录计划' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '记录日志' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '项目周报' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('用例描述')).not.toBeInTheDocument()
+    expect(screen.getByText('当前岗位没有可配置的工作。')).toBeInTheDocument()
   })
 
   it('shows a failure banner when saving base skill changes fails', async () => {

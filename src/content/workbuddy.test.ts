@@ -1,6 +1,8 @@
 import {
   buildGeneratedSkillIdsForRoleUseCase,
   createDefaultRoleUseCaseContents,
+  getBaseSkillNameById,
+  getOnboardingAgentNameById,
   getRoleNameById,
   onboardingBaseSkillGroups,
   onboardingUseCases,
@@ -10,6 +12,18 @@ import {
   workbuddyBaseSkills,
   workbuddyRoles,
 } from './workbuddy'
+
+function getLocalizedConfigValue(value: unknown, locale: 'zh-CN' | 'en-US') {
+  if (typeof value === 'string') {
+    return value
+  }
+
+  if (value && typeof value === 'object') {
+    return (value as Record<'zh-CN' | 'en-US', string | undefined>)[locale] ?? ''
+  }
+
+  return ''
+}
 
 describe('workbuddy agent apps', () => {
   it('does not expose Antigravity as a selectable app', () => {
@@ -151,6 +165,52 @@ describe('workbuddy agent apps', () => {
     )
     expect(issueTracking?.description).not.toContain('问题管理系统中的缺陷、测试反馈和会议行动项')
     expect(issueTracking?.description).not.toContain('输出（Skill输出的结果）：')
+  })
+
+  it('reads explicit default use case values from shared config instead of composing them in code', () => {
+    const defaults = createDefaultRoleUseCaseContents('project-manager')
+    const dailyLog = defaults.find((useCase) => useCase.use_case_id === 'daily-log')
+
+    expect(sharedConfig.useCases['记录日志']).toHaveProperty('defaultDescription')
+    expect(sharedConfig.useCases['记录日志']).toHaveProperty('defaultInfoSources')
+    expect(sharedConfig.useCases['记录日志']).toHaveProperty('defaultRules')
+    expect(dailyLog?.description).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultDescription, 'zh-CN')
+    )
+    expect(dailyLog?.info_sources).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultInfoSources, 'zh-CN')
+    )
+    expect(dailyLog?.rules).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultRules, 'zh-CN')
+    )
+  })
+
+  it('re-localizes config-backed default use case content when the locale changes', () => {
+    const zhDefaults = createDefaultRoleUseCaseContents('project-manager', [], 'zh-CN')
+    const englishDefaults = createDefaultRoleUseCaseContents('project-manager', zhDefaults, 'en-US')
+    const requirementAssessment = englishDefaults.find(
+      (useCase) => useCase.use_case_id === 'requirement-assessment'
+    )
+    const dailyLog = englishDefaults.find((useCase) => useCase.use_case_id === 'daily-log')
+
+    expect(requirementAssessment?.use_case_name).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['需求评估']?.name, 'en-US')
+    )
+    expect(requirementAssessment?.description).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['需求评估']?.defaultDescription, 'en-US')
+    )
+    expect(dailyLog?.use_case_name).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.name, 'en-US')
+    )
+    expect(dailyLog?.description).toBe(
+      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultDescription, 'en-US')
+    )
+  })
+
+  it('exposes localized onboarding names from shared config', () => {
+    expect(getOnboardingAgentNameById('workbuddy', 'en-US')).toBe('WorkBuddy')
+    expect(getRoleNameById('project-manager', 'en-US')).toBe('Project Manager')
+    expect(getBaseSkillNameById('jira', 'en-US')).toBe('Jira')
   })
 
   it('adds example and other sections to every SOP placeholder', () => {

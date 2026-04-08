@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import type {
@@ -182,6 +182,8 @@ const fixtures = vi.hoisted(() => {
   const runtime = {
     appUpdate: null as null | typeof appUpdate,
     installAppUpdateCalls: 0,
+    preferredLocale: 'zh-CN' as 'zh-CN' | 'en-US',
+    updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
   }
 
   return {
@@ -194,7 +196,7 @@ const fixtures = vi.hoisted(() => {
 })
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(async (command: string) => {
+  invoke: vi.fn(async (command: string, payload?: { preferredLocale?: 'zh-CN' | 'en-US' }) => {
     switch (command) {
       case 'list_skills':
         return { success: [] }
@@ -208,7 +210,13 @@ vi.mock('@tauri-apps/api/core', () => ({
         fixtures.runtime.installAppUpdateCalls += 1
         return true
       case 'get_config':
-        return { success: { preferred_locale: 'zh-CN' } }
+        return { success: { preferred_locale: fixtures.runtime.preferredLocale } }
+      case 'update_config':
+        if (payload?.preferredLocale) {
+          fixtures.runtime.preferredLocale = payload.preferredLocale
+          fixtures.runtime.updatedLocales.push(payload.preferredLocale)
+        }
+        return { success: { preferred_locale: fixtures.runtime.preferredLocale } }
       case 'get_onboarding_state':
         return { success: fixtures.onboardingState }
       case 'set_onboarding_state':
@@ -237,6 +245,8 @@ describe('onboarding shell smoke coverage', () => {
   beforeEach(() => {
     fixtures.runtime.appUpdate = null
     fixtures.runtime.installAppUpdateCalls = 0
+    fixtures.runtime.preferredLocale = 'zh-CN'
+    fixtures.runtime.updatedLocales = []
   })
 
   it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
@@ -311,5 +321,63 @@ describe('onboarding shell smoke coverage', () => {
     await user.click(installButton)
 
     expect(fixtures.runtime.installAppUpdateCalls).toBe(1)
+  })
+
+  it('renders the full app shell in English when the preferred locale is en-US', async () => {
+    fixtures.runtime.preferredLocale = 'en-US'
+
+    render(<App />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Hand your company SOPs to AI so you can spend time on work that matters.',
+      })
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start setup' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Skill Library' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Installed' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Company IT Tools' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Configure AI Work' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Install into AI Tool' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
+  })
+
+  it('keeps generated onboarding defaults in English after loading the preferred locale', async () => {
+    fixtures.runtime.preferredLocale = 'en-US'
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await screen.findByRole('button', { name: 'Configure AI Work' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Configure AI Work' }))
+    await user.click(screen.getByRole('tab', { name: 'Choose work' }))
+
+    expect(await screen.findByRole('button', { name: 'Requirement Assessment' })).toBeInTheDocument()
+    expect(
+      (screen.getByLabelText('Use case description') as HTMLTextAreaElement).value
+    ).toContain(
+      'Input (information required every run): the name of the requirement to assess.'
+    )
+    expect(screen.queryByDisplayValue(/输入（每次执行都需要提供给Skill的信息）/)).not.toBeInTheDocument()
+  })
+
+  it('switches locale from the header and persists the selection', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await waitForOnboardingHome()
+    await user.click(screen.getByRole('button', { name: 'English' }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', {
+          name: 'Hand your company SOPs to AI so you can spend time on work that matters.',
+        })
+      ).toBeInTheDocument()
+    })
+
+    expect(fixtures.runtime.updatedLocales).toEqual(['en-US'])
+    expect(screen.getByRole('button', { name: 'Company IT Tools' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '选择公司 IT 工具' })).not.toBeInTheDocument()
   })
 })

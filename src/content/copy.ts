@@ -132,7 +132,171 @@ export const pageCopy = {
   installedLibraryEmpty: {
     'zh-CN': '暂无已安装 Skill。',
     'en-US': 'No Skills are installed yet.',
-  }
+  },
+  localeZh: {
+    'zh-CN': '中文',
+    'en-US': 'Chinese',
+  },
+  localeEn: {
+    'zh-CN': 'English',
+    'en-US': 'English',
+  },
+  updateAvailable: {
+    'zh-CN': '更新',
+    'en-US': 'Update',
+  },
+  installUpdate: {
+    'zh-CN': '下载并安装更新',
+    'en-US': 'Download and install update',
+  },
+  installingUpdate: {
+    'zh-CN': '安装更新中...',
+    'en-US': 'Installing update...',
+  },
+  updateHintPrefix: {
+    'zh-CN': '发现新版本',
+    'en-US': 'New version available',
+  },
+  loading: {
+    'zh-CN': '加载中...',
+    'en-US': 'Loading...',
+  },
+  installedStatus: {
+    'zh-CN': '已安装',
+    'en-US': 'Installed',
+  },
+  notInstalledStatus: {
+    'zh-CN': '未安装',
+    'en-US': 'Not installed',
+  },
+  noDescription: {
+    'zh-CN': '暂无描述',
+    'en-US': 'No description yet.',
+  },
+  skillDetailEyebrow: {
+    'zh-CN': 'Skill 详情',
+    'en-US': 'Skill details',
+  },
+  versionLabel: {
+    'zh-CN': '版本',
+    'en-US': 'Version',
+  },
+  authorLabel: {
+    'zh-CN': '作者',
+    'en-US': 'Author',
+  },
+  unknownAuthor: {
+    'zh-CN': '未知',
+    'en-US': 'Unknown',
+  },
+  targetsLabel: {
+    'zh-CN': '支持的目标',
+    'en-US': 'Supported targets',
+  },
+  statusLabel: {
+    'zh-CN': '状态',
+    'en-US': 'Status',
+  },
+  reinstall: {
+    'zh-CN': '重新安装',
+    'en-US': 'Reinstall',
+  },
+  install: {
+    'zh-CN': '安装',
+    'en-US': 'Install',
+  },
+  installWizardEyebrow: {
+    'zh-CN': '安装向导',
+    'en-US': 'Install wizard',
+  },
+  chooseTargetApp: {
+    'zh-CN': '选择目标应用程序：',
+    'en-US': 'Choose the target application:',
+  },
+  fillVariables: {
+    'zh-CN': '填写配置变量：',
+    'en-US': 'Fill in the configuration variables:',
+  },
+  confirmInstallConfig: {
+    'zh-CN': '确认安装配置：',
+    'en-US': 'Review the installation configuration:',
+  },
+  targetAppLabel: {
+    'zh-CN': '目标应用',
+    'en-US': 'Target application',
+  },
+  installing: {
+    'zh-CN': '安装中...',
+    'en-US': 'Installing...',
+  },
+  confirmInstall: {
+    'zh-CN': '确认安装',
+    'en-US': 'Confirm install',
+  },
+  finish: {
+    'zh-CN': '完成',
+    'en-US': 'Done',
+  },
+  installSuccessPrefix: {
+    'zh-CN': '成功安装到',
+    'en-US': 'Installed successfully to',
+  },
+  installFailed: {
+    'zh-CN': '安装失败',
+    'en-US': 'Installation failed',
+  },
+  uninstall: {
+    'zh-CN': '卸载',
+    'en-US': 'Uninstall',
+  },
+  uninstallFailedPrefix: {
+    'zh-CN': '卸载失败',
+    'en-US': 'Uninstall failed',
+  },
+  settingsEyebrow: {
+    'zh-CN': '设置',
+    'en-US': 'Settings',
+  },
+  settingsTitle: {
+    'zh-CN': '应用设置',
+    'en-US': 'App settings',
+  },
+  settingsBody: {
+    'zh-CN': '配置 SOP to Skill。',
+    'en-US': 'Configure SOP to Skill.',
+  },
+  appUpdatesTitle: {
+    'zh-CN': '应用更新',
+    'en-US': 'App updates',
+  },
+  currentVersionPrefix: {
+    'zh-CN': '当前版本',
+    'en-US': 'Current version',
+  },
+  newVersionPrefix: {
+    'zh-CN': '新版本',
+    'en-US': 'New version',
+  },
+  noNewVersion: {
+    'zh-CN': '当前没有检测到可用的新版本。',
+    'en-US': 'No new version is available right now.',
+  },
+  recheckUpdates: {
+    'zh-CN': '重新检查更新',
+    'en-US': 'Check again',
+  },
+  dataDirectoryTitle: {
+    'zh-CN': '数据目录',
+    'en-US': 'Data directory',
+  },
+  openInFinder: {
+    'zh-CN': '在 Finder 中打开',
+    'en-US': 'Open in Finder',
+  },
+  localPackage: {
+    'zh-CN': '本地包',
+    'en-US': 'Local package',
+  },
 } satisfies Record<string, LocalizedText>
 
 export function getCopy(locale: Locale, text: LocalizedText): string {

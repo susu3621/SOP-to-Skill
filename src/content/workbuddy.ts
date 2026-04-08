@@ -5,43 +5,48 @@
  * Data is sourced from the shared configuration for consistency with test scripts.
  */
 
-import type { LocalizedText, WizardField, WizardOption, WizardStep } from '../types'
+import type { Locale, LocalizedText, WizardField, WizardOption, WizardStep } from '../types'
 import type { OnboardingEditableUseCaseRecord } from '../types'
 import config from '../shared/config.json'
 
 // Types for the shared config
+type ConfigText = string | LocalizedText
+
 interface CredentialFieldConfig {
-  label: string
-  placeholder: string
+  label: ConfigText
+  placeholder: ConfigText
   type: 'text' | 'password'
   required: boolean
 }
 
 interface BaseSkillConfig {
-  name: string
-  description: string
+  name: ConfigText
+  description: ConfigText
   credentials: Record<string, CredentialFieldConfig>
 }
 
 interface AgentAppConfig {
-  name: string
-  description: string
+  name: ConfigText
+  description: ConfigText
 }
 
 interface RoleConfig {
-  name: string
-  description: string
+  name: ConfigText
+  description: ConfigText
   useCases: string[]
 }
 
 interface UseCaseConfig {
-  name: string
+  name: ConfigText
   directory?: string
-  description: string
-  guidance?: string[]
-  descriptionPrompt?: string
-  infoSourcesPrompt?: string
-  rulesPrompt?: string
+  description: ConfigText
+  guidance?: ConfigText[]
+  descriptionPrompt?: ConfigText
+  infoSourcesPrompt?: ConfigText
+  rulesPrompt?: ConfigText
+  defaultDescription?: ConfigText
+  defaultInfoSources?: ConfigText
+  defaultRules?: ConfigText
 }
 
 interface SharedConfig {
@@ -62,8 +67,57 @@ interface SharedConfig {
 
 const typedConfig = config as SharedConfig
 const visibleRoleIds = ['project-manager'] as const
+const supportedLocales: Locale[] = ['zh-CN', 'en-US']
 
 export const defaultOnboardingRoleId = visibleRoleIds[0]
+
+function readConfigText(value: ConfigText | undefined, locale: Locale = 'zh-CN'): string {
+  if (!value) {
+    return ''
+  }
+
+  if (typeof value === 'string') {
+    return value
+  }
+
+  return value[locale] ?? value['zh-CN'] ?? value['en-US'] ?? ''
+}
+
+function readConfigTextVariants(value: ConfigText | undefined): string[] {
+  if (!value) {
+    return []
+  }
+
+  if (typeof value === 'string') {
+    return value.trim().length > 0 ? [value] : []
+  }
+
+  return Array.from(
+    new Set(
+      supportedLocales
+        .map((locale) => value[locale])
+        .filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0)
+    )
+  )
+}
+
+function toLocalizedText(value: ConfigText): LocalizedText {
+  if (typeof value === 'string') {
+    return {
+      'zh-CN': value,
+      'en-US': value,
+    }
+  }
+
+  return {
+    'zh-CN': value['zh-CN'] ?? value['en-US'] ?? '',
+    'en-US': value['en-US'] ?? value['zh-CN'] ?? '',
+  }
+}
+
+function text(value: string): LocalizedText {
+  return toLocalizedText(value)
+}
 
 function getVisibleRoles() {
   return visibleRoleIds
@@ -78,14 +132,6 @@ function getVisibleRoles() {
     .filter((entry): entry is readonly [typeof visibleRoleIds[number], RoleConfig] => entry != null)
 }
 
-// Helper to create localized text
-function text(value: string): LocalizedText {
-  return {
-    'zh-CN': value,
-    'en-US': value,
-  }
-}
-
 function toUseCaseId(useCaseName: string): string {
   return typedConfig.useCases[useCaseName]?.directory ?? useCaseName
 }
@@ -96,9 +142,9 @@ function getUseCaseDirectoryByName(useCaseName: string): string {
 
 function getUseCaseNameById(useCaseId: string): string {
   const match = Object.entries(typedConfig.useCases).find(
-    ([, useCase]) => (useCase.directory ?? useCase.name) === useCaseId
+    ([, useCase]) => (useCase.directory ?? readConfigText(useCase.name)) === useCaseId
   )
-  return match?.[1]?.name ?? useCaseId
+  return match ? readConfigText(match[1].name) : useCaseId
 }
 
 function normalizeUseCaseId(value: string) {
@@ -117,30 +163,30 @@ function normalizeUseCaseId(value: string) {
 export const workbuddyAgentApps: WizardOption[] = Object.entries(typedConfig.agentApps).map(
   ([key, app]) => ({
     value: key,
-    label: text(app.name),
-    hint: text(app.description),
+    label: toLocalizedText(app.name),
+    hint: toLocalizedText(app.description),
   })
 )
 
 export const workbuddyRoles: WizardOption[] = getVisibleRoles().map(([, role]) => ({
-    value: role.name,
-    label: text(role.name),
-    hint: text(role.description),
+    value: readConfigText(role.name),
+    label: toLocalizedText(role.name),
+    hint: toLocalizedText(role.description),
   }))
 
 export const workbuddyBaseSkills: WizardOption[] = Object.entries(typedConfig.baseSkills).map(
   ([key, skill]) => ({
     value: key,
-    label: text(skill.name),
-    hint: text(skill.description),
+    label: toLocalizedText(skill.name),
+    hint: toLocalizedText(skill.description),
   })
 )
 
 export const workbuddyUseCases: WizardOption[] = Object.entries(typedConfig.useCases).map(
   ([, useCase]) => ({
-    value: useCase.name,
-    label: text(useCase.name),
-    hint: text(useCase.description),
+    value: readConfigText(useCase.name),
+    label: toLocalizedText(useCase.name),
+    hint: toLocalizedText(useCase.description),
   })
 )
 
@@ -182,12 +228,65 @@ export interface OnboardingUseCaseOption {
   applicable_role_ids: string[]
 }
 
-export const onboardingAgents: OnboardingAgentOption[] = Object.entries(typedConfig.agentApps).map(
-  ([id, app]) => ({
+function buildOnboardingAgentOption(
+  id: string,
+  app: AgentAppConfig,
+  locale: Locale = 'zh-CN'
+): OnboardingAgentOption {
+  return {
     id,
-    name: app.name,
-    description: app.description,
-  })
+    name: readConfigText(app.name, locale),
+    description: readConfigText(app.description, locale),
+  }
+}
+
+function buildOnboardingRoleOption(
+  id: string,
+  role: RoleConfig,
+  locale: Locale = 'zh-CN'
+): OnboardingRoleOption {
+  return {
+    id,
+    name: readConfigText(role.name, locale),
+    description: readConfigText(role.description, locale),
+  }
+}
+
+function buildOnboardingBaseSkillOption(
+  id: string,
+  skill: BaseSkillConfig,
+  locale: Locale = 'zh-CN'
+): OnboardingBaseSkillOption {
+  return {
+    id,
+    name: readConfigText(skill.name, locale),
+    description: readConfigText(skill.description, locale),
+    credential_field_ids: Object.keys(skill.credentials),
+  }
+}
+
+function buildOnboardingUseCaseOption(
+  useCaseName: string,
+  useCase: UseCaseConfig,
+  locale: Locale = 'zh-CN'
+): OnboardingUseCaseOption {
+  return {
+    id: toUseCaseId(useCaseName),
+    name: readConfigText(useCase.name, locale),
+    directory: getUseCaseDirectoryByName(useCaseName),
+    description: readConfigText(useCase.description, locale),
+    guidance: (useCase.guidance ?? []).map((value) => readConfigText(value, locale)),
+    description_prompt: readConfigText(useCase.descriptionPrompt, locale),
+    info_sources_prompt: readConfigText(useCase.infoSourcesPrompt, locale),
+    rules_prompt: readConfigText(useCase.rulesPrompt, locale),
+    applicable_role_ids: Object.entries(typedConfig.roles)
+      .filter(([, role]) => role.useCases.includes(useCaseName))
+      .map(([roleId]) => roleId),
+  }
+}
+
+export const onboardingAgents: OnboardingAgentOption[] = Object.entries(typedConfig.agentApps).map(
+  ([id, app]) => buildOnboardingAgentOption(id, app)
 )
 
 export const onboardingSupportedAgentIds = ['workbuddy', 'codex', 'claude-code'] as const
@@ -196,20 +295,37 @@ export const onboardingSupportedAgents: OnboardingAgentOption[] = onboardingAgen
   onboardingSupportedAgentIds.includes(agent.id as (typeof onboardingSupportedAgentIds)[number])
 )
 
+export function getOnboardingAgents(locale: Locale = 'zh-CN'): OnboardingAgentOption[] {
+  return Object.entries(typedConfig.agentApps).map(([id, app]) =>
+    buildOnboardingAgentOption(id, app, locale)
+  )
+}
+
+export function getOnboardingSupportedAgentOptions(locale: Locale = 'zh-CN'): OnboardingAgentOption[] {
+  return getOnboardingAgents(locale).filter((agent) =>
+    onboardingSupportedAgentIds.includes(agent.id as (typeof onboardingSupportedAgentIds)[number])
+  )
+}
+
 export const onboardingRoles: OnboardingRoleOption[] = getVisibleRoles().map(([id, role]) => ({
-    id,
-    name: role.name,
-    description: role.description,
-  }))
+  id,
+  name: readConfigText(role.name),
+  description: readConfigText(role.description),
+}))
+
+export function getOnboardingRoleOptions(locale: Locale = 'zh-CN'): OnboardingRoleOption[] {
+  return getVisibleRoles().map(([id, role]) => buildOnboardingRoleOption(id, role, locale))
+}
 
 export const onboardingBaseSkills: OnboardingBaseSkillOption[] = Object.entries(
   typedConfig.baseSkills
-).map(([id, skill]) => ({
-  id,
-  name: skill.name,
-  description: skill.description,
-  credential_field_ids: Object.keys(skill.credentials),
-}))
+).map(([id, skill]) => buildOnboardingBaseSkillOption(id, skill))
+
+export function getOnboardingBaseSkillOptions(locale: Locale = 'zh-CN'): OnboardingBaseSkillOption[] {
+  return Object.entries(typedConfig.baseSkills).map(([id, skill]) =>
+    buildOnboardingBaseSkillOption(id, skill, locale)
+  )
+}
 
 const onboardingBaseSkillById = new Map(
   onboardingBaseSkills.map((skill) => [skill.id, skill] as const)
@@ -218,20 +334,38 @@ const onboardingBaseSkillById = new Map(
 const onboardingBaseSkillGroupDefinitions = [
   {
     id: 'wiki',
-    name: 'Wiki 系统',
-    description: '集中放 SOP、项目文档和会议纪要，方便 AI 读取稳定资料。',
+    name: {
+      'zh-CN': 'Wiki 系统',
+      'en-US': 'Wiki System',
+    },
+    description: {
+      'zh-CN': '集中放 SOP、项目文档和会议纪要，方便 AI 读取稳定资料。',
+      'en-US': 'Store SOPs, project docs, and meeting notes in one place so AI can read stable references.',
+    },
     skill_ids: ['confluence'],
   },
   {
     id: 'issue-management',
-    name: '问题管理系统',
-    description: '同步任务、缺陷和负责人状态，方便 AI 跟进执行进度。',
+    name: {
+      'zh-CN': '问题管理系统',
+      'en-US': 'Issue Management System',
+    },
+    description: {
+      'zh-CN': '同步任务、缺陷和负责人状态，方便 AI 跟进执行进度。',
+      'en-US': 'Sync tasks, defects, and owners so AI can track execution progress.',
+    },
     skill_ids: ['jira'],
   },
   {
     id: 'communication',
-    name: '通信系统',
-    description: '处理邮件往来和通知，方便 AI 整理沟通记录。',
+    name: {
+      'zh-CN': '通信系统',
+      'en-US': 'Communication System',
+    },
+    description: {
+      'zh-CN': '处理邮件往来和通知，方便 AI 整理沟通记录。',
+      'en-US': 'Handle email traffic and notifications so AI can organize communication records.',
+    },
     skill_ids: ['mail'],
   },
 ] as const
@@ -239,8 +373,8 @@ const onboardingBaseSkillGroupDefinitions = [
 export const onboardingBaseSkillGroups: OnboardingBaseSkillGroup[] =
   onboardingBaseSkillGroupDefinitions.map((group) => ({
     id: group.id,
-    name: group.name,
-    description: group.description,
+    name: group.name['zh-CN'],
+    description: group.description['zh-CN'],
     skills: group.skill_ids.map((skillId) => {
       const skill = onboardingBaseSkillById.get(skillId)
       if (!skill) {
@@ -250,27 +384,73 @@ export const onboardingBaseSkillGroups: OnboardingBaseSkillGroup[] =
     }),
   }))
 
+export function getOnboardingBaseSkillGroupOptions(
+  locale: Locale = 'zh-CN'
+): OnboardingBaseSkillGroup[] {
+  return onboardingBaseSkillGroupDefinitions.map((group) => ({
+    id: group.id,
+    name: group.name[locale] ?? group.name['zh-CN'],
+    description: group.description[locale] ?? group.description['zh-CN'],
+    skills: group.skill_ids.map((skillId) => {
+      const skill = typedConfig.baseSkills[skillId]
+      if (!skill) {
+        throw new Error(`Unknown onboarding base skill: ${skillId}`)
+      }
+
+      return buildOnboardingBaseSkillOption(skillId, skill, locale)
+    }),
+  }))
+}
+
 export const onboardingUseCases: OnboardingUseCaseOption[] = Object.entries(typedConfig.useCases).map(
-  ([useCaseName, useCase]) => ({
-    id: toUseCaseId(useCaseName),
-    name: useCase.name,
-    directory: getUseCaseDirectoryByName(useCaseName),
-    description: useCase.description,
-    guidance: useCase.guidance ?? [],
-    description_prompt: useCase.descriptionPrompt ?? '',
-    info_sources_prompt: useCase.infoSourcesPrompt ?? '',
-    rules_prompt: useCase.rulesPrompt ?? '',
-    applicable_role_ids: Object.entries(typedConfig.roles)
-      .filter(([, role]) => role.useCases.includes(useCaseName))
-      .map(([roleId]) => roleId),
-  })
+  ([useCaseName, useCase]) => buildOnboardingUseCaseOption(useCaseName, useCase)
 )
 
-function buildDefaultUseCaseDescription(useCase: OnboardingUseCaseOption) {
-  return [useCase.description, ...useCase.guidance, useCase.description_prompt]
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0)
-    .join('\n\n')
+export function getOnboardingUseCaseOptions(locale: Locale = 'zh-CN'): OnboardingUseCaseOption[] {
+  return Object.entries(typedConfig.useCases).map(([useCaseName, useCase]) =>
+    buildOnboardingUseCaseOption(useCaseName, useCase, locale)
+  )
+}
+
+function getLocalizedUseCaseConfigById(useCaseId: string, locale: Locale = 'zh-CN') {
+  const entry = Object.entries(typedConfig.useCases).find(
+    ([, useCase]) => (useCase.directory ?? readConfigText(useCase.name)) === useCaseId
+  )
+
+  if (!entry) {
+    return null
+  }
+
+  const [, useCase] = entry
+
+  return {
+    name: readConfigText(useCase.name, locale),
+    description: readConfigText(useCase.description, locale),
+    guidance: (useCase.guidance ?? []).map((value) => readConfigText(value, locale)),
+    descriptionPrompt: readConfigText(useCase.descriptionPrompt, locale),
+    infoSourcesPrompt: readConfigText(useCase.infoSourcesPrompt, locale),
+    rulesPrompt: readConfigText(useCase.rulesPrompt, locale),
+    defaultDescription: readConfigText(useCase.defaultDescription, locale),
+    defaultInfoSources: readConfigText(useCase.defaultInfoSources, locale),
+    defaultRules: readConfigText(useCase.defaultRules, locale),
+  }
+}
+
+function getUseCaseConfigById(useCaseId: string): UseCaseConfig | null {
+  const entry = Object.entries(typedConfig.useCases).find(
+    ([, useCase]) => (useCase.directory ?? readConfigText(useCase.name)) === useCaseId
+  )
+
+  return entry?.[1] ?? null
+}
+
+function matchesConfigTextVariant(currentValue: string | undefined, variants: string[] = []) {
+  if (!currentValue?.trim().length) {
+    return false
+  }
+
+  const normalizedValue = currentValue.trim()
+  return variants.some((variant) => variant.trim() === normalizedValue)
 }
 
 function clearLegacyAutofillText(currentValue: string | undefined, legacyValues: string[] = []) {
@@ -284,35 +464,51 @@ function clearLegacyAutofillText(currentValue: string | undefined, legacyValues:
     : currentValue
 }
 
-function resolveUseCaseDescription(currentValue: string | undefined, defaultValue: string, legacyValues: string[] = []) {
+function resolveLocalizedConfigBackedValue(
+  currentValue: string | undefined,
+  localizedValue: string,
+  configVariants: string[] = []
+) {
   if (!currentValue?.trim().length) {
-    return defaultValue
+    return localizedValue
   }
 
-  const normalizedValue = currentValue.trim()
-  return legacyValues.some((legacyValue) => legacyValue.trim() === normalizedValue)
-    ? defaultValue
-    : currentValue
+  return matchesConfigTextVariant(currentValue, configVariants) ? localizedValue : currentValue
 }
 
-export function getOnboardingAgentNameById(agentId: string): string {
-  return typedConfig.agentApps[agentId]?.name ?? agentId
+export function getOnboardingAgentNameById(agentId: string, locale: Locale = 'zh-CN'): string {
+  return readConfigText(typedConfig.agentApps[agentId]?.name, locale) || agentId
 }
 
-export function getRoleNameById(roleId: string): string {
-  return typedConfig.roles[roleId]?.name ?? roleId
+export function getOnboardingAgentDescriptionById(
+  agentId: string,
+  locale: Locale = 'zh-CN'
+): string {
+  return readConfigText(typedConfig.agentApps[agentId]?.description, locale)
 }
 
-export function getBaseSkillNameById(skillId: string): string {
-  return typedConfig.baseSkills[skillId]?.name ?? skillId
+export function getRoleNameById(roleId: string, locale: Locale = 'zh-CN'): string {
+  return readConfigText(typedConfig.roles[roleId]?.name, locale) || roleId
+}
+
+export function getRoleDescriptionById(roleId: string, locale: Locale = 'zh-CN'): string {
+  return readConfigText(typedConfig.roles[roleId]?.description, locale)
+}
+
+export function getBaseSkillNameById(skillId: string, locale: Locale = 'zh-CN'): string {
+  return readConfigText(typedConfig.baseSkills[skillId]?.name, locale) || skillId
+}
+
+export function getBaseSkillDescriptionById(skillId: string, locale: Locale = 'zh-CN'): string {
+  return readConfigText(typedConfig.baseSkills[skillId]?.description, locale)
 }
 
 export function getApplicableUseCasesForRole(roleId: string): OnboardingUseCaseOption[] {
   return onboardingUseCases.filter((useCase) => useCase.applicable_role_ids.includes(roleId))
 }
 
-export function getOnboardingUseCaseOptionById(useCaseId: string) {
-  return onboardingUseCases.find((useCase) => useCase.id === useCaseId) ?? null
+export function getOnboardingUseCaseOptionById(useCaseId: string, locale: Locale = 'zh-CN') {
+  return getOnboardingUseCaseOptions(locale).find((useCase) => useCase.id === useCaseId) ?? null
 }
 
 export function buildCustomUseCaseId(useCaseName: string, existingUseCaseIds: string[] = []) {
@@ -354,25 +550,48 @@ export function buildGeneratedSkillIdsForRoleUseCase(roleId: string, useCaseDire
 
 export function createDefaultRoleUseCaseContents(
   roleId: string,
-  existing: OnboardingEditableUseCaseRecord[] = []
+  existing: OnboardingEditableUseCaseRecord[] = [],
+  locale: Locale = 'zh-CN'
 ): OnboardingEditableUseCaseRecord[] {
   const configuredDefaults = getApplicableUseCasesForRole(roleId).map((useCase) => {
     const existingRecord = existing.find(
       (record) => record.role_id === roleId && record.use_case_id === useCase.id
     )
-    const defaultDescription = buildDefaultUseCaseDescription(useCase)
+    const localizedConfig = getLocalizedUseCaseConfigById(useCase.id, locale)
+    const rawConfig = getUseCaseConfigById(useCase.id)
+    const descriptionVariants = [
+      ...readConfigTextVariants(rawConfig?.description),
+      ...readConfigTextVariants(rawConfig?.descriptionPrompt),
+      ...readConfigTextVariants(rawConfig?.defaultDescription),
+    ]
+    const infoSourcesVariants = [
+      ...readConfigTextVariants(rawConfig?.infoSourcesPrompt),
+      ...readConfigTextVariants(rawConfig?.defaultInfoSources),
+    ]
+    const rulesVariants = [
+      ...readConfigTextVariants(rawConfig?.rulesPrompt),
+      ...readConfigTextVariants(rawConfig?.defaultRules),
+    ]
 
     return {
       role_id: roleId,
       use_case_id: useCase.id,
-      use_case_name: useCase.name,
-      description: resolveUseCaseDescription(
+      use_case_name: localizedConfig?.name ?? useCase.name,
+      description: resolveLocalizedConfigBackedValue(
         existingRecord?.description,
-        defaultDescription,
-        [useCase.description, useCase.description_prompt]
+        localizedConfig?.defaultDescription ?? '',
+        descriptionVariants
       ),
-      info_sources: existingRecord?.info_sources ?? '',
-      rules: clearLegacyAutofillText(existingRecord?.rules, [useCase.rules_prompt]),
+      info_sources: resolveLocalizedConfigBackedValue(
+        existingRecord?.info_sources,
+        localizedConfig?.defaultInfoSources ?? '',
+        infoSourcesVariants
+      ),
+      rules: resolveLocalizedConfigBackedValue(
+        clearLegacyAutofillText(existingRecord?.rules, rulesVariants),
+        localizedConfig?.defaultRules ?? '',
+        rulesVariants
+      ),
     }
   })
 
@@ -388,10 +607,19 @@ export function getUseCaseNameFromId(useCaseId: string): string {
   return getUseCaseNameById(useCaseId)
 }
 
+export function getOnboardingUseCaseNameById(
+  useCaseId: string,
+  locale: Locale = 'zh-CN'
+): string {
+  return getOnboardingUseCaseOptionById(useCaseId, locale)?.name ?? getUseCaseNameById(useCaseId)
+}
+
 // Get use cases for a specific role
 export function getRoleUseCases(roleName: string): WizardOption[] {
   // Find role by name
-  const roleEntry = Object.entries(typedConfig.roles).find(([, role]) => role.name === roleName)
+  const roleEntry = Object.entries(typedConfig.roles).find(
+    ([, role]) => readConfigText(role.name) === roleName
+  )
   if (!roleEntry) return workbuddyUseCases
 
   const [, role] = roleEntry
@@ -399,8 +627,8 @@ export function getRoleUseCases(roleName: string): WizardOption[] {
     const uc = typedConfig.useCases[ucName]
     return {
       value: ucName,
-      label: text(ucName),
-      hint: text(uc?.description || ''),
+      label: toLocalizedText(uc?.name ?? ucName),
+      hint: toLocalizedText(uc?.description ?? ''),
     }
   })
 }
@@ -493,8 +721,8 @@ function buildCredentialFields(skillKey: string): WizardField[] {
   return Object.entries(skill.credentials).map(([credKey, cred]) => ({
     id: credKey,
     type: cred.type === 'password' ? 'password' : 'text',
-    label: text(cred.label),
-    placeholder: text(cred.placeholder),
+    label: toLocalizedText(cred.label),
+    placeholder: toLocalizedText(cred.placeholder),
     required: cred.required,
   }))
 }
@@ -509,16 +737,16 @@ export function getCredentialFields(baseSkills: string[]): WizardField[] {
 }
 
 export function getAgentLabels(agentApps: string[]): string[] {
-  return agentApps.map((value) => typedConfig.agentApps[value]?.name ?? value)
+  return agentApps.map((value) => readConfigText(typedConfig.agentApps[value]?.name) || value)
 }
 
 export function getRoleLabel(value?: string): string {
   if (!value) return '未选择'
-  return typedConfig.roles[value]?.name ?? value
+  return readConfigText(typedConfig.roles[value]?.name) || value
 }
 
 export function getBaseSkillLabels(baseSkills: string[]): string[] {
-  return baseSkills.map((value) => typedConfig.baseSkills[value]?.name ?? value)
+  return baseSkills.map((value) => readConfigText(typedConfig.baseSkills[value]?.name) || value)
 }
 
 // Export config for testing

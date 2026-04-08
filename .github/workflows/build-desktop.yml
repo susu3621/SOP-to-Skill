@@ -68,7 +68,7 @@ jobs:
             printf 'Missing required updater signing secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true'
+      - if: matrix.os == 'macos-latest' && ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != ''
         name: Validate macOS signing secrets
         shell: bash
         env:
@@ -98,7 +98,7 @@ jobs:
             printf 'Missing required macOS signing/notarization secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest' && github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true'
+      - if: matrix.os == 'macos-latest' && ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != ''
         name: Write App Store Connect API key
         shell: bash
         env:
@@ -125,7 +125,24 @@ jobs:
           config.plugins.updater.pubkey = process.env.TAURI_UPDATER_PUBLIC_KEY
           fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
           EOF
-      - if: (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')
+      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'windows-latest'
+        name: Build release desktop bundle
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          args: --config src-tauri/tauri.release.conf.json
+          includeUpdaterJson: true
+          tagName: v__VERSION__
+          releaseName: SOP to Skill v__VERSION__
+          releaseBody: |
+            Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
+          releaseDraft: false
+          prerelease: false
+      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest' && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != ''
+        name: Build release macOS desktop bundle with Apple signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -137,6 +154,23 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
+        with:
+          args: --config src-tauri/tauri.release.conf.json
+          includeUpdaterJson: true
+          tagName: v__VERSION__
+          releaseName: SOP to Skill v__VERSION__
+          releaseBody: |
+            Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
+          releaseDraft: false
+          prerelease: false
+      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest' && !(secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != '')
+        name: Build release macOS desktop bundle with ad-hoc signing
+        uses: tauri-apps/tauri-action@v0.6.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: '-'
         with:
           args: --config src-tauri/tauri.release.conf.json
           includeUpdaterJson: true

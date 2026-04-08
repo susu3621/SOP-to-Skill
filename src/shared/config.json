@@ -2,26 +2,56 @@
   "version": "1.0.0",
   "agentApps": {
     "workbuddy": {
-      "name": "WorkBuddy",
-      "description": "企业级 AI 助手"
+      "name": {
+        "zh-CN": "WorkBuddy",
+        "en-US": "WorkBuddy"
+      },
+      "description": {
+        "zh-CN": "企业级 AI 助手",
+        "en-US": "Enterprise AI assistant"
+      }
     },
     "claude-code": {
-      "name": "Claude Code",
-      "description": "Anthropic 官方 CLI 工具"
+      "name": {
+        "zh-CN": "Claude Code",
+        "en-US": "Claude Code"
+      },
+      "description": {
+        "zh-CN": "Anthropic 官方 CLI 工具",
+        "en-US": "Anthropic official CLI tool"
+      }
     },
     "codex": {
-      "name": "Codex",
-      "description": "OpenAI 代码助手"
+      "name": {
+        "zh-CN": "Codex",
+        "en-US": "Codex"
+      },
+      "description": {
+        "zh-CN": "OpenAI 代码助手",
+        "en-US": "OpenAI coding agent"
+      }
     },
     "gemini-cli": {
-      "name": "Gemini CLI",
-      "description": "Google Gemini 命令行工具"
+      "name": {
+        "zh-CN": "Gemini CLI",
+        "en-US": "Gemini CLI"
+      },
+      "description": {
+        "zh-CN": "Google Gemini 命令行工具",
+        "en-US": "Google Gemini command-line tool"
+      }
     }
   },
   "roles": {
     "project-manager": {
-      "name": "项目经理",
-      "description": "需要串联销售沟通、需求评估、成本交期、研发推进和风险升级",
+      "name": {
+        "zh-CN": "项目经理",
+        "en-US": "Project Manager"
+      },
+      "description": {
+        "zh-CN": "需要串联销售沟通、需求评估、成本交期、研发推进和风险升级",
+        "en-US": "Connects sales handoff, requirement assessment, delivery timing, engineering follow-up, and risk escalation."
+      },
       "useCases": [
         "需求评估",
         "记录日志",
@@ -31,93 +61,204 @@
       ]
     },
     "product-manager": {
-      "name": "产品经理",
-      "description": "更关注需求变更、版本范围和关键里程碑",
-      "useCases": ["记录日志", "记录计划"]
+      "name": {
+        "zh-CN": "产品经理",
+        "en-US": "Product Manager"
+      },
+      "description": {
+        "zh-CN": "更关注需求变更、版本范围和关键里程碑",
+        "en-US": "Focuses on requirement changes, release scope, and major milestones."
+      },
+      "useCases": [
+        "记录日志",
+        "记录计划"
+      ]
     },
     "sales-manager": {
-      "name": "销售经理",
-      "description": "更关注客户机会、商务节奏和项目推进状态",
-      "useCases": ["记录日志", "记录计划"]
+      "name": {
+        "zh-CN": "销售经理",
+        "en-US": "Sales Manager"
+      },
+      "description": {
+        "zh-CN": "更关注客户机会、商务节奏和项目推进状态",
+        "en-US": "Focuses on customer opportunities, commercial cadence, and project progress."
+      },
+      "useCases": [
+        "记录日志",
+        "记录计划"
+      ]
     },
     "qa-manager": {
-      "name": "质量经理",
-      "description": "更关注质量风险、测试闭环和过程规范",
-      "useCases": ["记录日志", "记录计划"]
+      "name": {
+        "zh-CN": "质量经理",
+        "en-US": "QA Manager"
+      },
+      "description": {
+        "zh-CN": "更关注质量风险、测试闭环和过程规范",
+        "en-US": "Focuses on quality risks, testing closure, and process discipline."
+      },
+      "useCases": [
+        "记录日志",
+        "记录计划"
+      ]
     },
     "delivery-manager": {
-      "name": "交付经理",
-      "description": "更关注交付节奏、上线问题和跨团队协同闭环",
-      "useCases": ["记录日志", "记录计划"]
+      "name": {
+        "zh-CN": "交付经理",
+        "en-US": "Delivery Manager"
+      },
+      "description": {
+        "zh-CN": "更关注交付节奏、上线问题和跨团队协同闭环",
+        "en-US": "Focuses on delivery cadence, launch issues, and cross-team execution closure."
+      },
+      "useCases": [
+        "记录日志",
+        "记录计划"
+      ]
     },
     "rd-manager": {
-      "name": "研发经理",
-      "description": "更关注研发进展、资源投入和风险暴露",
-      "useCases": ["记录日志", "记录计划"]
+      "name": {
+        "zh-CN": "研发经理",
+        "en-US": "R&D Manager"
+      },
+      "description": {
+        "zh-CN": "更关注研发进展、资源投入和风险暴露",
+        "en-US": "Focuses on engineering progress, resource allocation, and risk exposure."
+      },
+      "useCases": [
+        "记录日志",
+        "记录计划"
+      ]
     }
   },
   "baseSkills": {
     "confluence": {
-      "name": "Confluence",
-      "description": "读取周报模板、项目文档和会议纪要",
+      "name": {
+        "zh-CN": "Confluence",
+        "en-US": "Confluence"
+      },
+      "description": {
+        "zh-CN": "读取周报模板、项目文档和会议纪要",
+        "en-US": "Read weekly report templates, project docs, and meeting notes."
+      },
       "credentials": {
         "confluenceUsername": {
-          "label": "Confluence 用户名",
-          "placeholder": "your.name@example.com",
+          "label": {
+            "zh-CN": "Confluence 用户名",
+            "en-US": "Confluence Username"
+          },
+          "placeholder": {
+            "zh-CN": "your.name@example.com",
+            "en-US": "your.name@example.com"
+          },
           "type": "text",
           "required": true
         },
         "confluencePassword": {
-          "label": "Confluence 密码 / API Token",
-          "placeholder": "输入 Confluence 密码或 API Token",
+          "label": {
+            "zh-CN": "Confluence 密码 / API Token",
+            "en-US": "Confluence Password / API Token"
+          },
+          "placeholder": {
+            "zh-CN": "输入 Confluence 密码或 API Token",
+            "en-US": "Enter your Confluence password or API token"
+          },
           "type": "password",
           "required": true
         }
       }
     },
     "jira": {
-      "name": "Jira",
-      "description": "同步项目任务、缺陷、负责人和状态变化",
+      "name": {
+        "zh-CN": "Jira",
+        "en-US": "Jira"
+      },
+      "description": {
+        "zh-CN": "同步项目任务、缺陷、负责人和状态变化",
+        "en-US": "Sync project tasks, defects, owners, and status changes."
+      },
       "credentials": {
         "jiraUsername": {
-          "label": "Jira 用户名",
-          "placeholder": "your.name@example.com",
+          "label": {
+            "zh-CN": "Jira 用户名",
+            "en-US": "Jira Username"
+          },
+          "placeholder": {
+            "zh-CN": "your.name@example.com",
+            "en-US": "your.name@example.com"
+          },
           "type": "text",
           "required": true
         },
         "jiraPassword": {
-          "label": "Jira 密码 / API Token",
-          "placeholder": "输入 Jira 密码或 API Token",
+          "label": {
+            "zh-CN": "Jira 密码 / API Token",
+            "en-US": "Jira Password / API Token"
+          },
+          "placeholder": {
+            "zh-CN": "输入 Jira 密码或 API Token",
+            "en-US": "Enter your Jira password or API token"
+          },
           "type": "password",
           "required": true
         }
       }
     },
     "mail": {
-      "name": "Mail",
-      "description": "发送周报邮件并复用邮件收发账号配置",
+      "name": {
+        "zh-CN": "Mail",
+        "en-US": "Mail"
+      },
+      "description": {
+        "zh-CN": "发送周报邮件并复用邮件收发账号配置",
+        "en-US": "Send weekly report emails and reuse your mail account setup."
+      },
       "credentials": {
         "mailHost": {
-          "label": "Mail SMTP Host",
-          "placeholder": "smtp.example.com",
+          "label": {
+            "zh-CN": "Mail SMTP Host",
+            "en-US": "Mail SMTP Host"
+          },
+          "placeholder": {
+            "zh-CN": "smtp.example.com",
+            "en-US": "smtp.example.com"
+          },
           "type": "text",
           "required": true
         },
         "mailUsername": {
-          "label": "Mail 用户名",
-          "placeholder": "bot@example.com",
+          "label": {
+            "zh-CN": "Mail 用户名",
+            "en-US": "Mail Username"
+          },
+          "placeholder": {
+            "zh-CN": "bot@example.com",
+            "en-US": "bot@example.com"
+          },
           "type": "text",
           "required": true
         },
         "mailPassword": {
-          "label": "Mail 密码 / App Password",
-          "placeholder": "输入 Mail 密码或应用专用密码",
+          "label": {
+            "zh-CN": "Mail 密码 / App Password",
+            "en-US": "Mail Password / App Password"
+          },
+          "placeholder": {
+            "zh-CN": "输入 Mail 密码或应用专用密码",
+            "en-US": "Enter your Mail password or app-specific password"
+          },
           "type": "password",
           "required": true
         },
         "mailFrom": {
-          "label": "Mail 发件邮箱",
-          "placeholder": "bot@example.com",
+          "label": {
+            "zh-CN": "Mail 发件邮箱",
+            "en-US": "Mail From Address"
+          },
+          "placeholder": {
+            "zh-CN": "bot@example.com",
+            "en-US": "bot@example.com"
+          },
           "type": "text",
           "required": true
         }
@@ -126,106 +267,376 @@
   },
   "useCases": {
     "需求评估": {
-      "name": "需求评估",
+      "name": {
+        "zh-CN": "需求评估",
+        "en-US": "Requirement Assessment"
+      },
       "directory": "requirement-assessment",
-      "description": "梳理售前需求、企业技术积累和约束边界，形成初步评估结论。",
+      "description": {
+        "zh-CN": "梳理售前需求、企业技术积累和约束边界，形成初步评估结论。",
+        "en-US": "Review the incoming requirement, internal technical assets, and boundary constraints to form an initial assessment."
+      },
       "guidance": [
-        "适合配置成帮你做售前需求初评的助手。",
-        "需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。"
+        {
+          "zh-CN": "适合配置成帮你做售前需求初评的助手。",
+          "en-US": "Best used as a Skill that performs an initial pre-sales requirement assessment."
+        },
+        {
+          "zh-CN": "需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。",
+          "en-US": "Clarify which internal technical assets, historical solutions, or SOPs it should rely on."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字。",
-      "infoSourcesPrompt": "例如：公司 SOP 链接、技术模块清单、历史项目评估文档、Confluence 需求页、销售澄清纪要。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：\n较好的例子：\n技术积累库：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字。",
+        "en-US": "Input (information required every run): the name of the requirement to assess."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：公司 SOP 链接、技术模块清单、历史项目评估文档、Confluence 需求页、销售澄清纪要。",
+        "en-US": "Examples: company SOP links, technical module inventory, past assessment docs, Confluence requirement pages, and sales clarification notes."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：\n较好的例子：\n技术积累库：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template:\nStrong examples:\nTechnical knowledge base:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "梳理售前需求、企业技术积累和约束边界，形成初步评估结论。\n\n适合配置成帮你做售前需求初评的助手。\n\n需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。\n\n输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字。",
+        "en-US": "Review the incoming requirement, internal technical assets, and boundary constraints to form an initial assessment.\n\nBest used as a Skill that performs an initial pre-sales requirement assessment.\n\nClarify which internal technical assets, historical solutions, or SOPs it should rely on.\n\nInput (information required every run): the name of the requirement to assess."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "立项准备": {
-      "name": "立项准备",
+      "name": {
+        "zh-CN": "立项准备",
+        "en-US": "Project Kickoff Prep"
+      },
       "directory": "project-kickoff-prep",
-      "description": "整理立项条件、项目范围、角色分工和启动资料，确保项目能顺利开局。",
+      "description": {
+        "zh-CN": "整理立项条件、项目范围、角色分工和启动资料，确保项目能顺利开局。",
+        "en-US": "Prepare kickoff criteria, project scope, ownership, and launch materials so the project can start cleanly."
+      },
       "guidance": [
-        "适合配置成立项前资料收口和启动准备的助手。",
-        "建议写清立项门槛、里程碑模板、职责分工表和启动会输出要求。"
+        {
+          "zh-CN": "适合配置成立项前资料收口和启动准备的助手。",
+          "en-US": "Best used as a Skill for kickoff preparation and pre-launch material collection."
+        },
+        {
+          "zh-CN": "建议写清立项门槛、里程碑模板、职责分工表和启动会输出要求。",
+          "en-US": "Document the approval threshold, milestone template, ownership matrix, and kickoff meeting output requirements."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：销售确认信息、项目目标、里程碑模板和职责分工要求。",
-      "infoSourcesPrompt": "例如：公司立项 SOP、项目章程模板、RACI 表、启动会模板、历史同类项目包。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：先确认范围和目标，再核对立项输入是否齐备，最后按启动模板整理里程碑、分工和风险。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：销售确认信息、项目目标、里程碑模板和职责分工要求。",
+        "en-US": "Input (information required every run): sales confirmation details, project goals, milestone template, and ownership requirements."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：公司立项 SOP、项目章程模板、RACI 表、启动会模板、历史同类项目包。",
+        "en-US": "Examples: company kickoff SOP, project charter template, RACI matrix, kickoff deck template, and similar historical project packages."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：先确认范围和目标，再核对立项输入是否齐备，最后按启动模板整理里程碑、分工和风险。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: confirm scope and goals, verify kickoff inputs, then organize milestones, ownership, and risks using the kickoff template.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "整理立项条件、项目范围、角色分工和启动资料，确保项目能顺利开局。\n\n适合配置成立项前资料收口和启动准备的助手。\n\n建议写清立项门槛、里程碑模板、职责分工表和启动会输出要求。\n\n输入（每次执行都需要提供给Skill的信息）：销售确认信息、项目目标、里程碑模板和职责分工要求。",
+        "en-US": "Prepare kickoff criteria, project scope, ownership, and launch materials so the project can start cleanly.\n\nBest used as a Skill for kickoff preparation and pre-launch material collection.\n\nDocument the approval threshold, milestone template, ownership matrix, and kickoff meeting output requirements.\n\nInput (information required every run): sales confirmation details, project goals, milestone template, and ownership requirements."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "记录日志": {
-      "name": "记录日志",
+      "name": {
+        "zh-CN": "记录日志",
+        "en-US": "Daily Log"
+      },
       "directory": "daily-log",
-      "description": "记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。",
+      "description": {
+        "zh-CN": "记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。",
+        "en-US": "Capture daily progress, meeting conclusions, and blockers in a traceable project log."
+      },
       "guidance": [
-        "适合配置成每天或每次关键沟通后自动整理项目日志的助手。",
-        "重点写清日志结构、更新时间点，以及是否需要标注责任人和截止时间。"
+        {
+          "zh-CN": "适合配置成每天或每次关键沟通后自动整理项目日志的助手。",
+          "en-US": "Best used as a Skill that organizes the project log after each day or key communication."
+        },
+        {
+          "zh-CN": "重点写清日志结构、更新时间点，以及是否需要标注责任人和截止时间。",
+          "en-US": "Clarify the log structure, update timing, and whether owner and due date should be included."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：具体哪一天。",
-      "infoSourcesPrompt": "例如：例会纪要目录、问题管理系统更新记录、邮件归档、IM 群消息、个人工作日志模板。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：按时间顺序记录事件，优先保留结论、行动项、责任人和预计完成时间。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：具体哪一天。",
+        "en-US": "Input (information required every run): the specific date."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：例会纪要目录、问题管理系统更新记录、邮件归档、IM 群消息、个人工作日志模板。",
+        "en-US": "Examples: meeting note folders, issue system update logs, email archives, team chat messages, and personal work log templates."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按时间顺序记录事件，优先保留结论、行动项、责任人和预计完成时间。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: record events in time order and keep conclusions, action items, owners, and expected completion dates.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。\n\n适合配置成每天或每次关键沟通后自动整理项目日志的助手。\n\n重点写清日志结构、更新时间点，以及是否需要标注责任人和截止时间。\n\n输入（每次执行都需要提供给Skill的信息）：具体哪一天。",
+        "en-US": "Capture daily progress, meeting conclusions, and blockers in a traceable project log.\n\nBest used as a Skill that organizes the project log after each day or key communication.\n\nClarify the log structure, update timing, and whether owner and due date should be included.\n\nInput (information required every run): the specific date."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "记录计划": {
-      "name": "记录计划",
+      "name": {
+        "zh-CN": "记录计划",
+        "en-US": "Planning"
+      },
       "directory": "planning",
-      "description": "制定和更新项目计划，跟踪里程碑、依赖关系和下一步安排。",
+      "description": {
+        "zh-CN": "制定和更新项目计划，跟踪里程碑、依赖关系和下一步安排。",
+        "en-US": "Create and update project plans, then track milestones, dependencies, and next actions."
+      },
       "guidance": [
-        "适合配置成维护项目主计划和里程碑承诺的助手。",
-        "建议写清计划颗粒度、里程碑口径、延期判断方式和对外同步节奏。"
+        {
+          "zh-CN": "适合配置成维护项目主计划和里程碑承诺的助手。",
+          "en-US": "Best used as a Skill that maintains the master plan and milestone commitments."
+        },
+        {
+          "zh-CN": "建议写清计划颗粒度、里程碑口径、延期判断方式和对外同步节奏。",
+          "en-US": "Clarify planning granularity, milestone definitions, delay criteria, and external sync cadence."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。",
-      "infoSourcesPrompt": "例如：主计划表、WBS、Jira 任务板、里程碑模板、周会纪要、客户承诺时间表。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：优先维护关键路径和外部承诺节点，计划变更后同步更新时间、影响范围和责任人。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。",
+        "en-US": "Input (information required every run): the planning timeframe and scope."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：主计划表、WBS、Jira 任务板、里程碑模板、周会纪要、客户承诺时间表。",
+        "en-US": "Examples: master plan, WBS, Jira board, milestone template, weekly meeting notes, and customer commitment timeline."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：优先维护关键路径和外部承诺节点，计划变更后同步更新时间、影响范围和责任人。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: maintain the critical path and external commitment dates first, then sync update time, impact scope, and owner after any plan change.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "制定和更新项目计划，跟踪里程碑、依赖关系和下一步安排。\n\n适合配置成维护项目主计划和里程碑承诺的助手。\n\n建议写清计划颗粒度、里程碑口径、延期判断方式和对外同步节奏。\n\n输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。",
+        "en-US": "Create and update project plans, then track milestones, dependencies, and next actions.\n\nBest used as a Skill that maintains the master plan and milestone commitments.\n\nClarify planning granularity, milestone definitions, delay criteria, and external sync cadence.\n\nInput (information required every run): the planning timeframe and scope."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "需求变更评估": {
-      "name": "需求变更评估",
+      "name": {
+        "zh-CN": "需求变更评估",
+        "en-US": "Change Assessment"
+      },
       "directory": "change-assessment",
-      "description": "评估需求变更对范围、实现方式、排期和协同动作的影响。",
+      "description": {
+        "zh-CN": "评估需求变更对范围、实现方式、排期和协同动作的影响。",
+        "en-US": "Assess how a requirement change affects scope, implementation, schedule, and coordination."
+      },
       "guidance": [
-        "适合配置成需求变更影响分析和对内对外同步的助手。",
-        "重点要说明变更从哪里来、需要评估哪些影响、最终要输出给谁。"
+        {
+          "zh-CN": "适合配置成需求变更影响分析和对内对外同步的助手。",
+          "en-US": "Best used as a Skill for change impact analysis and internal or external communication."
+        },
+        {
+          "zh-CN": "重点要说明变更从哪里来、需要评估哪些影响、最终要输出给谁。",
+          "en-US": "Clarify where the change comes from, which impacts must be assessed, and who needs the final output."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：客户变更需求、当前方案和现有计划。",
-      "infoSourcesPrompt": "例如：变更申请单、需求基线、方案评审记录、计划表、历史变更案例、客户邮件。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：先记录变更原因和范围，再评估影响，最后按固定模板同步结论、风险和后续动作。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：客户变更需求、当前方案和现有计划。",
+        "en-US": "Input (information required every run): the requested change, current solution, and current plan."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：变更申请单、需求基线、方案评审记录、计划表、历史变更案例、客户邮件。",
+        "en-US": "Examples: change requests, requirement baseline, solution review notes, schedule, past change cases, and customer emails."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：先记录变更原因和范围，再评估影响，最后按固定模板同步结论、风险和后续动作。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: record change reason and scope first, assess impact second, then share conclusions, risks, and next actions using the standard template.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "评估需求变更对范围、实现方式、排期和协同动作的影响。\n\n适合配置成需求变更影响分析和对内对外同步的助手。\n\n重点要说明变更从哪里来、需要评估哪些影响、最终要输出给谁。\n\n输入（每次执行都需要提供给Skill的信息）：客户变更需求、当前方案和现有计划。",
+        "en-US": "Assess how a requirement change affects scope, implementation, schedule, and coordination.\n\nBest used as a Skill for change impact analysis and internal or external communication.\n\nClarify where the change comes from, which impacts must be assessed, and who needs the final output.\n\nInput (information required every run): the requested change, current solution, and current plan."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "问题跟踪": {
-      "name": "问题跟踪",
+      "name": {
+        "zh-CN": "问题跟踪",
+        "en-US": "Issue Tracking"
+      },
       "directory": "issue-tracking",
-      "description": "汇总问题管理系统中的问题、测试缺陷和跨团队阻塞项，并推动闭环。",
+      "description": {
+        "zh-CN": "汇总问题管理系统中的问题、测试缺陷和跨团队阻塞项，并推动闭环。",
+        "en-US": "Track issues, test defects, and cross-team blockers from the issue management system and drive closure."
+      },
       "guidance": [
-        "适合配置成项目问题台账和闭环跟催的助手。",
-        "建议写清问题优先级规则、升级条件、责任人口径和关闭标准。"
+        {
+          "zh-CN": "适合配置成项目问题台账和闭环跟催的助手。",
+          "en-US": "Best used as a Skill for maintaining an issue tracker and pushing closure."
+        },
+        {
+          "zh-CN": "建议写清问题优先级规则、升级条件、责任人口径和关闭标准。",
+          "en-US": "Clarify priority rules, escalation criteria, owner conventions, and closure standards."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。",
-      "infoSourcesPrompt": "例如：问题管理系统缺陷列表、测试报告、问题台账、周会纪要、客户反馈邮件、群消息记录。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：统一记录优先级、责任人、当前状态和预计关闭时间，逾期问题自动进入升级列表。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。",
+        "en-US": "Input (information required every run): the issue or project to track."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：问题管理系统缺陷列表、测试报告、问题台账、周会纪要、客户反馈邮件、群消息记录。",
+        "en-US": "Examples: issue management system defect lists, test reports, issue tracker sheets, weekly meeting notes, customer feedback emails, and chat history."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：统一记录优先级、责任人、当前状态和预计关闭时间，逾期问题自动进入升级列表。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: record priority, owner, current status, and expected close date consistently, and move overdue issues into the escalation list automatically.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总问题管理系统中的问题、测试缺陷和跨团队阻塞项，并推动闭环。\n\n适合配置成项目问题台账和闭环跟催的助手。\n\n建议写清问题优先级规则、升级条件、责任人口径和关闭标准。\n\n输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。",
+        "en-US": "Track issues, test defects, and cross-team blockers from the issue management system and drive closure.\n\nBest used as a Skill for maintaining an issue tracker and pushing closure.\n\nClarify priority rules, escalation criteria, owner conventions, and closure standards.\n\nInput (information required every run): the issue or project to track."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "项目周报": {
-      "name": "项目周报",
+      "name": {
+        "zh-CN": "项目周报",
+        "en-US": "Weekly Report"
+      },
       "directory": "weekly-report",
-      "description": "汇总项目状态、风险和下周动作，形成标准化周报输出。",
+      "description": {
+        "zh-CN": "汇总项目状态、风险和下周动作，形成标准化周报输出。",
+        "en-US": "Summarize project status, risks, and next-week actions in a standardized weekly report."
+      },
       "guidance": [
-        "适合配置成固定节奏产出项目周报的助手。",
-        "需要说明周报面向谁、固定结构是什么、哪些异常必须突出展示。"
+        {
+          "zh-CN": "适合配置成固定节奏产出项目周报的助手。",
+          "en-US": "Best used as a Skill that produces weekly reports on a fixed cadence."
+        },
+        {
+          "zh-CN": "需要说明周报面向谁、固定结构是什么、哪些异常必须突出展示。",
+          "en-US": "Clarify the audience, the fixed structure, and which exceptions must be highlighted."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：本周进展、风险、里程碑状态和下周计划。",
-      "infoSourcesPrompt": "例如：Jira 项目看板、Confluence 周报模板、例会纪要、邮件归档、风险台账、计划表。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：按公司周报模板输出，本周进展、风险、里程碑状态、下周计划四部分固定保留。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本周进展、风险、里程碑状态和下周计划。",
+        "en-US": "Input (information required every run): this week's progress, risks, milestone status, and next week's plan."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：Jira 项目看板、Confluence 周报模板、例会纪要、邮件归档、风险台账、计划表。",
+        "en-US": "Examples: Jira board, Confluence weekly report template, meeting notes, email archives, risk tracker, and plan."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按公司周报模板输出，本周进展、风险、里程碑状态、下周计划四部分固定保留。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: follow the company weekly report template and always include progress, risks, milestone status, and next week's plan.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总项目状态、风险和下周动作，形成标准化周报输出。\n\n适合配置成固定节奏产出项目周报的助手。\n\n需要说明周报面向谁、固定结构是什么、哪些异常必须突出展示。\n\n输入（每次执行都需要提供给Skill的信息）：本周进展、风险、里程碑状态和下周计划。",
+        "en-US": "Summarize project status, risks, and next-week actions in a standardized weekly report.\n\nBest used as a Skill that produces weekly reports on a fixed cadence.\n\nClarify the audience, the fixed structure, and which exceptions must be highlighted.\n\nInput (information required every run): this week's progress, risks, milestone status, and next week's plan."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     },
     "项目复盘": {
-      "name": "项目复盘",
+      "name": {
+        "zh-CN": "项目复盘",
+        "en-US": "Project Retrospective"
+      },
       "directory": "project-retrospective",
-      "description": "沉淀项目经验、关键偏差、决策依据和后续改进项。",
+      "description": {
+        "zh-CN": "沉淀项目经验、关键偏差、决策依据和后续改进项。",
+        "en-US": "Capture project learnings, major deviations, decision context, and follow-up improvements."
+      },
       "guidance": [
-        "适合配置成项目收尾后的复盘整理助手。",
-        "建议写清复盘结构、参与角色、经验沉淀位置，以及改进项如何继续跟进。"
+        {
+          "zh-CN": "适合配置成项目收尾后的复盘整理助手。",
+          "en-US": "Best used as a Skill for post-project retrospective整理."
+        },
+        {
+          "zh-CN": "建议写清复盘结构、参与角色、经验沉淀位置，以及改进项如何继续跟进。",
+          "en-US": "Clarify the retrospective structure, participants, where learnings are stored, and how follow-up actions are tracked."
+        }
       ],
-      "descriptionPrompt": "输入（每次执行都需要提供给Skill的信息）：项目目标、实际结果、关键偏差和过程问题。",
-      "infoSourcesPrompt": "例如：项目总结会纪要、计划与实际对比表、问题台账、风险记录、知识库模板、客户反馈。",
-      "rulesPrompt": "例如：\n当前流程 / SOP / 模板：围绕目标达成、偏差原因、经验教训和改进项展开，最终沉淀到团队知识库模板。\n较好的例子：\n其他："
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：项目目标、实际结果、关键偏差和过程问题。",
+        "en-US": "Input (information required every run): project goals, actual results, major deviations, and process issues."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：项目总结会纪要、计划与实际对比表、问题台账、风险记录、知识库模板、客户反馈。",
+        "en-US": "Examples: retrospective meeting notes, plan-vs-actual comparison, issue tracker, risk log, knowledge base template, and customer feedback."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：围绕目标达成、偏差原因、经验教训和改进项展开，最终沉淀到团队知识库模板。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: cover goal achievement, root causes of deviation, lessons learned, and improvement actions, then save the output in the team knowledge base template.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "沉淀项目经验、关键偏差、决策依据和后续改进项。\n\n适合配置成项目收尾后的复盘整理助手。\n\n建议写清复盘结构、参与角色、经验沉淀位置，以及改进项如何继续跟进。\n\n输入（每次执行都需要提供给Skill的信息）：项目目标、实际结果、关键偏差和过程问题。",
+        "en-US": "Capture project learnings, major deviations, decision context, and follow-up improvements.\n\nBest used as a Skill for post-project retrospective整理.\n\nClarify the retrospective structure, participants, where learnings are stored, and how follow-up actions are tracked.\n\nInput (information required every run): project goals, actual results, major deviations, and process issues."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      }
     }
   },
   "testDefaults": {
-    "agentApps": ["workbuddy", "claude-code"],
+    "agentApps": [
+      "workbuddy",
+      "claude-code"
+    ],
     "role": "project-manager",
-    "baseSkills": ["jira", "confluence"],
+    "baseSkills": [
+      "jira",
+      "confluence"
+    ],
     "useCase": "项目周报",
     "infoSources": "Jira 项目看板、Confluence 周报模板、例会纪要目录、邮件归档",
     "reportRules": "采用公司标准周报模板，按风险、里程碑、待办三部分组织。风险部分需要标注等级和责任人。"

@@ -1,19 +1,25 @@
-import { onboardingSupportedAgents } from '../../../content/workbuddy'
+import { getOnboardingSupportedAgentOptions } from '../../../content/workbuddy'
+import { getOnboardingCopy, onboardingCopy } from '../copy'
+import type { Locale } from '../../../types'
 
 interface AgentSelectionStepProps {
+  locale: Locale
   selectedAgentIds: string[]
   onToggleAgent: (agentId: string) => void
 }
 
 export function AgentSelectionStep({
+  locale,
   selectedAgentIds,
   onToggleAgent,
 }: AgentSelectionStepProps) {
+  const agents = getOnboardingSupportedAgentOptions(locale)
+
   return (
     <div className="field">
-      <label>选择 Agent 应用</label>
+      <label>{getOnboardingCopy(locale, onboardingCopy.selectAgentApps)}</label>
       <div className="options options--cards">
-        {onboardingSupportedAgents.map((agent) => (
+        {agents.map((agent) => (
           <label className="field-option" key={agent.id}>
             <input
               aria-label={agent.name}
