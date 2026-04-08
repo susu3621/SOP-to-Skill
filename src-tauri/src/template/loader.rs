@@ -97,8 +97,24 @@ fn sync_bundled_skills_dir(
     copy_directory_contents(bundled_skills_dir, destination_skills_dir)
 }
 
+fn resolve_bundled_skills_dir(resource_dir: &Path) -> Option<PathBuf> {
+    let direct_skills_dir = resource_dir.join("skills");
+    if direct_skills_dir.is_dir() {
+        return Some(direct_skills_dir);
+    }
+
+    let updater_skills_dir = resource_dir.join("_up_").join("skills");
+    if updater_skills_dir.is_dir() {
+        return Some(updater_skills_dir);
+    }
+
+    None
+}
+
 pub fn sync_bundled_skills_from_resource_dir(resource_dir: &Path) -> Result<(), SkillError> {
-    let bundled_skills_dir = resource_dir.join("skills");
+    let Some(bundled_skills_dir) = resolve_bundled_skills_dir(resource_dir) else {
+        return Ok(());
+    };
     let destination_skills_dir = get_data_root().join("skills");
     sync_bundled_skills_dir(&bundled_skills_dir, &destination_skills_dir)
 }
@@ -570,5 +586,33 @@ description: Use when reading Jira issue details.
                 .exists()
         );
         assert!(destination_skills_dir.join("custom-skill").join("SKILL.md").exists());
+    }
+
+    #[test]
+    fn syncs_bundled_skills_from_tauri_updater_resource_directory() {
+        let _guard = env_lock().lock().unwrap();
+        let resource_dir = temp_dir("loader-resource-root");
+        let bundled_skills_dir = resource_dir.join("_up_").join("skills");
+        let data_dir = temp_dir("loader-updater-data-root");
+
+        fs::create_dir_all(bundled_skills_dir.join("jira").join("scripts")).unwrap();
+        fs::write(
+            bundled_skills_dir.join("jira").join("SKILL.md"),
+            "# Jira\n",
+        )
+        .unwrap();
+        fs::write(
+            bundled_skills_dir.join("manifest.json"),
+            r#"{"schemaVersion":1,"skills":[{"id":"jira","path":"skills/jira","version":"1.0.0","targets":["codex"],"contentHash":"sha256:test"}]}"#,
+        )
+        .unwrap();
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        let result = sync_bundled_skills_from_resource_dir(&resource_dir);
+        std::env::remove_var(DATA_DIR_ENV_VAR);
+
+        assert!(result.is_ok());
+        assert!(data_dir.join("skills").join("jira").join("SKILL.md").exists());
+        assert!(data_dir.join("skills").join("manifest.json").exists());
     }
 }

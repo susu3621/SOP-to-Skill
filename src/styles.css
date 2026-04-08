@@ -69,11 +69,11 @@ textarea {
 .masthead__title {
   margin: 0;
   font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
-  font-size: clamp(1.8rem, calc(1rem + 1.5vw), 2.2rem);
-  line-height: 0.94;
+  font-size: clamp(0.74rem, calc(0.5rem + 1.2vw), 2.2rem);
+  line-height: 1;
   letter-spacing: -0.04em;
-  white-space: normal;
-  max-width: 24ch;
+  white-space: nowrap;
+  max-width: none;
 }
 
 .masthead__subtitle {
