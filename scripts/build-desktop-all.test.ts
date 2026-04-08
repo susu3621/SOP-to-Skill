@@ -742,7 +742,8 @@ describe('build desktop all workflow dispatch', () => {
     expect(workflow).toContain('Build release macOS desktop bundle with Apple signing')
     expect(workflow).toContain('Build release macOS desktop bundle with ad-hoc signing')
     expect(workflow).toContain("startsWith(github.ref, 'refs/tags/v')")
-    expect(workflow).toContain("secrets.APPLE_CERTIFICATE != ''")
+    expect(workflow).toContain('HAS_APPLE_SIGNING_SECRETS')
+    expect(workflow).toContain("env.HAS_APPLE_SIGNING_SECRETS == 'true'")
     expect(workflow).toContain("APPLE_SIGNING_IDENTITY: '-'")
   })
 

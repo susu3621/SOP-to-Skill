@@ -30,6 +30,8 @@ jobs:
   build-desktop:
     needs: verify-web-shell
     runs-on: ${{ matrix.os }}
+    env:
+      HAS_APPLE_SIGNING_SECRETS: ${{ secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -68,7 +70,7 @@ jobs:
             printf 'Missing required updater signing secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest' && ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != ''
+      - if: matrix.os == 'macos-latest' && ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && env.HAS_APPLE_SIGNING_SECRETS == 'true'
         name: Validate macOS signing secrets
         shell: bash
         env:
@@ -98,7 +100,7 @@ jobs:
             printf 'Missing required macOS signing/notarization secrets: %s\n' "${missing[*]}" >&2
             exit 1
           fi
-      - if: matrix.os == 'macos-latest' && ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != ''
+      - if: matrix.os == 'macos-latest' && ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && env.HAS_APPLE_SIGNING_SECRETS == 'true'
         name: Write App Store Connect API key
         shell: bash
         env:
@@ -141,7 +143,7 @@ jobs:
             Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
           releaseDraft: false
           prerelease: false
-      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest' && secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != ''
+      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest' && env.HAS_APPLE_SIGNING_SECRETS == 'true'
         name: Build release macOS desktop bundle with Apple signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
@@ -163,7 +165,7 @@ jobs:
             Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
           releaseDraft: false
           prerelease: false
-      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest' && !(secrets.APPLE_CERTIFICATE != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_SIGNING_IDENTITY != '' && secrets.APPLE_API_ISSUER != '' && secrets.APPLE_API_KEY != '' && secrets.APPLE_API_KEY_CONTENT != '')
+      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest' && env.HAS_APPLE_SIGNING_SECRETS != 'true'
         name: Build release macOS desktop bundle with ad-hoc signing
         uses: tauri-apps/tauri-action@v0.6.2
         env:
