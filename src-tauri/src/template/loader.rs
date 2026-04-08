@@ -74,12 +74,6 @@ pub fn get_data_root() -> PathBuf {
     resolve_data_root_from_base_dir(&base_dir).expect("Failed to resolve app data directory")
 }
 
-fn get_workspace_skills_dir() -> Option<PathBuf> {
-    let cwd = env::current_dir().ok()?;
-    let skills_dir = cwd.join("skills");
-    skills_dir.is_dir().then_some(skills_dir)
-}
-
 fn sync_bundled_skills_dir(
     bundled_skills_dir: &Path,
     destination_skills_dir: &Path,
@@ -111,6 +105,51 @@ fn resolve_bundled_skills_dir(resource_dir: &Path) -> Option<PathBuf> {
     None
 }
 
+fn resolve_resource_dir_from_executable(current_exe: &Path) -> Option<PathBuf> {
+    let exe_dir = current_exe.parent()?;
+
+    #[cfg(target_os = "macos")]
+    {
+        return exe_dir.join("../Resources").canonicalize().ok();
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Some(exe_dir.to_path_buf())
+    }
+}
+
+fn resolve_bundled_skills_dir_from_executable(current_exe: &Path) -> Option<PathBuf> {
+    let resource_dir = resolve_resource_dir_from_executable(current_exe)?;
+    resolve_bundled_skills_dir(&resource_dir)
+}
+
+fn resolve_skills_dir(
+    current_dir: Option<&Path>,
+    data_root: &Path,
+    current_exe: Option<&Path>,
+) -> PathBuf {
+    if let Some(cwd) = current_dir {
+        let workspace_skills_dir = cwd.join("skills");
+        if workspace_skills_dir.is_dir() {
+            return workspace_skills_dir;
+        }
+    }
+
+    let synced_skills_dir = data_root.join("skills");
+    if synced_skills_dir.is_dir() {
+        return synced_skills_dir;
+    }
+
+    if let Some(current_exe) = current_exe {
+        if let Some(bundled_skills_dir) = resolve_bundled_skills_dir_from_executable(current_exe) {
+            return bundled_skills_dir;
+        }
+    }
+
+    synced_skills_dir
+}
+
 pub fn sync_bundled_skills_from_resource_dir(resource_dir: &Path) -> Result<(), SkillError> {
     let Some(bundled_skills_dir) = resolve_bundled_skills_dir(resource_dir) else {
         return Ok(());
@@ -125,11 +164,11 @@ pub fn get_skills_dir() -> PathBuf {
         return PathBuf::from(path);
     }
 
-    if let Some(path) = get_workspace_skills_dir() {
-        return path;
-    }
-
-    get_data_root().join("skills")
+    resolve_skills_dir(
+        env::current_dir().ok().as_deref(),
+        &get_data_root(),
+        env::current_exe().ok().as_deref(),
+    )
 }
 
 /// Get the installed skills directory path
@@ -614,5 +653,25 @@ description: Use when reading Jira issue details.
         assert!(result.is_ok());
         assert!(data_dir.join("skills").join("jira").join("SKILL.md").exists());
         assert!(data_dir.join("skills").join("manifest.json").exists());
+    }
+
+    #[test]
+    fn resolves_skills_dir_from_packaged_macos_resources_when_workspace_and_data_are_missing() {
+        let bundle_root = temp_dir("loader-release-bundle");
+        let app_root = bundle_root.join("SOP to Skill.app");
+        let exe_path = app_root.join("Contents").join("MacOS").join("sop-to-skill");
+        let resource_dir = app_root.join("Contents").join("Resources");
+        let bundled_skills_dir = resource_dir.join("_up_").join("skills");
+        let current_dir = temp_dir("loader-release-cwd");
+        let data_root = temp_dir("loader-release-data");
+
+        fs::create_dir_all(exe_path.parent().unwrap()).unwrap();
+        fs::create_dir_all(bundled_skills_dir.join("jira")).unwrap();
+        fs::write(&exe_path, "").unwrap();
+        fs::write(bundled_skills_dir.join("jira").join("SKILL.md"), "# Jira\n").unwrap();
+
+        let resolved = resolve_skills_dir(Some(&current_dir), &data_root, Some(&exe_path));
+
+        assert_eq!(resolved, bundled_skills_dir.canonicalize().unwrap());
     }
 }
