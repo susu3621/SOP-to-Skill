@@ -230,6 +230,10 @@ vi.mock('@tauri-apps/api/event', () => ({
 }))
 
 describe('onboarding shell smoke coverage', () => {
+  async function waitForOnboardingHome() {
+    return screen.findByRole('button', { name: '选择公司 IT 工具' })
+  }
+
   beforeEach(() => {
     fixtures.runtime.appUpdate = null
     fixtures.runtime.installAppUpdateCalls = 0
@@ -238,7 +242,7 @@ describe('onboarding shell smoke coverage', () => {
   it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
     render(<App />)
 
-    expect(await screen.findByRole('heading', { name: '开始设置' })).toBeInTheDocument()
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
     expect(
       screen.getByRole('heading', {
         name: 'SOP 交给 AI 执行，省下时间去做真正有价值的事。',
@@ -260,6 +264,7 @@ describe('onboarding shell smoke coverage', () => {
     expect(screen.getByRole('button', { name: '配置要交给 AI 的工作' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '安装到 AI 工具' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '已设置内容' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '开始设置' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: /Agent、岗位和基础技能/i })
     ).not.toBeInTheDocument()
@@ -269,7 +274,7 @@ describe('onboarding shell smoke coverage', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await screen.findByRole('heading', { name: '开始设置' })
+    await waitForOnboardingHome()
     await user.click(screen.getByRole('button', { name: 'Skill 库' }))
 
     expect(screen.getByRole('heading', { name: '可用 Skill' })).toBeInTheDocument()
@@ -284,7 +289,7 @@ describe('onboarding shell smoke coverage', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await screen.findByRole('heading', { name: '开始设置' })
+    await waitForOnboardingHome()
     await user.click(screen.getByRole('button', { name: '已安装' }))
 
     expect(screen.getByRole('heading', { name: '已安装 Skill' })).toBeInTheDocument()

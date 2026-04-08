@@ -124,6 +124,17 @@ describe('workbuddy agent apps', () => {
     )
   })
 
+  it('uses 问题管理系统 wording in generic issue-related default use cases', () => {
+    const defaults = createDefaultRoleUseCaseContents('project-manager')
+    const dailyLog = defaults.find((useCase) => useCase.use_case_id === 'daily-log')
+    const issueTracking = defaults.find((useCase) => useCase.use_case_id === 'issue-tracking')
+
+    expect(dailyLog?.description).toContain('问题管理系统变化')
+    expect(dailyLog?.description).not.toContain('Jira')
+    expect(issueTracking?.description).toContain('问题管理系统')
+    expect(issueTracking?.description).not.toContain('Jira')
+  })
+
   it('preserves custom use cases when rebuilding the selected role content list', () => {
     const generatedIds = buildGeneratedSkillIdsForRoleUseCase('project-manager', '客户回访')
     const defaults = createDefaultRoleUseCaseContents('project-manager', [

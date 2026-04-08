@@ -52,7 +52,7 @@ const onboardingHomeEntries: Record<Exclude<OnboardingView, 'home'>, EntryCopy> 
 
 interface ModuleHeaderProps {
   eyebrow: string
-  title: string
+  title?: string
   description: string
   installedCount: number
   onBack: () => void
@@ -75,7 +75,7 @@ function ModuleHeader({
         </button>
         <div>
           <span className="panel__eyebrow">{eyebrow}</span>
-          <h2 className="panel__title">{title}</h2>
+          {title ? <h2 className="panel__title">{title}</h2> : null}
           <p className="panel__body">{description}</p>
         </div>
       </div>
@@ -270,7 +270,6 @@ interface RoleSelectionPanelProps {
 function RoleSelectionPanel({ selectedRoleId, onSelectRole }: RoleSelectionPanelProps) {
   return (
     <div className="field">
-      <label>选择岗位</label>
       <div className="options options--cards">
         {onboardingRoles.map((role) => (
           <label className="field-option" key={role.id}>
@@ -303,7 +302,6 @@ function BaseSkillSelectionPanel({
 }: BaseSkillSelectionPanelProps) {
   return (
     <div className="field">
-      <label>公司 IT 工具</label>
       <div className="onboarding-base-skill-groups">
         {onboardingBaseSkillGroups.map((group) => (
           <section className="onboarding-base-skill-group" key={group.id}>
@@ -429,7 +427,6 @@ function InstallModule({
           description="先选择要安装到的 AI 工具，再确认公司 IT 工具和岗位生成技能的安装内容，最后开始安装。"
           eyebrow="安装到 AI 工具"
           installedCount={installedCount}
-          title="安装到 AI 工具"
           onBack={onBack}
           onOpenInstalled={onOpenInstalled}
         />
@@ -635,7 +632,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
           <div className="onboarding-section__header">
             <div>
               <span className="panel__eyebrow">开始设置</span>
-              <h2 className="panel__title">开始设置</h2>
               <p className="panel__body">
                 按下面 3 步设置好以后，AI 就能按公司的 SOP 去完成你选好的工作。
               </p>
@@ -731,15 +727,12 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             description="先选择公司里已经在用的 IT 工具。后续 AI 会从这些工具中获取信息。"
             eyebrow="选择公司 IT 工具"
             installedCount={installedSkills.length}
-            title="选择公司 IT 工具"
             onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
           />
 
           <section className="summary-card onboarding-subeditor-panel">
             <SaveFeedbackBanner feedback={saveFeedbacks.baseSkills} />
-            <h3>公司 IT 工具</h3>
-            <p>选择公司里已经在用的 IT 工具。后续 AI 会从这些工具中获取信息。</p>
             <BaseSkillSelectionPanel
               selectedBaseSkillIds={state.selected_base_skill_ids}
               onToggleBaseSkill={toggleBaseSkill}
@@ -768,7 +761,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
             description="先选岗位，再补充这个岗位下要交给 AI 的具体工作内容和 SOP 要求。"
             eyebrow="配置要交给 AI 的工作"
             installedCount={installedSkills.length}
-            title="配置要交给 AI 的工作"
             onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
           />
@@ -822,8 +814,6 @@ export function OnboardingShell({ installedSkills, onOpenInstalled }: Onboarding
                 id="onboarding-role-tabpanel"
                 role="tabpanel"
               >
-                <h3>选择岗位</h3>
-                <p>先选岗位，再看这个岗位下可以交给 AI 的工作。</p>
                 <RoleSelectionPanel
                   selectedRoleId={state.selected_role_id}
                   onSelectRole={selectRole}
