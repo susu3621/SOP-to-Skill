@@ -722,6 +722,10 @@ describe('build desktop all workflow dispatch', () => {
       path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
       'utf8',
     )
+    const tauriConfig = fs.readFileSync(
+      path.join(process.cwd(), 'src-tauri/tauri.conf.json'),
+      'utf8',
+    )
     const verifyScript = fs.readFileSync(
       path.join(process.cwd(), 'scripts/verify-desktop-scaffold.sh'),
       'utf8',
@@ -729,7 +733,9 @@ describe('build desktop all workflow dispatch', () => {
 
     expect(workflow).toContain('target/release/sop-to-skill.exe')
     expect(workflow).toContain('bundle/dmg/sop-to-skill-')
+    expect(tauriConfig).toContain('"productName": "SOP-to-Skill"')
     expect(verifyScript).toContain("rg -n 'target/release/sop-to-skill\\.exe' .github/workflows/build-desktop.yml")
+    expect(verifyScript).toContain('rg -n \'"productName": "SOP-to-Skill"\' src-tauri/tauri.conf.json')
     expect(verifyScript).toContain("test -f scripts/install-sop-to-skill.ps1")
   })
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import App from './App'
 import type {
@@ -184,6 +184,7 @@ const fixtures = vi.hoisted(() => {
     installAppUpdateCalls: 0,
     preferredLocale: 'zh-CN' as 'zh-CN' | 'en-US',
     updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
+    trayNavigateHandler: null as null | ((event: { payload: string }) => void),
   }
 
   return {
@@ -217,6 +218,8 @@ vi.mock('@tauri-apps/api/core', () => ({
           fixtures.runtime.updatedLocales.push(payload.preferredLocale)
         }
         return { success: { preferred_locale: fixtures.runtime.preferredLocale } }
+      case 'get_data_directory':
+        return '~/.sop-to-skill'
       case 'get_onboarding_state':
         return { success: fixtures.onboardingState }
       case 'set_onboarding_state':
@@ -234,7 +237,12 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(async () => () => {}),
+  listen: vi.fn(async (_eventName: string, handler: (event: { payload: string }) => void) => {
+    fixtures.runtime.trayNavigateHandler = handler
+    return () => {
+      fixtures.runtime.trayNavigateHandler = null
+    }
+  }),
 }))
 
 describe('onboarding shell smoke coverage', () => {
@@ -247,6 +255,7 @@ describe('onboarding shell smoke coverage', () => {
     fixtures.runtime.installAppUpdateCalls = 0
     fixtures.runtime.preferredLocale = 'zh-CN'
     fixtures.runtime.updatedLocales = []
+    fixtures.runtime.trayNavigateHandler = null
   })
 
   it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
@@ -400,5 +409,18 @@ describe('onboarding shell smoke coverage', () => {
     expect(
       within(utility as HTMLElement).getByRole('button', { name: 'English' })
     ).toBeInTheDocument()
+  })
+
+  it('shows the hidden sop-to-skill data directory path on the update page', async () => {
+    render(<App />)
+
+    await waitForOnboardingHome()
+    await act(async () => {
+      fixtures.runtime.trayNavigateHandler?.({ payload: '/settings' })
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('~/.sop-to-skill')).toBeInTheDocument()
+    })
   })
 })

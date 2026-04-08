@@ -23,6 +23,7 @@ function App() {
   const [view, setView] = useState<ViewType>('onboarding')
   const [selectedSkill, setSelectedSkill] = useState<SkillInfo | null>(null)
   const [wizardState, setWizardState] = useState<InstallWizardState | null>(null)
+  const [dataDirectoryPath, setDataDirectoryPath] = useState('~/.sop-to-skill')
   const [installing, setInstalling] = useState(false)
   const [installResult, setInstallResult] = useState<{
     success?: boolean
@@ -64,6 +65,22 @@ function App() {
 
     return () => {
       unlisten.then((fn) => fn())
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void invoke<string>('get_data_directory')
+      .then((path) => {
+        if (!cancelled && path) {
+          setDataDirectoryPath(path)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
     }
   }, [])
 
@@ -588,7 +605,7 @@ function App() {
                         <section className="summary-card">
                           <h3>{getCopy(locale, pageCopy.dataDirectoryTitle)}</h3>
                           <p className="muted" style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                            ~/Library/Application Support/sop-to-skill
+                            {dataDirectoryPath}
                           </p>
                           <button
                             className="button--ghost"

@@ -9,7 +9,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
-const DATA_DIR_SLUG: &str = "sop-to-skill";
+const DATA_DIR_NAME: &str = ".sop-to-skill";
+const PREVIOUS_DATA_DIR_NAME: &str = "sop-to-skill";
 const LEGACY_DATA_DIR_NAME: &str = "SkillConfigurator";
 
 #[derive(Debug, Deserialize, Default)]
@@ -47,22 +48,49 @@ fn copy_directory_contents(source_dir: &Path, destination_dir: &Path) -> Result<
     Ok(())
 }
 
-fn migrate_legacy_data_root_if_needed(new_root: &Path, legacy_root: &Path) -> Result<(), SkillError> {
-    if new_root.exists() || !legacy_root.exists() {
+fn migrate_legacy_data_root_if_needed(
+    new_root: &Path,
+    legacy_roots: &[PathBuf],
+) -> Result<(), SkillError> {
+    if new_root.exists() {
         return Ok(());
     }
 
-    fs::create_dir_all(new_root).map_err(|e| {
-        SkillError::WriteError(format!("Failed to create directory {:?}: {}", new_root, e))
-    })?;
+    let Some(legacy_root) = legacy_roots.iter().find(|candidate| candidate.exists()) else {
+        return Ok(());
+    };
+
+    fs::create_dir_all(new_root)
+        .map_err(|e| SkillError::WriteError(format!("Failed to create directory {:?}: {}", new_root, e)))?;
     copy_directory_contents(legacy_root, new_root)
 }
 
-fn resolve_data_root_from_base_dir(base_dir: &Path) -> Result<PathBuf, SkillError> {
-    let new_root = base_dir.join(DATA_DIR_SLUG);
-    let legacy_root = base_dir.join(LEGACY_DATA_DIR_NAME);
-    migrate_legacy_data_root_if_needed(&new_root, &legacy_root)?;
+fn resolve_data_root(home_dir: &Path, legacy_roots: &[PathBuf]) -> Result<PathBuf, SkillError> {
+    let new_root = home_dir.join(DATA_DIR_NAME);
+    migrate_legacy_data_root_if_needed(&new_root, legacy_roots)?;
     Ok(new_root)
+}
+
+#[cfg(test)]
+fn resolve_data_root_from_base_dir(base_dir: &Path) -> Result<PathBuf, SkillError> {
+    let legacy_roots = [
+        base_dir.join(PREVIOUS_DATA_DIR_NAME),
+        base_dir.join(LEGACY_DATA_DIR_NAME),
+    ];
+    resolve_data_root(base_dir, &legacy_roots)
+}
+
+fn build_legacy_data_roots(home_dir: &Path) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Some(data_dir) = dirs::data_dir() {
+        roots.push(data_dir.join(PREVIOUS_DATA_DIR_NAME));
+        roots.push(data_dir.join(LEGACY_DATA_DIR_NAME));
+    }
+
+    roots.push(home_dir.join(PREVIOUS_DATA_DIR_NAME));
+    roots.push(home_dir.join(LEGACY_DATA_DIR_NAME));
+    roots
 }
 
 pub fn get_data_root() -> PathBuf {
@@ -70,8 +98,9 @@ pub fn get_data_root() -> PathBuf {
         return PathBuf::from(path);
     }
 
-    let base_dir = dirs::data_dir().expect("Failed to get data directory");
-    resolve_data_root_from_base_dir(&base_dir).expect("Failed to resolve app data directory")
+    let home_dir = dirs::home_dir().expect("Failed to get home directory");
+    let legacy_roots = build_legacy_data_roots(&home_dir);
+    resolve_data_root(&home_dir, &legacy_roots).expect("Failed to resolve app data directory")
 }
 
 fn sync_bundled_skills_dir(
@@ -537,10 +566,10 @@ description: Use when reading Jira issue details.
     }
 
     #[test]
-    fn migrates_legacy_skill_configurator_data_into_sop_to_skill_root() {
+    fn migrates_legacy_skill_configurator_data_into_hidden_sop_to_skill_root() {
         let base_dir = temp_dir("loader-data-root-migrate");
         let legacy_root = base_dir.join("SkillConfigurator");
-        let expected_root = base_dir.join("sop-to-skill");
+        let expected_root = base_dir.join(".sop-to-skill");
 
         fs::create_dir_all(legacy_root.join("installed").join("jira")).unwrap();
         fs::create_dir_all(legacy_root.join("cache")).unwrap();
@@ -563,10 +592,10 @@ description: Use when reading Jira issue details.
     }
 
     #[test]
-    fn keeps_existing_sop_to_skill_root_without_overwriting_from_legacy_directory() {
+    fn keeps_existing_hidden_sop_to_skill_root_without_overwriting_from_legacy_directory() {
         let base_dir = temp_dir("loader-data-root-prefer-new");
         let legacy_root = base_dir.join("SkillConfigurator");
-        let new_root = base_dir.join("sop-to-skill");
+        let new_root = base_dir.join(".sop-to-skill");
 
         fs::create_dir_all(legacy_root.join("installed").join("jira")).unwrap();
         fs::create_dir_all(&new_root).unwrap();
@@ -579,6 +608,51 @@ description: Use when reading Jira issue details.
         assert_eq!(resolved, new_root);
         assert_eq!(fs::read_to_string(new_root.join("config.json")).unwrap(), "new");
         assert!(!new_root.join("installed").join("jira").exists());
+    }
+
+    #[test]
+    fn migrates_previous_sop_to_skill_data_root_into_hidden_home_directory() {
+        let base_dir = temp_dir("loader-data-root-migrate-previous");
+        let previous_root = base_dir.join("sop-to-skill");
+        let expected_root = base_dir.join(".sop-to-skill");
+
+        fs::create_dir_all(previous_root.join("installed").join("jira")).unwrap();
+        fs::write(previous_root.join("config.json"), r#"{"preferred_locale":"en-US"}"#).unwrap();
+        fs::write(previous_root.join("installed").join("jira").join("SKILL.md"), "# Jira").unwrap();
+
+        let resolved = resolve_data_root_from_base_dir(&base_dir).unwrap();
+
+        assert_eq!(resolved, expected_root);
+        assert_eq!(
+            fs::read_to_string(expected_root.join("config.json")).unwrap(),
+            r#"{"preferred_locale":"en-US"}"#
+        );
+        assert!(expected_root.join("installed").join("jira").join("SKILL.md").exists());
+    }
+
+    #[test]
+    fn migrates_previous_data_directory_root_into_hidden_home_directory() {
+        let home_dir = temp_dir("loader-data-root-home");
+        let previous_data_dir = temp_dir("loader-data-root-previous-data-dir");
+        let previous_root = previous_data_dir.join("sop-to-skill");
+        let expected_root = home_dir.join(".sop-to-skill");
+
+        fs::create_dir_all(previous_root.join("installed").join("jira")).unwrap();
+        fs::write(previous_root.join("config.json"), r#"{"preferred_locale":"en-US"}"#).unwrap();
+        fs::write(previous_root.join("installed").join("jira").join("SKILL.md"), "# Jira").unwrap();
+
+        let resolved = resolve_data_root(
+            &home_dir,
+            &[previous_root.clone(), previous_data_dir.join("SkillConfigurator")],
+        )
+        .unwrap();
+
+        assert_eq!(resolved, expected_root);
+        assert_eq!(
+            fs::read_to_string(expected_root.join("config.json")).unwrap(),
+            r#"{"preferred_locale":"en-US"}"#
+        );
+        assert!(expected_root.join("installed").join("jira").join("SKILL.md").exists());
     }
 
     #[test]
@@ -658,7 +732,7 @@ description: Use when reading Jira issue details.
     #[test]
     fn resolves_skills_dir_from_packaged_macos_resources_when_workspace_and_data_are_missing() {
         let bundle_root = temp_dir("loader-release-bundle");
-        let app_root = bundle_root.join("SOP to Skill.app");
+        let app_root = bundle_root.join("SOP-to-Skill.app");
         let exe_path = app_root.join("Contents").join("MacOS").join("sop-to-skill");
         let resource_dir = app_root.join("Contents").join("Resources");
         let bundled_skills_dir = resource_dir.join("_up_").join("skills");
