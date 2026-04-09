@@ -21,8 +21,10 @@
 
 需要本机已有可用的 Rust stable toolchain 和 Tauri 构建环境。
 
+本地环境要求和各平台构建步骤请看[本地构建指南](./LOCAL_BUILD_CN.md)。
+
 ```bash
-npm install
+npm ci
 npm run tauri:dev
 ```
 

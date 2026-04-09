@@ -21,8 +21,10 @@ Turn existing SOPs into AI-runnable skills with a setup flow simple enough for n
 
 Requires a working Rust stable toolchain and local Tauri build environment.
 
+For local prerequisites and platform-specific build steps, see [Local Build Guide](./LOCAL_BUILD.md).
+
 ```bash
-npm install
+npm ci
 npm run tauri:dev
 ```
 
