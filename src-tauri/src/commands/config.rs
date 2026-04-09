@@ -2,6 +2,7 @@ use crate::models::AppConfig;
 use crate::template::{ensure_directories, get_config_path, get_data_root};
 use std::fs;
 
+use super::parse_json_with_optional_utf8_bom;
 use super::skill::SkillResult;
 
 /// Load configuration from disk
@@ -10,7 +11,7 @@ pub fn load_config() -> AppConfig {
 
     if config_path.exists() {
         if let Ok(content) = fs::read_to_string(&config_path) {
-            if let Ok(config) = serde_json::from_str(&content) {
+            if let Ok(config) = parse_json_with_optional_utf8_bom(&content) {
                 return config;
             }
         }

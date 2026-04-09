@@ -20,6 +20,8 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::parse_json_with_optional_utf8_bom;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingInstallPreview {
     pub install_candidate_skill_ids: Vec<String>,
@@ -103,8 +105,12 @@ fn validate_selected_agent_ids(
 }
 
 fn get_onboarding_home_env_path() -> Result<PathBuf, String> {
-    dirs::home_dir()
-        .map(|home_dir| home_dir.join(HOME_ENV_FILE_NAME))
+    let data_root = crate::template::get_data_root();
+    let home_dir = data_root.parent().filter(|path| !path.as_os_str().is_empty());
+
+    home_dir
+        .map(|path| path.join(HOME_ENV_FILE_NAME))
+        .or_else(|| dirs::home_dir().map(|path| path.join(HOME_ENV_FILE_NAME)))
         .ok_or_else(|| "Failed to resolve home directory for ~/.env".to_string())
 }
 
@@ -430,7 +436,7 @@ pub fn load_onboarding_state() -> OnboardingState {
     let path = get_onboarding_state_path();
 
     if let Ok(content) = fs::read_to_string(path) {
-        if let Ok(state) = serde_json::from_str(&content) {
+        if let Ok(state) = parse_json_with_optional_utf8_bom(&content) {
             return state;
         }
     }
@@ -527,7 +533,10 @@ mod tests {
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
 
     fn temp_dir(prefix: &str) -> PathBuf {
         let unique = SystemTime::now()
@@ -537,6 +546,18 @@ mod tests {
         let path = std::env::temp_dir().join(format!("onboarding-command-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
+    }
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn restore_env_var(key: &str, value: Option<String>) {
+        match value {
+            Some(value) => std::env::set_var(key, value),
+            None => std::env::remove_var(key),
+        }
     }
 
     #[test]
@@ -972,6 +993,104 @@ mod tests {
             crate::commands::skill::SkillResult::Error { ref error }
             if error == "Unsupported agent ids: staging"
         ));
+    }
+
+    #[test]
+    fn onboarding_state_load_supports_utf8_bom_prefixed_json() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("onboarding-state-bom");
+        let state_path = data_dir.join("onboarding-state.json");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+
+        fs::write(
+            &state_path,
+            concat!(
+                "\u{feff}",
+                "{",
+                "\"selected_agent_ids\":[\"workbuddy\"],",
+                "\"selected_role_id\":\"\",",
+                "\"selected_base_skill_ids\":[\"jira\"],",
+                "\"role_use_case_contents\":[],",
+                "\"selected_install_skill_ids\":[\"jira\"],",
+                "\"selected_install_skill_ids_initialized\":true,",
+                "\"selected_install_candidate_skill_ids\":[\"jira\"],",
+                "\"credential_values\":{\"jiraUrl\":\"https://jira.example.com\"}",
+                "}"
+            ),
+        )
+        .expect("write onboarding state");
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        let loaded = super::load_onboarding_state();
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(loaded.selected_agent_ids, vec!["workbuddy".to_string()]);
+        assert_eq!(loaded.selected_base_skill_ids, vec!["jira".to_string()]);
+        assert_eq!(
+            loaded.credential_values.get("jiraUrl"),
+            Some(&"https://jira.example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn onboarding_sync_writes_home_env_next_to_configured_data_root() {
+        let _guard = env_lock().lock().unwrap();
+        let actual_home = temp_dir("home-env-data-root-home");
+        let data_dir = actual_home.join(".sop-to-skill");
+        let unrelated_home = temp_dir("home-env-unrelated-home");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+        let original_home = std::env::var("HOME").ok();
+
+        fs::create_dir_all(&data_dir).expect("create data dir");
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        std::env::set_var("HOME", &unrelated_home);
+
+        let state = OnboardingState {
+            selected_agent_ids: vec!["workbuddy".to_string()],
+            selected_role_id: "".to_string(),
+            selected_base_skill_ids: vec![
+                "confluence".to_string(),
+                "jira".to_string(),
+                "mail".to_string(),
+            ],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![
+                "confluence".to_string(),
+                "jira".to_string(),
+                "mail".to_string(),
+            ],
+            selected_install_skill_ids_initialized: true,
+            selected_install_candidate_skill_ids: vec![
+                "confluence".to_string(),
+                "jira".to_string(),
+                "mail".to_string(),
+            ],
+            credential_values: HashMap::from([
+                ("confluenceUrl".to_string(), "https://wiki.example.com".to_string()),
+                ("confluenceUsername".to_string(), "wiki.user".to_string()),
+                ("confluencePassword".to_string(), "wiki-secret".to_string()),
+                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                ("jiraUsername".to_string(), "jira.user".to_string()),
+                ("jiraPassword".to_string(), "jira-secret".to_string()),
+                ("mailUsername".to_string(), "pm@example.com".to_string()),
+                ("mailPassword".to_string(), "mail-secret".to_string()),
+            ]),
+        };
+
+        super::sync_onboarding_credentials_to_home_env(&state).expect("sync home env");
+
+        restore_env_var("HOME", original_home);
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        let actual_env_path = actual_home.join(".env");
+        let unrelated_env_path = unrelated_home.join(".env");
+        let content = fs::read_to_string(&actual_env_path).expect("read actual env");
+
+        assert!(actual_env_path.exists());
+        assert!(!unrelated_env_path.exists());
+        assert!(content.contains("CONFLUENCE_URL=\"https://wiki.example.com\""));
+        assert!(content.contains("JIRA_URL=\"https://jira.example.com\""));
+        assert!(content.contains("MAIL_HOST=\"smtp.exmail.qq.com\""));
     }
 
     #[test]
