@@ -80,8 +80,8 @@ export const onboardingCopy = {
     'en-US': 'Test',
   },
   basicModuleDescription: {
-    'zh-CN': '先选择公司里已经在用的 IT 工具。后续 AI 会从这些工具中获取信息。',
-    'en-US': 'Choose the IT tools your company already uses. AI will read information from them later.',
+    'zh-CN': '先选择公司里已经在用的 IT 工具，并补充对应账号信息。保存后，后续步骤可以直接使用这些配置。',
+    'en-US': 'Choose the IT tools your company already uses and fill in the related credentials. After saving, later steps can use these settings directly.',
   },
   useCasesModuleDescription: {
     'zh-CN': '先选岗位，再补充这个岗位下要交给 AI 的具体工作内容和 SOP 要求。',
@@ -176,8 +176,8 @@ export const onboardingCopy = {
     'en-US': 'Credentials',
   },
   credentialsBody: {
-    'zh-CN': '只显示当前仍被选择的公司 IT 工具所需的凭证字段。',
-    'en-US': 'Only the credential fields for currently selected company IT tools are shown.',
+    'zh-CN': '只显示当前仍被选择的公司 IT 工具所需的凭证字段。保存后会立即同步这些配置。',
+    'en-US': 'Only the credential fields for currently selected company IT tools are shown. Saving this module syncs the credentials immediately.',
   },
   selectAgentApps: {
     'zh-CN': '选择 Agent 应用',
@@ -274,6 +274,10 @@ export const onboardingCopy = {
   saveFailed: {
     'zh-CN': '保存失败',
     'en-US': 'Save failed',
+  },
+  credentialSyncFailed: {
+    'zh-CN': '设置已保存，但公司 IT 工具凭证同步失败：',
+    'en-US': 'Settings were saved, but company IT credential sync failed:',
   },
   syncSaveInstallFirst: {
     'zh-CN': '请先保存当前安装设置。',

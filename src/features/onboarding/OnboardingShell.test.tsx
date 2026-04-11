@@ -218,6 +218,8 @@ beforeEach(() => {
         return mockControls.saveError
           ? { error: mockControls.saveError }
           : { success: payload?.state ?? currentState }
+      case 'sync_onboarding_credentials':
+        return { success: true }
       case 'get_onboarding_install_preview':
         return { success: { ...fixtures.onboardingPreview, selected_install_skill_ids: currentState.selected_install_skill_ids, selected_agent_ids: currentState.selected_agent_ids } }
       case 'stage_onboarding_generated_packages':
@@ -232,6 +234,10 @@ beforeEach(() => {
 
 function getSetStateCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'set_onboarding_state')
+}
+
+function getCredentialSyncCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_credentials')
 }
 
 function getSyncCalls() {
@@ -552,7 +558,7 @@ describe('OnboardingShell', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows Confluence and Jira URL fields and keeps Tencent Exmail credentials to username/password only', async () => {
+  it('shows Confluence and Jira URL fields in 公司 IT 工具 and keeps Tencent Exmail credentials to username/password only', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
       selected_base_skill_ids: ['jira', 'confluence', 'mail'],
@@ -564,15 +570,22 @@ describe('OnboardingShell', () => {
 
     expect(await waitForOnboardingHome()).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
 
-    expect(await waitForInstallModule()).toBeInTheDocument()
     expect(screen.getByLabelText('Confluence URL')).toBeInTheDocument()
     expect(screen.getByLabelText('Jira URL')).toBeInTheDocument()
     expect(screen.getByLabelText('腾讯企业邮箱用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('腾讯企业邮箱密码 / 授权码')).toBeInTheDocument()
     expect(screen.queryByLabelText('Mail SMTP Host')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Mail 发件邮箱')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+    expect(screen.queryByText('账号凭证')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Confluence URL')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Jira URL')).not.toBeInTheDocument()
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {
@@ -847,6 +860,72 @@ describe('OnboardingShell', () => {
     expect(payload.state.selected_install_skill_ids).toContain('jira')
     expect(payload.state.selected_install_skill_ids).not.toContain('confluence')
     expect(await screen.findByText('保存成功')).toBeInTheDocument()
+  })
+
+  it('saving company IT tool credentials syncs them immediately after state save', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      credential_values: {
+        jiraUrl: 'https://jira.example.com',
+        jiraUsername: 'jira.user',
+        jiraPassword: 'jira-secret',
+        confluenceUrl: 'https://wiki.example.com',
+        confluenceUsername: 'wiki.user',
+        confluencePassword: 'wiki-secret',
+      },
+    }
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.clear(screen.getByLabelText('Jira URL'))
+    await user.type(screen.getByLabelText('Jira URL'), 'https://jira-next.example.com')
+
+    expect(getSetStateCalls()).toHaveLength(0)
+    expect(getCredentialSyncCalls()).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    expect(getSetStateCalls()).toHaveLength(1)
+    expect(getCredentialSyncCalls()).toHaveLength(1)
+
+    const [, payload] = getCredentialSyncCalls()[0] as [string, { state: OnboardingState }]
+    expect(payload.state.credential_values.jiraUrl).toEqual('https://jira-next.example.com')
+    expect(await screen.findByText('保存成功')).toBeInTheDocument()
+  })
+
+  it('treats credential edits as basic-module changes instead of install changes', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      credential_values: {
+        jiraUrl: 'https://jira.example.com',
+        jiraUsername: 'jira.user',
+        jiraPassword: 'jira-secret',
+        confluenceUrl: 'https://wiki.example.com',
+        confluenceUsername: 'wiki.user',
+        confluencePassword: 'wiki-secret',
+      },
+    }
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.clear(screen.getByLabelText('Jira URL'))
+    await user.type(screen.getByLabelText('Jira URL'), 'https://jira-next.example.com')
+
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeEnabled()
+
+    await user.click(screen.getByRole('button', { name: '返回首页' }))
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeDisabled()
   })
 
   it('shows a use-case list first, marks configured items, and saves only on demand', async () => {

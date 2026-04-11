@@ -65,6 +65,7 @@ pub fn run() {
             // Onboarding commands
             commands::onboarding::get_onboarding_state,
             commands::onboarding::set_onboarding_state,
+            commands::onboarding::sync_onboarding_credentials,
             commands::onboarding::get_onboarding_install_preview,
             commands::onboarding::stage_onboarding_generated_packages,
             commands::onboarding::sync_onboarding_installation,

@@ -238,6 +238,10 @@ function getUseCaseSaveScope(useCaseId: string) {
   return `useCase:${useCaseId}`
 }
 
+function buildCredentialSyncErrorMessage(locale: Locale, errorMessage: string) {
+  return `${getOnboardingCopy(locale, onboardingCopy.credentialSyncFailed)} ${errorMessage}`
+}
+
 function resolveSelectedInstallSkillIds(state: OnboardingState, managedSkillIds: string[]) {
   const filteredSelectedIds = unique(
     state.selected_install_skill_ids.filter((skillId) => managedSkillIds.includes(skillId))
@@ -449,17 +453,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       ])
     )
     const role = state.selected_role_id !== savedState.selected_role_id
-    const baseSkills = !areSameStringSets(
-      state.selected_base_skill_ids,
-      savedState.selected_base_skill_ids
-    )
+    const baseSkills =
+      !areSameStringSets(state.selected_base_skill_ids, savedState.selected_base_skill_ids) ||
+      !areSameStringRecords(state.credential_values, savedState.credential_values)
     const install =
       !areSameStringSets(state.selected_agent_ids, savedState.selected_agent_ids) ||
-      !areSameStringSets(
-        resolvedSelectedInstallSkillIds,
-        savedResolvedSelectedInstallSkillIds
-      ) ||
-      !areSameStringRecords(state.credential_values, savedState.credential_values)
+      !areSameStringSets(resolvedSelectedInstallSkillIds, savedResolvedSelectedInstallSkillIds)
 
     return {
       role,
@@ -603,16 +602,45 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
             setState(normalizedState)
           }
           setSavedState(normalizedState)
+
+          let feedback: SaveFeedback = {
+            kind: 'success',
+            message: getOnboardingCopy(locale, onboardingCopy.saveSuccess),
+          }
+          let errorMessage: string | null = null
+
+          if (scope === 'baseSkills') {
+            try {
+              const syncResult = await invoke<SkillResult<boolean>>('sync_onboarding_credentials', {
+                state: normalizedState,
+              })
+
+              if (!syncResult.success) {
+                errorMessage = buildCredentialSyncErrorMessage(
+                  locale,
+                  syncResult.error ?? getOnboardingCopy(locale, onboardingCopy.saveFailed)
+                )
+                feedback = {
+                  kind: 'error',
+                  message: errorMessage,
+                }
+              }
+            } catch (error) {
+              errorMessage = buildCredentialSyncErrorMessage(locale, String(error))
+              feedback = {
+                kind: 'error',
+                message: errorMessage,
+              }
+            }
+          }
+
           setSaveFeedbacks((current) => ({
             ...current,
-            [scope]: {
-              kind: 'success',
-              message: getOnboardingCopy(locale, onboardingCopy.saveSuccess),
-            },
+            [scope]: feedback,
           }))
           return {
             state: normalizedState,
-            error: null,
+            error: errorMessage,
           }
         }
 

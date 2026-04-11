@@ -423,7 +423,6 @@ function UseCaseList({
 
 interface InstallModuleProps {
   locale: Locale
-  credentialFields: ReturnType<typeof useOnboarding>['credentialFields']
   installCandidateGroups: ReturnType<typeof useOnboarding>['installCandidateGroups']
   installedCount: number
   onOpenInstalled: () => void
@@ -442,13 +441,10 @@ interface InstallModuleProps {
   onStartSync: () => void
   onToggleAgent: (agentId: string) => void
   onToggleInstallSkill: (skillId: string) => void
-  credentialValues: Record<string, string>
-  onUpdateCredential: (fieldId: string, value: string) => void
 }
 
 function InstallModule({
   locale,
-  credentialFields,
   installCandidateGroups,
   installedCount,
   onOpenInstalled,
@@ -467,8 +463,6 @@ function InstallModule({
   onStartSync,
   onToggleAgent,
   onToggleInstallSkill,
-  credentialValues,
-  onUpdateCredential,
 }: InstallModuleProps) {
   return (
     <div className="onboarding-shell">
@@ -498,16 +492,6 @@ function InstallModule({
             selectedInstallSkillIds={preview.selected_install_skill_ids}
             onToggleInstallSkill={onToggleInstallSkill}
           />
-          <section className="summary-card onboarding-subeditor-panel">
-            <h3>{getOnboardingCopy(locale, onboardingCopy.credentialsTitle)}</h3>
-            <p>{getOnboardingCopy(locale, onboardingCopy.credentialsBody)}</p>
-            <CredentialsStep
-              locale={locale}
-              credentialFields={credentialFields}
-              credentialValues={credentialValues}
-              onUpdateCredential={onUpdateCredential}
-            />
-          </section>
           <div className="button-row">
             <button className="button--ghost" disabled={saveDisabled} type="button" onClick={onSave}>
               {saving
@@ -812,6 +796,16 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
               selectedBaseSkillIds={state.selected_base_skill_ids}
               onToggleBaseSkill={toggleBaseSkill}
             />
+            <section className="summary-card onboarding-subeditor-panel">
+              <h3>{getOnboardingCopy(locale, onboardingCopy.credentialsTitle)}</h3>
+              <p>{getOnboardingCopy(locale, onboardingCopy.credentialsBody)}</p>
+              <CredentialsStep
+                locale={locale}
+                credentialFields={credentialFields}
+                credentialValues={state.credential_values}
+                onUpdateCredential={updateCredentialValue}
+              />
+            </section>
             <div className="button-row">
               <button
                 className="button"
@@ -1041,8 +1035,6 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
   return (
     <InstallModule
       locale={locale}
-      credentialFields={credentialFields}
-      credentialValues={state.credential_values}
       installCandidateGroups={installCandidateGroups}
       installedCount={installedSkills.length}
       preview={preview}
@@ -1061,7 +1053,6 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
       onStartSync={startSync}
       onToggleAgent={toggleAgent}
       onToggleInstallSkill={toggleInstallSkill}
-      onUpdateCredential={updateCredentialValue}
     />
   )
 }

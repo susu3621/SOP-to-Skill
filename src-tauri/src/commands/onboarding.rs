@@ -58,6 +58,21 @@ pub struct OnboardingSyncCommandInput {
 }
 
 const HOME_ENV_FILE_NAME: &str = ".env";
+const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
+    "CONFLUENCE_URL",
+    "CONFLUENCE_USERNAME",
+    "CONFLUENCE_PASSWORD",
+    "JIRA_URL",
+    "JIRA_USERNAME",
+    "JIRA_PASSWORD",
+    "MAIL_HOST",
+    "MAIL_PORT",
+    "MAIL_USERNAME",
+    "MAIL_PASSWORD",
+    "MAIL_FROM",
+    "MAIL_USE_SSL",
+    "MAIL_USE_STARTTLS",
+];
 
 fn get_onboarding_state_path() -> PathBuf {
     crate::template::get_config_path().with_file_name("onboarding-state.json")
@@ -219,28 +234,34 @@ fn write_managed_home_env_entries(
     env_path: &Path,
     managed_entries: &[(String, String)],
 ) -> Result<(), String> {
-    if managed_entries.is_empty() {
-        return Ok(());
-    }
-
     let existing_content = match fs::read_to_string(env_path) {
         Ok(content) => content,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(error) => return Err(format!("Failed to read {:?}: {}", env_path, error)),
     };
 
+    if managed_entries.is_empty() && existing_content.is_empty() {
+        return Ok(());
+    }
+
     let managed_map = managed_entries
         .iter()
         .map(|(key, value)| (key.as_str(), value.as_str()))
         .collect::<HashMap<_, _>>();
+    let managed_key_set = ONBOARDING_MANAGED_ENV_KEYS
+        .iter()
+        .copied()
+        .collect::<HashSet<_>>();
     let mut written_keys = HashSet::new();
     let mut output_lines = Vec::new();
 
     for line in existing_content.lines() {
         if let Some(key) = parse_env_assignment_key(line) {
-            if let Some(value) = managed_map.get(key) {
-                if written_keys.insert(key.to_string()) {
-                    output_lines.push(format_env_assignment(key, value));
+            if managed_key_set.contains(key) {
+                if let Some(value) = managed_map.get(key) {
+                    if written_keys.insert(key.to_string()) {
+                        output_lines.push(format_env_assignment(key, value));
+                    }
                 }
                 continue;
             }
@@ -285,6 +306,14 @@ pub fn get_onboarding_state() -> SkillResult<OnboardingState> {
 pub fn set_onboarding_state(state: OnboardingState) -> SkillResult<OnboardingState> {
     match save_onboarding_state(&state) {
         Ok(()) => SkillResult::Success { success: state },
+        Err(error) => SkillResult::Error { error },
+    }
+}
+
+#[tauri::command]
+pub fn sync_onboarding_credentials(state: OnboardingState) -> SkillResult<bool> {
+    match sync_onboarding_credentials_to_home_env(&state) {
+        Ok(()) => SkillResult::Success { success: true },
         Err(error) => SkillResult::Error { error },
     }
 }
@@ -1145,6 +1174,109 @@ mod tests {
         assert!(content.contains("MAIL_USE_SSL=\"true\""));
         assert!(content.contains("MAIL_USE_STARTTLS=\"false\""));
         assert!(!content.contains("https://stale.example.com"));
+    }
+
+    #[test]
+    fn onboarding_sync_removes_deselected_base_skill_credentials_from_home_env_file() {
+        let home_dir = temp_dir("home-env-prune");
+        let env_path = home_dir.join(".env");
+        fs::write(
+            &env_path,
+            concat!(
+                "EXISTING_VAR=keep\n",
+                "JIRA_URL=\"https://stale-jira.example.com\"\n",
+                "JIRA_USERNAME=\"jira.old\"\n",
+                "JIRA_PASSWORD=\"jira-old-secret\"\n",
+                "MAIL_HOST=\"smtp.exmail.qq.com\"\n",
+                "MAIL_PORT=\"465\"\n",
+                "MAIL_USERNAME=\"old@example.com\"\n",
+                "MAIL_PASSWORD=\"old-mail-secret\"\n",
+                "MAIL_FROM=\"old@example.com\"\n",
+                "MAIL_USE_SSL=\"true\"\n",
+                "MAIL_USE_STARTTLS=\"false\"\n",
+            ),
+        )
+        .expect("write existing env");
+
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
+            credential_values: HashMap::from([
+                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                ("jiraUsername".to_string(), "jira.user".to_string()),
+                ("jiraPassword".to_string(), "jira-secret".to_string()),
+            ]),
+        };
+
+        super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
+
+        let content = fs::read_to_string(&env_path).expect("read env");
+        assert!(content.contains("EXISTING_VAR=keep"));
+        assert!(content.contains("JIRA_URL=\"https://jira.example.com\""));
+        assert!(!content.contains("MAIL_HOST="));
+        assert!(!content.contains("MAIL_PORT="));
+        assert!(!content.contains("MAIL_USERNAME="));
+        assert!(!content.contains("MAIL_PASSWORD="));
+        assert!(!content.contains("MAIL_FROM="));
+        assert!(!content.contains("MAIL_USE_SSL="));
+        assert!(!content.contains("MAIL_USE_STARTTLS="));
+    }
+
+    #[test]
+    fn onboarding_credentials_sync_command_writes_selected_base_skill_credentials_to_home_env_file(
+    ) {
+        let _guard = env_lock().lock().unwrap();
+        let actual_home = temp_dir("home-env-command-home");
+        let data_dir = actual_home.join(".sop-to-skill");
+        let unrelated_home = temp_dir("home-env-command-unrelated-home");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+        let original_home = std::env::var("HOME").ok();
+
+        fs::create_dir_all(&data_dir).expect("create data dir");
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        std::env::set_var("HOME", &unrelated_home);
+
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "project-manager".to_string(),
+            selected_base_skill_ids: vec!["jira".to_string(), "mail".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
+            credential_values: HashMap::from([
+                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                ("jiraUsername".to_string(), "jira.user".to_string()),
+                ("jiraPassword".to_string(), "jira-secret".to_string()),
+                ("mailUsername".to_string(), "pm@example.com".to_string()),
+                ("mailPassword".to_string(), "mail-secret".to_string()),
+            ]),
+        };
+
+        let result = super::sync_onboarding_credentials(state);
+
+        restore_env_var("HOME", original_home);
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert!(matches!(
+            result,
+            crate::commands::skill::SkillResult::Success { success: true }
+        ));
+
+        let actual_env_path = actual_home.join(".env");
+        let content = fs::read_to_string(&actual_env_path).expect("read actual env");
+
+        assert!(actual_env_path.exists());
+        assert!(!unrelated_home.join(".env").exists());
+        assert!(content.contains("JIRA_URL=\"https://jira.example.com\""));
+        assert!(content.contains("JIRA_USERNAME=\"jira.user\""));
+        assert!(content.contains("MAIL_HOST=\"smtp.exmail.qq.com\""));
+        assert!(content.contains("MAIL_FROM=\"pm@example.com\""));
     }
 
     #[tokio::test]
