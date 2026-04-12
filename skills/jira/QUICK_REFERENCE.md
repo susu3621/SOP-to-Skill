@@ -27,8 +27,8 @@ python3 scripts/get_jira_issue.py PROJ-123
 ## Auth Probe
 
 ```bash
-python3 scripts/test_jira_login.py
-python3 scripts/test_jira_login.py --env-file /path/to/.env
+python3 scripts/test_connection.py
+python3 scripts/test_connection.py --env-file /path/to/.env
 ```
 
 ## Output Shapes

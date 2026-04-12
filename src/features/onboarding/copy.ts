@@ -191,6 +191,42 @@ export const onboardingCopy = {
     'zh-CN': '当前没有需要补充的凭证字段。',
     'en-US': 'No extra credential fields are required right now.',
   },
+  testConnection: {
+    'zh-CN': '测试连接',
+    'en-US': 'Test connection',
+  },
+  connectionTestIdle: {
+    'zh-CN': '未测试',
+    'en-US': 'Not tested',
+  },
+  connectionTestPending: {
+    'zh-CN': '测试中...',
+    'en-US': 'Testing...',
+  },
+  connectionTestSuccess: {
+    'zh-CN': '连接成功',
+    'en-US': 'Connection succeeded',
+  },
+  connectionTestError: {
+    'zh-CN': '连接失败',
+    'en-US': 'Connection failed',
+  },
+  connectionTestAutoHint: {
+    'zh-CN': '填完必填项后会自动测试，也可以手动点击测试连接。',
+    'en-US': 'The app tests automatically after required fields are complete, and you can also run it manually.',
+  },
+  connectionTestIncomplete: {
+    'zh-CN': '请先填写当前服务的必填项。',
+    'en-US': 'Fill in the required fields for this service first.',
+  },
+  connectionTestAutoTrigger: {
+    'zh-CN': '自动测试',
+    'en-US': 'Automatic test',
+  },
+  connectionTestManualTrigger: {
+    'zh-CN': '手动测试',
+    'en-US': 'Manual test',
+  },
   selectedAgentsTitle: {
     'zh-CN': '已选 Agent',
     'en-US': 'Selected AI apps',

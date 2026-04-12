@@ -10,7 +10,7 @@ Use this skill for SMTP email workflows. It supports login probing, strict `MAIL
 
 | Task | Tool | Notes |
 | --- | --- | --- |
-| Verify SMTP connectivity and login | `scripts/test_mail_login.py` | Checks connection and authentication without sending mail |
+| Verify SMTP connectivity and login | `scripts/test_connection.py` | Checks connection and authentication without sending mail |
 | Send one Markdown file as an email | `scripts/send_markdown_mail.py` | Builds plain-text and HTML parts from the Markdown input |
 | Reuse shared mail config loading | `scripts/mail_auth.py` | Auto-loads `.env` or `.env.mail` and fails fast on missing settings |
 
@@ -38,8 +38,8 @@ Use this skill for SMTP email workflows. It supports login probing, strict `MAIL
 ### Verify Login
 
 ```bash
-python3 {{script_dir}}/test_mail_login.py
-python3 {{script_dir}}/test_mail_login.py --env-file /path/to/.env
+python3 {{script_dir}}/test_connection.py
+python3 {{script_dir}}/test_connection.py --env-file /path/to/.env
 ```
 
 Use `--env-file` when the current shell may contain stale `MAIL_*` values and you want to force a specific credential file.
@@ -74,7 +74,7 @@ At least one recipient is required through `--to`, `--cc`, or `--bcc`.
 | Script | Purpose |
 | --- | --- |
 | `scripts/mail_auth.py` | Shared credential discovery and strict `MAIL_*` parsing |
-| `scripts/test_mail_login.py` | SMTP connectivity and login probe |
+| `scripts/test_connection.py` | SMTP connectivity and login probe |
 | `scripts/send_markdown_mail.py` | Markdown-to-HTML rendering plus email delivery |
 
 ## Notes

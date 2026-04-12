@@ -13,12 +13,15 @@ use crate::onboarding::{
     sync::build_selected_agent_install_sync_plans,
 };
 use crate::commands::skill::{self, SkillResult};
-use crate::template::get_output_dir;
+use crate::template::{get_output_dir, get_skills_dir};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use super::parse_json_with_optional_utf8_bom;
 
@@ -57,6 +60,30 @@ pub struct OnboardingSyncCommandInput {
     pub staged_packages: Vec<StagedOnboardingPackages>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingConnectionTestInput {
+    pub service_id: String,
+    pub credential_values: HashMap<String, String>,
+    pub trigger: String,
+    pub tested_fingerprint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingConnectionTestResult {
+    pub service_id: String,
+    pub success: bool,
+    pub status: String,
+    pub summary: String,
+    pub details: String,
+    pub trigger: String,
+    pub tested_fingerprint: String,
+}
+
+struct OnboardingConnectionServiceConfig {
+    service_id: &'static str,
+    required_field_ids: &'static [&'static str],
+}
+
 const HOME_ENV_FILE_NAME: &str = ".env";
 const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "CONFLUENCE_URL",
@@ -72,6 +99,21 @@ const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "MAIL_FROM",
     "MAIL_USE_SSL",
     "MAIL_USE_STARTTLS",
+];
+const CONNECTION_TEST_SCRIPT_NAME: &str = "test_connection.py";
+const ONBOARDING_CONNECTION_SERVICES: &[OnboardingConnectionServiceConfig] = &[
+    OnboardingConnectionServiceConfig {
+        service_id: "confluence",
+        required_field_ids: &["confluenceUrl", "confluenceUsername", "confluencePassword"],
+    },
+    OnboardingConnectionServiceConfig {
+        service_id: "jira",
+        required_field_ids: &["jiraUrl", "jiraUsername", "jiraPassword"],
+    },
+    OnboardingConnectionServiceConfig {
+        service_id: "mail",
+        required_field_ids: &["mailUsername", "mailPassword"],
+    },
 ];
 
 fn get_onboarding_state_path() -> PathBuf {
@@ -141,63 +183,87 @@ fn require_non_empty_credential_value(
         .ok_or_else(|| format!("Missing required credential field: {}", field_id))
 }
 
+fn get_onboarding_connection_service_config(
+    service_id: &str,
+) -> Option<&'static OnboardingConnectionServiceConfig> {
+    ONBOARDING_CONNECTION_SERVICES
+        .iter()
+        .find(|config| config.service_id == service_id)
+}
+
+fn build_connection_test_env_entries(
+    service_id: &str,
+    credential_values: &HashMap<String, String>,
+) -> Result<Vec<(String, String)>, String> {
+    let Some(service_config) = get_onboarding_connection_service_config(service_id) else {
+        return Err(format!("Unsupported onboarding service: {}", service_id));
+    };
+
+    for field_id in service_config.required_field_ids {
+        require_non_empty_credential_value(credential_values, field_id)?;
+    }
+
+    match service_id {
+        "confluence" => Ok(vec![
+            (
+                "CONFLUENCE_URL".to_string(),
+                require_non_empty_credential_value(credential_values, "confluenceUrl")?,
+            ),
+            (
+                "CONFLUENCE_USERNAME".to_string(),
+                require_non_empty_credential_value(credential_values, "confluenceUsername")?,
+            ),
+            (
+                "CONFLUENCE_PASSWORD".to_string(),
+                require_non_empty_credential_value(credential_values, "confluencePassword")?,
+            ),
+        ]),
+        "jira" => Ok(vec![
+            (
+                "JIRA_URL".to_string(),
+                require_non_empty_credential_value(credential_values, "jiraUrl")?,
+            ),
+            (
+                "JIRA_USERNAME".to_string(),
+                require_non_empty_credential_value(credential_values, "jiraUsername")?,
+            ),
+            (
+                "JIRA_PASSWORD".to_string(),
+                require_non_empty_credential_value(credential_values, "jiraPassword")?,
+            ),
+        ]),
+        "mail" => {
+            let username = require_non_empty_credential_value(credential_values, "mailUsername")?;
+            let password = require_non_empty_credential_value(credential_values, "mailPassword")?;
+
+            Ok(vec![
+                ("MAIL_HOST".to_string(), "smtp.exmail.qq.com".to_string()),
+                ("MAIL_PORT".to_string(), "465".to_string()),
+                ("MAIL_USERNAME".to_string(), username.clone()),
+                ("MAIL_PASSWORD".to_string(), password),
+                ("MAIL_FROM".to_string(), username),
+                ("MAIL_USE_SSL".to_string(), "true".to_string()),
+                ("MAIL_USE_STARTTLS".to_string(), "false".to_string()),
+            ])
+        }
+        _ => Err(format!("Unsupported onboarding service: {}", service_id)),
+    }
+}
+
 fn build_onboarding_home_env_entries(
     state: &OnboardingState,
 ) -> Result<Vec<(String, String)>, String> {
     let mut entries = Vec::new();
 
     for base_skill_id in &state.selected_base_skill_ids {
-        match base_skill_id.as_str() {
-            "confluence" => {
-                entries.push((
-                    "CONFLUENCE_URL".to_string(),
-                    require_non_empty_credential_value(&state.credential_values, "confluenceUrl")?,
-                ));
-                entries.push((
-                    "CONFLUENCE_USERNAME".to_string(),
-                    require_non_empty_credential_value(
-                        &state.credential_values,
-                        "confluenceUsername",
-                    )?,
-                ));
-                entries.push((
-                    "CONFLUENCE_PASSWORD".to_string(),
-                    require_non_empty_credential_value(
-                        &state.credential_values,
-                        "confluencePassword",
-                    )?,
-                ));
-            }
-            "jira" => {
-                entries.push((
-                    "JIRA_URL".to_string(),
-                    require_non_empty_credential_value(&state.credential_values, "jiraUrl")?,
-                ));
-                entries.push((
-                    "JIRA_USERNAME".to_string(),
-                    require_non_empty_credential_value(&state.credential_values, "jiraUsername")?,
-                ));
-                entries.push((
-                    "JIRA_PASSWORD".to_string(),
-                    require_non_empty_credential_value(&state.credential_values, "jiraPassword")?,
-                ));
-            }
-            "mail" => {
-                let username =
-                    require_non_empty_credential_value(&state.credential_values, "mailUsername")?;
-                let password =
-                    require_non_empty_credential_value(&state.credential_values, "mailPassword")?;
-
-                entries.push(("MAIL_HOST".to_string(), "smtp.exmail.qq.com".to_string()));
-                entries.push(("MAIL_PORT".to_string(), "465".to_string()));
-                entries.push(("MAIL_USERNAME".to_string(), username.clone()));
-                entries.push(("MAIL_PASSWORD".to_string(), password));
-                entries.push(("MAIL_FROM".to_string(), username));
-                entries.push(("MAIL_USE_SSL".to_string(), "true".to_string()));
-                entries.push(("MAIL_USE_STARTTLS".to_string(), "false".to_string()));
-            }
-            _ => {}
+        if get_onboarding_connection_service_config(base_skill_id).is_none() {
+            continue;
         }
+
+        entries.extend(build_connection_test_env_entries(
+            base_skill_id,
+            &state.credential_values,
+        )?);
     }
 
     Ok(entries)
@@ -297,6 +363,186 @@ fn sync_onboarding_credentials_to_home_env(state: &OnboardingState) -> Result<()
     sync_onboarding_credentials_to_env_path(state, &env_path)
 }
 
+fn service_label(service_id: &str) -> &str {
+    match service_id {
+        "confluence" => "Confluence",
+        "jira" => "Jira",
+        "mail" => "Mail",
+        _ => "Service",
+    }
+}
+
+fn trim_process_output(bytes: &[u8]) -> String {
+    String::from_utf8_lossy(bytes).trim().to_string()
+}
+
+fn first_non_empty_line(value: &str) -> Option<String> {
+    value.lines().map(str::trim).find(|line| !line.is_empty()).map(str::to_string)
+}
+
+fn build_connection_test_details(stdout: &str, stderr: &str) -> String {
+    let mut sections = Vec::new();
+
+    if !stdout.is_empty() {
+        sections.push(format!("stdout:\n{}", stdout));
+    }
+
+    if !stderr.is_empty() {
+        sections.push(format!("stderr:\n{}", stderr));
+    }
+
+    sections.join("\n\n")
+}
+
+fn build_onboarding_connection_test_result(
+    service_id: &str,
+    trigger: &str,
+    tested_fingerprint: &str,
+    output: Output,
+) -> OnboardingConnectionTestResult {
+    let success = output.status.success();
+    let stdout = trim_process_output(&output.stdout);
+    let stderr = trim_process_output(&output.stderr);
+    let summary = if success {
+        first_non_empty_line(&stdout)
+            .or_else(|| first_non_empty_line(&stderr))
+            .unwrap_or_else(|| format!("{} connection test succeeded.", service_label(service_id)))
+    } else {
+        first_non_empty_line(&stderr)
+            .or_else(|| first_non_empty_line(&stdout))
+            .unwrap_or_else(|| format!("{} connection test failed.", service_label(service_id)))
+    };
+
+    OnboardingConnectionTestResult {
+        service_id: service_id.to_string(),
+        success,
+        status: if success {
+            "success".to_string()
+        } else {
+            "error".to_string()
+        },
+        summary,
+        details: build_connection_test_details(&stdout, &stderr),
+        trigger: trigger.to_string(),
+        tested_fingerprint: tested_fingerprint.to_string(),
+    }
+}
+
+fn build_connection_test_env_file_content(entries: &[(String, String)]) -> String {
+    let mut rendered = entries
+        .iter()
+        .map(|(key, value)| format_env_assignment(key, value))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    if !rendered.is_empty() {
+        rendered.push('\n');
+    }
+
+    rendered
+}
+
+fn write_connection_test_env_file(
+    service_id: &str,
+    entries: &[(String, String)],
+) -> Result<PathBuf, String> {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|error| format!("Failed to build temp env timestamp: {}", error))?
+        .as_nanos();
+    let env_path = std::env::temp_dir().join(format!(
+        "onboarding-connection-{}-{}-{}.env",
+        service_id,
+        std::process::id(),
+        unique
+    ));
+
+    fs::write(&env_path, build_connection_test_env_file_content(entries))
+        .map_err(|error| format!("Failed to write connection test env {:?}: {}", env_path, error))?;
+
+    Ok(env_path)
+}
+
+fn resolve_connection_test_script_path(service_id: &str) -> Result<PathBuf, String> {
+    if get_onboarding_connection_service_config(service_id).is_none() {
+        return Err(format!("Unsupported onboarding service: {}", service_id));
+    }
+
+    let script_path = get_skills_dir()
+        .join(service_id)
+        .join("scripts")
+        .join(CONNECTION_TEST_SCRIPT_NAME);
+
+    if !script_path.is_file() {
+        return Err(format!(
+            "Connection test script not found for {}: {}",
+            service_id,
+            script_path.display()
+        ));
+    }
+
+    Ok(script_path)
+}
+
+fn python_command_candidates() -> Vec<(&'static str, &'static [&'static str])> {
+    #[cfg(target_os = "windows")]
+    {
+        vec![("py", &["-3"]), ("python", &[])]
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        vec![("python3", &[]), ("python", &[])]
+    }
+}
+
+fn execute_connection_test_script(script_path: &Path, env_path: &Path) -> Result<Output, String> {
+    for (program, base_args) in python_command_candidates() {
+        let mut command = Command::new(program);
+        command.args(base_args);
+        command.arg(script_path);
+        command.arg("--env-file");
+        command.arg(env_path);
+
+        if let Some(script_dir) = script_path.parent() {
+            command.current_dir(script_dir);
+        }
+
+        match command.output() {
+            Ok(output) => return Ok(output),
+            Err(error) if error.kind() == ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(format!(
+                    "Failed to execute {} with {}: {}",
+                    script_path.display(),
+                    program,
+                    error
+                ));
+            }
+        }
+    }
+
+    Err("Python runtime not found. Install python3 or python to run bundled connection tests.".to_string())
+}
+
+fn run_onboarding_connection_test(
+    input: &OnboardingConnectionTestInput,
+) -> Result<OnboardingConnectionTestResult, String> {
+    let env_entries = build_connection_test_env_entries(&input.service_id, &input.credential_values)?;
+    let script_path = resolve_connection_test_script_path(&input.service_id)?;
+    let env_path = write_connection_test_env_file(&input.service_id, &env_entries)?;
+
+    let output = execute_connection_test_script(&script_path, &env_path);
+    let _ = fs::remove_file(&env_path);
+
+    Ok(build_onboarding_connection_test_result(
+        &input.service_id,
+        &input.trigger,
+        &input.tested_fingerprint,
+        output?,
+    ))
+}
+
 #[tauri::command]
 pub fn get_onboarding_state() -> SkillResult<OnboardingState> {
     SkillResult::Success { success: load_onboarding_state() }
@@ -314,6 +560,16 @@ pub fn set_onboarding_state(state: OnboardingState) -> SkillResult<OnboardingSta
 pub fn sync_onboarding_credentials(state: OnboardingState) -> SkillResult<bool> {
     match sync_onboarding_credentials_to_home_env(&state) {
         Ok(()) => SkillResult::Success { success: true },
+        Err(error) => SkillResult::Error { error },
+    }
+}
+
+#[tauri::command]
+pub fn test_onboarding_connection(
+    input: OnboardingConnectionTestInput,
+) -> SkillResult<OnboardingConnectionTestResult> {
+    match run_onboarding_connection_test(&input) {
+        Ok(result) => SkillResult::Success { success: result },
         Err(error) => SkillResult::Error { error },
     }
 }
@@ -551,7 +807,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::{
-        apply_onboarding_sync_plan, build_onboarding_install_preview,
+        apply_onboarding_sync_plan, build_connection_test_env_entries,
+        build_onboarding_connection_test_result, build_onboarding_install_preview,
+        resolve_connection_test_script_path,
         OnboardingAgentSyncResult,
     };
     use crate::models::{
@@ -562,6 +820,7 @@ mod tests {
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
+    use std::process::Output;
     use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -587,6 +846,124 @@ mod tests {
             Some(value) => std::env::set_var(key, value),
             None => std::env::remove_var(key),
         }
+    }
+
+    #[cfg(unix)]
+    fn success_status() -> std::process::ExitStatus {
+        use std::os::unix::process::ExitStatusExt;
+        std::process::ExitStatus::from_raw(0)
+    }
+
+    #[cfg(windows)]
+    fn success_status() -> std::process::ExitStatus {
+        use std::os::windows::process::ExitStatusExt;
+        std::process::ExitStatus::from_raw(0)
+    }
+
+    #[cfg(unix)]
+    fn failure_status() -> std::process::ExitStatus {
+        use std::os::unix::process::ExitStatusExt;
+        std::process::ExitStatus::from_raw(1)
+    }
+
+    #[cfg(windows)]
+    fn failure_status() -> std::process::ExitStatus {
+        use std::os::windows::process::ExitStatusExt;
+        std::process::ExitStatus::from_raw(1)
+    }
+
+    #[test]
+    fn onboarding_connection_test_builds_mail_env_entries() {
+        let entries = build_connection_test_env_entries(
+            "mail",
+            &HashMap::from([
+                ("mailUsername".to_string(), "pm@example.com".to_string()),
+                ("mailPassword".to_string(), "mail-secret".to_string()),
+            ]),
+        )
+        .expect("mail env entries");
+
+        assert!(entries.contains(&("MAIL_HOST".to_string(), "smtp.exmail.qq.com".to_string())));
+        assert!(entries.contains(&("MAIL_PORT".to_string(), "465".to_string())));
+        assert!(entries.contains(&("MAIL_USERNAME".to_string(), "pm@example.com".to_string())));
+        assert!(entries.contains(&("MAIL_PASSWORD".to_string(), "mail-secret".to_string())));
+        assert!(entries.contains(&("MAIL_FROM".to_string(), "pm@example.com".to_string())));
+        assert!(entries.contains(&("MAIL_USE_SSL".to_string(), "true".to_string())));
+        assert!(entries.contains(&("MAIL_USE_STARTTLS".to_string(), "false".to_string())));
+    }
+
+    #[test]
+    fn onboarding_connection_test_rejects_missing_required_fields() {
+        let error = build_connection_test_env_entries(
+            "jira",
+            &HashMap::from([("jiraUrl".to_string(), "https://jira.example.com".to_string())]),
+        )
+        .expect_err("missing jira credentials should fail");
+
+        assert!(error.contains("jiraUsername"));
+    }
+
+    #[test]
+    fn onboarding_connection_test_resolves_script_path_in_skills_dir() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("connection-script-path-data");
+        let skills_dir = temp_dir("connection-script-path-skills");
+        let script_path = skills_dir.join("jira").join("scripts").join("test_connection.py");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+        let original_skills_dir = std::env::var("SKILL_CONFIGURATOR_SKILLS_DIR").ok();
+
+        fs::create_dir_all(script_path.parent().expect("script dir")).expect("create script dir");
+        fs::write(&script_path, "print('ok')\n").expect("write script");
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        std::env::set_var("SKILL_CONFIGURATOR_SKILLS_DIR", &skills_dir);
+
+        let resolved = resolve_connection_test_script_path("jira").expect("resolve jira script");
+
+        restore_env_var("SKILL_CONFIGURATOR_SKILLS_DIR", original_skills_dir);
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(resolved, script_path);
+    }
+
+    #[test]
+    fn onboarding_connection_test_normalizes_success_output() {
+        let result = build_onboarding_connection_test_result(
+            "jira",
+            "automatic",
+            "fingerprint-1",
+            Output {
+                status: success_status(),
+                stdout: b"Jira login succeeded.\nstatus_code: 200\n".to_vec(),
+                stderr: Vec::new(),
+            },
+        );
+
+        assert!(result.success);
+        assert_eq!(result.status, "success");
+        assert_eq!(result.trigger, "automatic");
+        assert_eq!(result.tested_fingerprint, "fingerprint-1");
+        assert!(result.summary.contains("Jira login succeeded"));
+        assert!(result.details.contains("status_code: 200"));
+    }
+
+    #[test]
+    fn onboarding_connection_test_normalizes_failure_output() {
+        let result = build_onboarding_connection_test_result(
+            "mail",
+            "manual",
+            "fingerprint-2",
+            Output {
+                status: failure_status(),
+                stdout: Vec::new(),
+                stderr: b"Error: bad credentials\n".to_vec(),
+            },
+        );
+
+        assert!(!result.success);
+        assert_eq!(result.status, "error");
+        assert_eq!(result.trigger, "manual");
+        assert_eq!(result.tested_fingerprint, "fingerprint-2");
+        assert!(result.summary.contains("Error: bad credentials"));
     }
 
     #[test]

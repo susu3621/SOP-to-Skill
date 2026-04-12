@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act } from 'react'
 import userEvent from '@testing-library/user-event'
 import App from '../../App'
 import { buildGeneratedSkillIdsForRoleUseCase } from '../../content/workbuddy'
@@ -199,7 +200,7 @@ beforeEach(() => {
   mockControls.saveError = null
   mockControls.stateOverride = null
   invokeMock.mockReset()
-  invokeMock.mockImplementation(async (command: string, payload?: { state?: OnboardingState }) => {
+  invokeMock.mockImplementation(async (command: string, payload?: any) => {
     const currentState = mockControls.stateOverride ?? fixtures.onboardingState
     switch (command) {
       case 'list_skills':
@@ -220,6 +221,18 @@ beforeEach(() => {
           : { success: payload?.state ?? currentState }
       case 'sync_onboarding_credentials':
         return { success: true }
+      case 'test_onboarding_connection':
+        return {
+          success: {
+            service_id: payload?.input?.service_id ?? 'jira',
+            success: true,
+            status: 'success',
+            summary: '连接成功',
+            details: 'ok',
+            trigger: payload?.input?.trigger ?? 'manual',
+            tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
+          },
+        }
       case 'get_onboarding_install_preview':
         return { success: { ...fixtures.onboardingPreview, selected_install_skill_ids: currentState.selected_install_skill_ids, selected_agent_ids: currentState.selected_agent_ids } }
       case 'stage_onboarding_generated_packages':
@@ -238,6 +251,10 @@ function getSetStateCalls() {
 
 function getCredentialSyncCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_credentials')
+}
+
+function getConnectionTestCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'test_onboarding_connection')
 }
 
 function getSyncCalls() {
@@ -586,6 +603,93 @@ describe('OnboardingShell', () => {
     expect(screen.queryByText('账号凭证')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Confluence URL')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Jira URL')).not.toBeInTheDocument()
+  })
+
+  it('shows one test button per selected infrastructure service', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['jira', 'confluence'],
+      selected_install_skill_ids: ['jira', 'confluence'],
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    expect(screen.getAllByText('Jira').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Confluence').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: '测试连接' })).toHaveLength(2)
+  })
+
+  it('runs a connection test automatically after a service becomes complete', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['jira'],
+      selected_install_skill_ids: ['jira'],
+      credential_values: {
+        jiraUrl: 'https://jira.example.com',
+        jiraUsername: 'jira.user',
+        jiraPassword: '',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    vi.useFakeTimers()
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Jira 密码 / API Token'), {
+        target: { value: 'jira-secret' },
+      })
+
+      vi.advanceTimersByTime(800)
+      await Promise.resolve()
+    })
+
+    expect(getConnectionTestCalls()).toHaveLength(1)
+    const [, payload] = getConnectionTestCalls()[0] as [string, { input: { service_id: string; trigger: string } }]
+    expect(payload.input.service_id).toBe('jira')
+    expect(payload.input.trigger).toBe('automatic')
+
+    vi.useRealTimers()
+  })
+
+  it('runs a manual connection test for the selected service', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['jira'],
+      selected_install_skill_ids: ['jira'],
+      credential_values: {
+        jiraUrl: 'https://jira.example.com',
+        jiraUsername: 'jira.user',
+        jiraPassword: 'jira-secret',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('button', { name: '测试连接' }))
+
+    expect(getConnectionTestCalls().length).toBeGreaterThan(0)
+    const [, payload] = getConnectionTestCalls().at(-1) as [
+      string,
+      { input: { service_id: string; trigger: string } },
+    ]
+    expect(payload.input.service_id).toBe('jira')
+    expect(payload.input.trigger).toBe('manual')
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {

@@ -29,7 +29,7 @@ npm install -g @mermaid-js/mermaid-cli
 
 ```bash
 python3 scripts/render_mermaid.py -h
-python3 scripts/test_confluence_login.py
+python3 scripts/test_connection.py
 ```
 
 ### Check tests

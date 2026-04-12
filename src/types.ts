@@ -177,6 +177,44 @@ export interface OnboardingInstallCandidateGroup {
   test_skill_id: string
 }
 
+export type OnboardingConnectionTestTrigger = 'manual' | 'automatic'
+
+export type OnboardingConnectionTestStatus = 'idle' | 'pending' | 'success' | 'error'
+
+export interface OnboardingConnectionTestInput {
+  service_id: string
+  credential_values: Record<string, string>
+  trigger: OnboardingConnectionTestTrigger
+  tested_fingerprint: string
+}
+
+export interface OnboardingConnectionTestResult {
+  service_id: string
+  success: boolean
+  status: 'success' | 'error'
+  summary: string
+  details: string
+  trigger: string
+  tested_fingerprint: string
+}
+
+export interface OnboardingConnectionTestState {
+  status: OnboardingConnectionTestStatus
+  summary: string | null
+  details: string | null
+  last_trigger: OnboardingConnectionTestTrigger | null
+  tested_fingerprint: string | null
+  request_id: number
+}
+
+export interface OnboardingCredentialGroup {
+  service_id: string
+  service_name: string
+  service_description: string
+  fields: WizardField[]
+  required_field_ids: string[]
+}
+
 export interface OnboardingAgentSyncPreview {
   agent_id: string
   added_skill_ids: string[]

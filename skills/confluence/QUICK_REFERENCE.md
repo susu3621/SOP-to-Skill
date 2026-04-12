@@ -3,7 +3,7 @@
 ## Auth Probe
 
 ```bash
-python3 scripts/test_confluence_login.py
+python3 scripts/test_connection.py
 ```
 
 ## List Confluence Spaces

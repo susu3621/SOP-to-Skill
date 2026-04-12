@@ -68,8 +68,8 @@ python3 scripts/get_jira_issue.py PROJ-123
 ### 6. Verify authentication only
 
 ```bash
-python3 scripts/test_jira_login.py
-python3 scripts/test_jira_login.py --env-file /path/to/.env
+python3 scripts/test_connection.py
+python3 scripts/test_connection.py --env-file /path/to/.env
 ```
 
 ## Search Behavior
@@ -117,7 +117,7 @@ Each section is always printed. When Jira returns no data for a section, the scr
 scripts/
   jira_auth.py
   search_jira.py
-  test_jira_login.py
+  test_connection.py
   get_jira_issue.py
   requirements.txt
 

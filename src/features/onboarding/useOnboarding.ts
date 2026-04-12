@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import {
   buildGeneratedSkillIdsForRoleUseCase,
   createCustomRoleUseCaseContent,
   createDefaultRoleUseCaseContents,
   getCredentialFields,
+  getCredentialGroups,
   getRoleNameById,
   onboardingBaseSkills,
   onboardingSupportedAgents,
@@ -17,6 +18,11 @@ import type {
   OnboardingAgentState,
   OnboardingAgentSyncPreview,
   OnboardingBatchSyncResult,
+  OnboardingConnectionTestInput,
+  OnboardingConnectionTestResult,
+  OnboardingConnectionTestState,
+  OnboardingConnectionTestTrigger,
+  OnboardingCredentialGroup,
   OnboardingEditableUseCaseRecord,
   OnboardingInstallCandidateGroup,
   OnboardingInstallPreview,
@@ -31,6 +37,8 @@ interface SaveFeedback {
   kind: 'success' | 'error'
   message: string
 }
+
+const CONNECTION_TEST_DEBOUNCE_MS = 700
 
 interface OnboardingDirtyState {
   role: boolean
@@ -230,6 +238,43 @@ function isConfiguredText(value: string) {
   return value.trim().length > 0
 }
 
+function createIdleConnectionTestState(requestId = 0): OnboardingConnectionTestState {
+  return {
+    status: 'idle',
+    summary: null,
+    details: null,
+    last_trigger: null,
+    tested_fingerprint: null,
+    request_id: requestId,
+  }
+}
+
+function isCredentialGroupComplete(
+  group: OnboardingCredentialGroup,
+  credentialValues: Record<string, string>
+) {
+  return group.required_field_ids.every((fieldId) => isConfiguredText(credentialValues[fieldId] ?? ''))
+}
+
+function buildCredentialFingerprint(
+  group: OnboardingCredentialGroup,
+  credentialValues: Record<string, string>
+) {
+  return JSON.stringify(
+    group.fields.map((field) => ({
+      field_id: field.id,
+      value: credentialValues[field.id] ?? '',
+    }))
+  )
+}
+
+function pickCredentialValuesForGroup(
+  group: OnboardingCredentialGroup,
+  credentialValues: Record<string, string>
+) {
+  return Object.fromEntries(group.fields.map((field) => [field.id, credentialValues[field.id] ?? '']))
+}
+
 function isUseCaseConfigured(record: OnboardingEditableUseCaseRecord) {
   return isConfiguredText(record.description) && isConfiguredText(record.rules)
 }
@@ -356,6 +401,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   const [backendPreview, setBackendPreview] = useState<OnboardingInstallPreview | null>(null)
   const [saveFeedbacks, setSaveFeedbacks] = useState<Record<string, SaveFeedback>>({})
   const [savingScope, setSavingScope] = useState<string | null>(null)
+  const [connectionTests, setConnectionTests] = useState<Record<string, OnboardingConnectionTestState>>({})
+  const connectionTestRequestIdsRef = useRef<Record<string, number>>({})
+  const connectionTestTimeoutsRef = useRef<Record<string, number>>({})
 
   const selectedUseCases = useMemo(
     () => buildSelectedUseCases(state.role_use_case_contents),
@@ -392,9 +440,17 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     () => buildInstallCandidateGroups(state.selected_role_id, state.role_use_case_contents),
     [state.role_use_case_contents, state.selected_role_id]
   )
+  const credentialGroups = useMemo(
+    () => getCredentialGroups(state.selected_base_skill_ids, locale),
+    [locale, state.selected_base_skill_ids]
+  )
   const credentialFields = useMemo(
     () => getCredentialFields(state.selected_base_skill_ids),
     [state.selected_base_skill_ids]
+  )
+  const credentialGroupById = useMemo(
+    () => new Map(credentialGroups.map((group) => [group.service_id, group] as const)),
+    [credentialGroups]
   )
   const preview = useMemo<OnboardingInstallPreview>(() => {
     const fallbackPreview: OnboardingInstallPreview = {
@@ -509,6 +565,124 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     [locale]
   )
 
+  const clearConnectionTestTimeout = useCallback((serviceId: string) => {
+    const timeoutId = connectionTestTimeoutsRef.current[serviceId]
+    if (timeoutId != null) {
+      window.clearTimeout(timeoutId)
+      delete connectionTestTimeoutsRef.current[serviceId]
+    }
+  }, [])
+
+  const runConnectionTest = useCallback(
+    async (serviceId: string, trigger: OnboardingConnectionTestTrigger) => {
+      const group = credentialGroupById.get(serviceId)
+
+      if (!group) {
+        return
+      }
+
+      const requestId = (connectionTestRequestIdsRef.current[serviceId] ?? 0) + 1
+      connectionTestRequestIdsRef.current[serviceId] = requestId
+
+      if (!isCredentialGroupComplete(group, state.credential_values)) {
+        setConnectionTests((current) => ({
+          ...current,
+          [serviceId]: {
+            ...createIdleConnectionTestState(requestId),
+            summary: getOnboardingCopy(locale, onboardingCopy.connectionTestIncomplete),
+          },
+        }))
+        return
+      }
+
+      const testedFingerprint = buildCredentialFingerprint(group, state.credential_values)
+      setConnectionTests((current) => ({
+        ...current,
+        [serviceId]: {
+          status: 'pending',
+          summary: getOnboardingCopy(locale, onboardingCopy.connectionTestPending),
+          details: null,
+          last_trigger: trigger,
+          tested_fingerprint: testedFingerprint,
+          request_id: requestId,
+        },
+      }))
+
+      try {
+        const result = await invoke<SkillResult<OnboardingConnectionTestResult>>(
+          'test_onboarding_connection',
+          {
+            input: {
+              service_id: serviceId,
+              credential_values: pickCredentialValuesForGroup(group, state.credential_values),
+              trigger,
+              tested_fingerprint: testedFingerprint,
+            } satisfies OnboardingConnectionTestInput,
+          }
+        )
+
+        setConnectionTests((current) => {
+          if (current[serviceId]?.request_id !== requestId) {
+            return current
+          }
+
+          if (result.success) {
+            return {
+              ...current,
+              [serviceId]: {
+                status: result.success.success ? 'success' : 'error',
+                summary: result.success.summary,
+                details: result.success.details,
+                last_trigger: trigger,
+                tested_fingerprint: result.success.tested_fingerprint,
+                request_id: requestId,
+              },
+            }
+          }
+
+          return {
+            ...current,
+            [serviceId]: {
+              status: 'error',
+              summary: result.error ?? getOnboardingCopy(locale, onboardingCopy.connectionTestError),
+              details: null,
+              last_trigger: trigger,
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      } catch (error) {
+        setConnectionTests((current) => {
+          if (current[serviceId]?.request_id !== requestId) {
+            return current
+          }
+
+          return {
+            ...current,
+            [serviceId]: {
+              status: 'error',
+              summary: String(error),
+              details: null,
+              last_trigger: trigger,
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      }
+    },
+    [credentialGroupById, locale, state.credential_values]
+  )
+
+  const runManualConnectionTest = useCallback(
+    async (serviceId: string) => {
+      clearConnectionTestTimeout(serviceId)
+      await runConnectionTest(serviceId, 'manual')
+    },
+    [clearConnectionTestTimeout, runConnectionTest]
+  )
+
   useEffect(() => {
     let cancelled = false
 
@@ -583,6 +757,95 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       cancelled = true
     }
   }, [agentStates, selectedUseCases, state])
+
+  useEffect(() => {
+    return () => {
+      Object.values(connectionTestTimeoutsRef.current).forEach((timeoutId) => {
+        window.clearTimeout(timeoutId)
+      })
+      connectionTestTimeoutsRef.current = {}
+    }
+  }, [])
+
+  useEffect(() => {
+    const selectedServiceIds = new Set(credentialGroups.map((group) => group.service_id))
+
+    Object.keys(connectionTestTimeoutsRef.current).forEach((serviceId) => {
+      if (!selectedServiceIds.has(serviceId)) {
+        clearConnectionTestTimeout(serviceId)
+      }
+    })
+
+    setConnectionTests((current) => {
+      let changed = false
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([serviceId]) => {
+          const keep = selectedServiceIds.has(serviceId)
+          if (!keep) {
+            changed = true
+          }
+          return keep
+        })
+      )
+
+      credentialGroups.forEach((group) => {
+        const existing = next[group.service_id]
+        if (!existing) {
+          return
+        }
+
+        if (!isCredentialGroupComplete(group, state.credential_values)) {
+          const resetState = createIdleConnectionTestState(existing.request_id)
+          if (
+            existing.status !== resetState.status ||
+            existing.summary !== resetState.summary ||
+            existing.details !== resetState.details ||
+            existing.last_trigger !== resetState.last_trigger ||
+            existing.tested_fingerprint !== resetState.tested_fingerprint
+          ) {
+            next[group.service_id] = resetState
+            changed = true
+          }
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [clearConnectionTestTimeout, credentialGroups, state.credential_values])
+
+  useEffect(() => {
+    credentialGroups.forEach((group) => {
+      clearConnectionTestTimeout(group.service_id)
+
+      if (!isCredentialGroupComplete(group, state.credential_values)) {
+        return
+      }
+
+      const fingerprint = buildCredentialFingerprint(group, state.credential_values)
+      const currentState = connectionTests[group.service_id]
+
+      if (
+        currentState?.status === 'pending' &&
+        currentState.tested_fingerprint === fingerprint
+      ) {
+        return
+      }
+
+      if (currentState?.tested_fingerprint === fingerprint) {
+        return
+      }
+
+      connectionTestTimeoutsRef.current[group.service_id] = window.setTimeout(() => {
+        void runConnectionTest(group.service_id, 'automatic')
+      }, CONNECTION_TEST_DEBOUNCE_MS)
+    })
+  }, [
+    clearConnectionTestTimeout,
+    connectionTests,
+    credentialGroups,
+    runConnectionTest,
+    state.credential_values,
+  ])
 
   const persistState = useCallback(
     async (scope: string, nextState: OnboardingState) => {
@@ -945,7 +1208,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
 
   return {
     completion,
+    connectionTests,
     credentialFields,
+    credentialGroups,
     dirty,
     installCandidateGroups,
     loading,
@@ -965,6 +1230,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     toggleAgent,
     toggleBaseSkill,
     toggleInstallSkill,
+    runManualConnectionTest,
     updateCredentialValue,
     updateUseCaseContent,
     selectRole,

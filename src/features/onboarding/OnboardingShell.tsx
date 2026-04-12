@@ -527,7 +527,8 @@ interface OnboardingShellProps {
 export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: OnboardingShellProps) {
   const {
     completion,
-    credentialFields,
+    connectionTests,
+    credentialGroups,
     dirty,
     installCandidateGroups,
     loading,
@@ -543,6 +544,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     syncing,
     syncResult,
     startSync,
+    runManualConnectionTest,
     toggleAgent,
     toggleBaseSkill,
     getUseCaseSaveScope,
@@ -801,8 +803,10 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
               <p>{getOnboardingCopy(locale, onboardingCopy.credentialsBody)}</p>
               <CredentialsStep
                 locale={locale}
-                credentialFields={credentialFields}
+                connectionTests={connectionTests}
+                credentialGroups={credentialGroups}
                 credentialValues={state.credential_values}
+                onRunConnectionTest={runManualConnectionTest}
                 onUpdateCredential={updateCredentialValue}
               />
             </section>

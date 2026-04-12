@@ -6,7 +6,7 @@ This skill package is designed to be installed into an agent skill directory or 
 
 - `SKILL.md`: agent-facing usage guide with install-time path placeholders
 - `scripts/mail_auth.py`: shared `MAIL_*` config loader
-- `scripts/test_mail_login.py`: SMTP auth probe without sending mail
+- `scripts/test_connection.py`: SMTP auth probe without sending mail
 - `scripts/send_markdown_mail.py`: render Markdown and send an email
 - `examples/sample-email.md`: example Markdown email body
 
@@ -59,8 +59,8 @@ The scripts auto-discover `.env` and `.env.mail` while walking upward from the c
 ## Quick Start
 
 ```bash
-python3 scripts/test_mail_login.py
-python3 scripts/test_mail_login.py --env-file /path/to/.env
+python3 scripts/test_connection.py
+python3 scripts/test_connection.py --env-file /path/to/.env
 python3 scripts/send_markdown_mail.py examples/sample-email.md --subject "Status Update" --to alice@example.com
 python3 scripts/send_markdown_mail.py examples/sample-email.md --subject "Status Update" --to alice@example.com --cc bob@example.com
 python3 scripts/send_markdown_mail.py examples/sample-email.md --subject "Status Update" --to alice@example.com --bcc auditor@example.com

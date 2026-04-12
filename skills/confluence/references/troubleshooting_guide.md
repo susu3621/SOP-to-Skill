@@ -15,7 +15,7 @@ echo "$CONFLUENCE_PASSWORD"
 Then run:
 
 ```bash
-python3 scripts/test_confluence_login.py
+python3 scripts/test_connection.py
 ```
 
 If the login probe succeeds but another script fails, compare the exact API URL being used.

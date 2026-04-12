@@ -56,7 +56,7 @@ export CONFLUENCE_PASSWORD="your-password-or-api-token"
 ### 1. Verify direct login
 
 ```bash
-python3 scripts/test_confluence_login.py
+python3 scripts/test_connection.py
 ```
 
 ### 2. Search by keyword
@@ -154,7 +154,7 @@ scripts/
   render_mermaid.py
   search_confluence.py
   requirements.txt
-  test_confluence_login.py
+  test_connection.py
 
 examples/
   page_ids.example.txt

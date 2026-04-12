@@ -15,7 +15,7 @@ Use this skill for Confluence workflows including reading and writing. It suppor
 | Search Confluence with raw CQL       | MCP read tools                          | Use `confluence_search` for direct CQL queries                  |
 | Inspect page hierarchy               | MCP read tools                          | Use `confluence_get_page_children`                              |
 | Inspect labels/comments              | MCP read tools                          | Use `confluence_get_labels`, `confluence_get_comments`        |
-| Verify direct login                  | `scripts/test_confluence_login.py`    | Uses env vars only                                                |
+| Verify direct login                  | `scripts/test_connection.py`    | Uses env vars only                                                |
 | Download pages to Markdown           | `scripts/download_confluence.py`      | Handles attachments and child pages                               |
 | **Create page from Markdown**        | `scripts/create_confluence_page.py`   | Converts Markdown to Wiki Markup and creates page                 |
 | **Update existing page**             | `scripts/create_confluence_page.py`   | Use `--update` flag to update existing pages                      |
@@ -149,7 +149,7 @@ python3 $REPO_ROOT/.agents/skills/confluence/scripts/create_confluence_page.py \
 ### Verify Login Outside MCP
 
 ```bash
-python3 $REPO_ROOT/.agents/skills/confluence/scripts/test_confluence_login.py
+python3 $REPO_ROOT/.agents/skills/confluence/scripts/test_connection.py
 ```
 
 ### Convert Markdown to Wiki Markup
@@ -180,7 +180,7 @@ python3 $REPO_ROOT/.agents/skills/confluence/scripts/render_mermaid.py notes.md 
 | Script                                  | Purpose                                                      |
 | --------------------------------------- | ------------------------------------------------------------ |
 | `scripts/list_confluence_spaces.py`   | List Confluence spaces with optional filters and JSON output |
-| `scripts/test_confluence_login.py`    | Minimal direct login probe                                   |
+| `scripts/test_connection.py`    | Minimal direct login probe                                   |
 | `scripts/download_confluence.py`      | Download pages to Markdown                                   |
 | `scripts/search_confluence.py`        | Search by keyword, created date, and updated date            |
 | `scripts/create_confluence_page.py`   | Create or update pages from Markdown files                   |

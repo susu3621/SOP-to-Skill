@@ -197,7 +197,7 @@ const fixtures = vi.hoisted(() => {
 })
 
 vi.mock('@tauri-apps/api/core', () => ({
-  invoke: vi.fn(async (command: string, payload?: { preferredLocale?: 'zh-CN' | 'en-US' }) => {
+  invoke: vi.fn(async (command: string, payload?: any) => {
     switch (command) {
       case 'list_skills':
         return { success: [] }
@@ -224,6 +224,18 @@ vi.mock('@tauri-apps/api/core', () => ({
         return { success: fixtures.onboardingState }
       case 'set_onboarding_state':
         return { success: fixtures.onboardingState }
+      case 'test_onboarding_connection':
+        return {
+          success: {
+            service_id: payload?.input?.service_id ?? 'jira',
+            success: true,
+            status: 'success',
+            summary: '连接成功',
+            details: 'ok',
+            trigger: payload?.input?.trigger ?? 'manual',
+            tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
+          },
+        }
       case 'get_onboarding_install_preview':
         return { success: fixtures.onboardingPreview }
       case 'stage_onboarding_generated_packages':

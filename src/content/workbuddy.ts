@@ -5,7 +5,14 @@
  * Data is sourced from the shared configuration for consistency with test scripts.
  */
 
-import type { Locale, LocalizedText, WizardField, WizardOption, WizardStep } from '../types'
+import type {
+  Locale,
+  LocalizedText,
+  OnboardingCredentialGroup,
+  WizardField,
+  WizardOption,
+  WizardStep,
+} from '../types'
 import type { OnboardingEditableUseCaseRecord } from '../types'
 import config from '../shared/config.json'
 
@@ -735,8 +742,43 @@ Object.keys(typedConfig.baseSkills).forEach((skillKey) => {
   credentialFieldCache[skillKey] = buildCredentialFields(skillKey)
 })
 
+function buildCredentialGroup(
+  skillKey: string,
+  locale: Locale = 'zh-CN'
+): OnboardingCredentialGroup | null {
+  const skill = typedConfig.baseSkills[skillKey]
+  const fields = credentialFieldCache[skillKey] ?? []
+
+  if (!skill || fields.length === 0) {
+    return null
+  }
+
+  return {
+    service_id: skillKey,
+    service_name: readConfigText(skill.name, locale),
+    service_description: readConfigText(skill.description, locale),
+    fields,
+    required_field_ids: fields.filter((field) => field.required).map((field) => field.id),
+  }
+}
+
 export function getCredentialFields(baseSkills: string[]): WizardField[] {
   return baseSkills.flatMap((skill) => credentialFieldCache[skill] ?? [])
+}
+
+export function getCredentialGroups(
+  baseSkills: string[],
+  locale: Locale = 'zh-CN'
+): OnboardingCredentialGroup[] {
+  return Array.from(new Set(baseSkills))
+    .map((skillId) => buildCredentialGroup(skillId, locale))
+    .filter((group): group is OnboardingCredentialGroup => group != null)
+}
+
+export function getRequiredCredentialFieldIds(serviceId: string): string[] {
+  return (credentialFieldCache[serviceId] ?? [])
+    .filter((field) => field.required)
+    .map((field) => field.id)
 }
 
 export function getAgentLabels(agentApps: string[]): string[] {

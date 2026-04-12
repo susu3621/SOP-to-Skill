@@ -29,7 +29,7 @@ EXAMPLE_ENV = load_example_env_values()
 
 
 def load_script_module(module_name="jira_login_probe"):
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "test_jira_login.py"
+    script_path = Path(__file__).resolve().parents[1] / "scripts" / "test_connection.py"
     assert script_path.exists(), f"Expected script at {script_path}"
 
     spec = importlib.util.spec_from_file_location(module_name, script_path)
@@ -232,7 +232,7 @@ def test_main_uses_real_cli_arguments(monkeypatch):
     monkeypatch.setattr(
         module.sys,
         "argv",
-        ["test_jira_login.py", "--env-file", "/tmp/example.env"],
+        ["test_connection.py", "--env-file", "/tmp/example.env"],
     )
     monkeypatch.setattr(
         module,

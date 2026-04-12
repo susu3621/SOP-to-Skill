@@ -20,7 +20,7 @@ Use this skill for Jira workflows including reading and writing. It supports iss
 | **Set time estimates**          | `scripts/plan_jira_issue.py --original-estimate`          | Set original/remaining estimates                     |
 | **Assign to sprint**            | `scripts/plan_jira_issue.py --sprint`                     | Requires sprint ID                                   |
 | **Set fix versions**            | `scripts/plan_jira_issue.py --fix-versions`               | Set target release versions                          |
-| Verify Jira authentication only | `scripts/test_jira_login.py`                              | Checks login without running a search                |
+| Verify Jira authentication only | `scripts/test_connection.py`                              | Checks login without running a search                |
 | Inspect one issue in detail     | `scripts/get_jira_issue.py`                               | Fetches a single issue by key with sectioned context |
 
 ## Prerequisites
@@ -61,8 +61,8 @@ The detail script prints a header summary plus these sections:
 ### Verify Login
 
 ```bash
-python3 {{script_dir}}/test_jira_login.py
-python3 {{script_dir}}/test_jira_login.py --env-file /path/to/.env
+python3 {{script_dir}}/test_connection.py
+python3 {{script_dir}}/test_connection.py --env-file /path/to/.env
 ```
 
 ### Create Issue
@@ -210,7 +210,7 @@ python3 {{script_dir}}/plan_jira_issue.py --issue PROJ-123 \
 | `scripts/get_jira_issue.py`  | Fetch Jira issue details by key                             |
 | `scripts/manage_jira_issue.py` | Create or update Jira issues                              |
 | `scripts/plan_jira_issue.py` | Set timetracking, sprint, and fixVersions on issues       |
-| `scripts/test_jira_login.py` | Verify Jira authentication directly                         |
+| `scripts/test_connection.py` | Verify Jira authentication directly                         |
 
 ## Notes
 

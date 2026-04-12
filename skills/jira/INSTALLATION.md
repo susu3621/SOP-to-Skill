@@ -36,8 +36,8 @@ export JIRA_PASSWORD="your-password-or-api-token"
 ## 3. Test the commands
 
 ```bash
-python3 scripts/test_jira_login.py
-python3 scripts/test_jira_login.py --env-file /path/to/.env
+python3 scripts/test_connection.py
+python3 scripts/test_connection.py --env-file /path/to/.env
 python3 scripts/search_jira.py --keyword "authentication"
 python3 scripts/get_jira_issue.py PROJ-123
 ```

@@ -51,8 +51,8 @@ export MAIL_TIMEOUT_SECONDS="30"
 ## 3. Verify login
 
 ```bash
-python3 scripts/test_mail_login.py
-python3 scripts/test_mail_login.py --env-file /path/to/.env
+python3 scripts/test_connection.py
+python3 scripts/test_connection.py --env-file /path/to/.env
 ```
 
 ## 4. Send a test email
