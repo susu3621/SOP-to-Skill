@@ -4,23 +4,23 @@
     {
       "id": "confluence",
       "path": "skills/confluence",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "contentHash": "sha256:b50a0745481b43f58201073841417728de92dd2fec535f1e31d0c498b58a1c95"
+      "contentHash": "sha256:196a419e2d38fd3b1e36679034a7d35df08a17f1a775dd3049ac219150724cf8"
     },
     {
       "id": "jira",
       "path": "skills/jira",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "contentHash": "sha256:8ee3ef13bb988a0e0888e07e3ee9acbc9a0713cbc71806df48838a39319dda4f"
+      "contentHash": "sha256:fd40c63cdd9b8fce07c907a04829dc9561271bea3e416ab59f3585ba3f5d4b15"
     },
     {
       "id": "mail",
       "path": "skills/mail",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "contentHash": "sha256:8dd737be5ca6192c0207bb6671c78063cc0d0b780249fa6d0388c142be94e5fb"
+      "contentHash": "sha256:dfa3a568de53ca97799ddaf240dfd7a4ffb4163590e0f2093c8b39c8e297ab3a"
     }
   ]
 }

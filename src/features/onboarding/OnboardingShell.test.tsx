@@ -702,7 +702,9 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '测试连接' }))
 
     expect(getConnectionTestCalls().length).toBeGreaterThan(0)
-    const [, payload] = getConnectionTestCalls().at(-1) as [
+    const latestConnectionTestCall =
+      getConnectionTestCalls()[getConnectionTestCalls().length - 1]
+    const [, payload] = latestConnectionTestCall as [
       string,
       { input: { service_id: string; trigger: string } },
     ]

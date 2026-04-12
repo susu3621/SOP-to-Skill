@@ -6,39 +6,42 @@ Use local builds for day-to-day testing. Keep GitHub tag builds for formal relea
 
 ## Scope
 
-- `npm run tauri:build` only builds the current platform.
-- Build `dmg` on macOS.
-- Build `exe` on Windows.
+- `npm run build:local:mac` runs only on macOS and produces a local `dmg`.
+- `npm run build:local:win` runs only on Windows and produces a local `exe`.
+- The local scripts check the key prerequisites first, then call `npm run tauri:build`.
 - Use GitHub Actions when you need a tagged release with both platforms.
 
 ## macOS
 
 ### Requirements
 
-- Full Xcode installed
-- `xcode-select` pointing to Xcode
-- Xcode license accepted
+- Xcode Command Line Tools
 - Rust stable toolchain
 - Node.js and npm
 
 ### One-time setup
 
 ```bash
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-sudo xcodebuild -license accept
+xcode-select --install
 rustup default stable
+npm ci
 ```
 
 ### Build
 
 ```bash
-npm ci
-npm run tauri:build
+npm run build:local:mac
 ```
 
 ### Output
 
-The local desktop bundle is generated under:
+The script copies the local DMG into:
+
+```text
+artifacts/desktop/local/macos/
+```
+
+The original Tauri bundle output remains under:
 
 ```text
 src-tauri/target/release/bundle/dmg/
@@ -53,6 +56,7 @@ src-tauri/target/release/bundle/dmg/
 - Rust stable MSVC toolchain
 - Visual Studio 2022 Build Tools with VC++ tools
 - Microsoft Edge WebView2 Runtime
+- NSIS with `makensis` available on `PATH`
 
 ### One-time setup
 
@@ -65,27 +69,32 @@ rustup default stable-x86_64-pc-windows-msvc
 ```
 
 4. Install Visual Studio 2022 Build Tools and include the VC++ workload.
-5. Make sure WebView2 Runtime is present.
+5. Install NSIS and make sure `makensis` is present on `PATH`.
+6. Make sure WebView2 Runtime is present.
+7. Run:
+
+```powershell
+npm ci
+```
 
 ### Build
 
 ```powershell
-npm ci
-npm run tauri:build
+npm run build:local:win
 ```
 
 ### Output
 
-The local installer is generated under:
+The script copies the local installer into:
+
+```text
+artifacts\desktop\local\windows\
+```
+
+The original Tauri bundle output remains under:
 
 ```text
 src-tauri\target\release\bundle\nsis\
-```
-
-Example output:
-
-```text
-SOP-to-Skill_0.1.0_x64-setup.exe
 ```
 
 ## Release Builds

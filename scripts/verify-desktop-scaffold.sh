@@ -5,7 +5,14 @@ test -f src-tauri/tauri.macos.conf.json
 test -f src-tauri/tauri.windows.conf.json
 test -f src-tauri/tauri.release.conf.json
 test -f scripts/build-desktop-all.cjs
+test -f scripts/build-desktop-local.cjs
+test -f scripts/build-desktop-local.test.ts
+test -f scripts/lib/build-desktop-local.cjs
 ! rg -n '"targets"' src-tauri/tauri.conf.json
+rg -n '"build:local:mac"' package.json
+rg -n '"build:local:win"' package.json
+rg -n 'artifacts/desktop/local' LOCAL_BUILD.md
+rg -n 'artifacts/desktop/local' LOCAL_BUILD_CN.md
 rg -n 'createUpdaterArtifacts' src-tauri/tauri.release.conf.json
 rg -n 'latest/download/latest\.json' src-tauri/tauri.release.conf.json
 rg -n 'tauri-plugin-updater' src-tauri/Cargo.toml

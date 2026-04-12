@@ -6,39 +6,42 @@
 
 ## 适用范围
 
-- `npm run tauri:build` 只会构建当前平台。
-- `dmg` 需要在 macOS 上构建。
-- `exe` 需要在 Windows 上构建。
+- `npm run build:local:mac` 只在 macOS 上运行，产出本地 `dmg`。
+- `npm run build:local:win` 只在 Windows 上运行，产出本地 `exe`。
+- 本地脚本会先检查关键依赖，再调用 `npm run tauri:build`。
 - 如果要产出带版本 tag 的正式双平台 release，继续走 GitHub Actions。
 
 ## macOS
 
 ### 环境要求
 
-- 已安装完整 Xcode
-- `xcode-select` 已切到 Xcode
-- 已接受 Xcode license
+- 已安装 Xcode Command Line Tools
 - Rust stable toolchain
 - Node.js 和 npm
 
 ### 一次性准备
 
 ```bash
-sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-sudo xcodebuild -license accept
+xcode-select --install
 rustup default stable
+npm ci
 ```
 
 ### 构建命令
 
 ```bash
-npm ci
-npm run tauri:build
+npm run build:local:mac
 ```
 
 ### 产物位置
 
-本地 `dmg` 安装包会生成在：
+脚本最终会把本地 `dmg` 安装包复制到：
+
+```text
+artifacts/desktop/local/macos/
+```
+
+Tauri 原始输出仍然保留在：
 
 ```text
 src-tauri/target/release/bundle/dmg/
@@ -53,6 +56,7 @@ src-tauri/target/release/bundle/dmg/
 - Rust stable MSVC toolchain
 - Visual Studio 2022 Build Tools，并带 VC++ 工具链
 - Microsoft Edge WebView2 Runtime
+- NSIS，并且 `makensis` 在 `PATH` 中
 
 ### 一次性准备
 
@@ -65,27 +69,32 @@ rustup default stable-x86_64-pc-windows-msvc
 ```
 
 4. 安装 Visual Studio 2022 Build Tools，并勾选 VC++ workload。
-5. 确认 WebView2 Runtime 已安装。
+5. 安装 NSIS，并确认 `makensis` 可执行。
+6. 确认 WebView2 Runtime 已安装。
+7. 执行：
+
+```powershell
+npm ci
+```
 
 ### 构建命令
 
 ```powershell
-npm ci
-npm run tauri:build
+npm run build:local:win
 ```
 
 ### 产物位置
 
-本地 `exe` 安装包会生成在：
+脚本最终会把本地 `exe` 安装包复制到：
+
+```text
+artifacts\desktop\local\windows\
+```
+
+Tauri 原始输出仍然保留在：
 
 ```text
 src-tauri\target\release\bundle\nsis\
-```
-
-例如：
-
-```text
-SOP-to-Skill_0.1.0_x64-setup.exe
 ```
 
 ## 正式 Release
