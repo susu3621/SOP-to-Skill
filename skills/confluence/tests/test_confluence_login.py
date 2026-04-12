@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
 from base64 import b64encode
@@ -241,6 +242,39 @@ def test_main_returns_zero_for_success(monkeypatch, capsys):
     assert exit_code == 0
     assert "Confluence login succeeded." in captured.out
     assert f"display_name: {GENERIC_DISPLAY_NAME}" in captured.out
+
+
+def test_main_supports_test_only_json_failure_output(monkeypatch, capsys):
+    module = load_script_module("confluence_login_probe_json")
+
+    monkeypatch.setattr(
+        module,
+        "load_config_from_env",
+        lambda env_file=None: {
+            "base_url": EXAMPLE_CLOUD_BASE_URL,
+            "api_url": EXAMPLE_CLOUD_API_URL,
+            "username": EXAMPLE_ENV["CONFLUENCE_USERNAME"],
+            "password": EXAMPLE_ENV["CONFLUENCE_API_TOKEN"],
+        },
+    )
+    monkeypatch.setattr(
+        module,
+        "probe_confluence_login",
+        lambda **_: (_ for _ in ()).throw(ValueError("HTTP 401: invalid token")),
+    )
+
+    exit_code = module.main(["--test-only", "--json"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 1
+    assert json.loads(captured.out) == {
+        "service_id": "confluence",
+        "success": False,
+        "status": "error",
+        "summary": "Confluence 连接失败",
+        "details": "HTTP 401: invalid token",
+    }
+    assert captured.err == ""
 
 
 def test_main_uses_real_cli_arguments(monkeypatch):

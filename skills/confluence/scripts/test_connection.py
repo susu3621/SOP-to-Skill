@@ -25,6 +25,8 @@ from urllib.request import Request, urlopen
 
 
 ENV_FILE_VARIANTS = [".env", ".env.confluence", ".env.jira", ".env.atlassian"]
+SERVICE_ID = "confluence"
+SERVICE_LABEL = "Confluence"
 
 
 def require_env_var(name: str) -> str:
@@ -142,7 +144,54 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional path to a .env file containing CONFLUENCE_URL/CONFLUENCE_USERNAME/CONFLUENCE_PASSWORD",
     )
+    parser.add_argument(
+        "--test-only",
+        action="store_true",
+        help="Only run the connection probe and skip any side effects.",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print a normalized JSON result payload.",
+    )
     return parser
+
+
+def format_success_details(result: Dict[str, object]) -> str:
+    return "\n".join(
+        [
+            f"status_code: {result['status_code']}",
+            f"display_name: {result['display_name']}",
+            f"account_id: {result['account_id']}",
+            f"email: {result['email']}",
+            f"user_type: {result['user_type']}",
+        ]
+    )
+
+
+def build_result(success: bool, summary: str, details: str) -> Dict[str, object]:
+    return {
+        "service_id": SERVICE_ID,
+        "success": success,
+        "status": "success" if success else "error",
+        "summary": summary,
+        "details": details,
+    }
+
+
+def emit_json_result(result: Dict[str, object]) -> None:
+    print(json.dumps(result, ensure_ascii=False))
+
+
+def print_human_success(config: Dict[str, str], result: Dict[str, object]) -> None:
+    print(f"{SERVICE_LABEL} login succeeded.")
+    print(f"base_url: {config['base_url']}")
+    print(f"api_url: {config['api_url']}")
+    print(format_success_details(result))
+
+
+def print_human_failure(message: str) -> None:
+    print(message, file=sys.stderr)
 
 
 def main(argv=None) -> int:
@@ -156,26 +205,39 @@ def main(argv=None) -> int:
             username=config["username"],
             password=config["password"],
         )
+        payload = build_result(True, f"{SERVICE_LABEL} 连接成功", format_success_details(result))
     except ValueError as exc:
-        print(f"Configuration error: {exc}", file=sys.stderr)
+        payload = build_result(False, f"{SERVICE_LABEL} 连接失败", str(exc))
+        if args.json:
+            emit_json_result(payload)
+        else:
+            print_human_failure(f"Configuration error: {exc}")
         return 1
     except HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")[:500]
-        print(f"Login failed with HTTP {exc.code}", file=sys.stderr)
-        print(body, file=sys.stderr)
+        details = f"HTTP {exc.code}"
+        if body.strip():
+            details = f"{details}: {body.strip()}"
+        payload = build_result(False, f"{SERVICE_LABEL} 连接失败", details)
+        if args.json:
+            emit_json_result(payload)
+        else:
+            print_human_failure(f"Login failed with HTTP {exc.code}")
+            if body.strip():
+                print_human_failure(body.strip())
         return 1
     except URLError as exc:
-        print(f"Request failed: {exc}", file=sys.stderr)
+        payload = build_result(False, f"{SERVICE_LABEL} 连接失败", f"Request failed: {exc}")
+        if args.json:
+            emit_json_result(payload)
+        else:
+            print_human_failure(f"Request failed: {exc}")
         return 1
 
-    print("Confluence login succeeded.")
-    print(f"base_url: {config['base_url']}")
-    print(f"api_url: {config['api_url']}")
-    print(f"status_code: {result['status_code']}")
-    print(f"display_name: {result['display_name']}")
-    print(f"account_id: {result['account_id']}")
-    print(f"email: {result['email']}")
-    print(f"user_type: {result['user_type']}")
+    if args.json:
+        emit_json_result(payload)
+    else:
+        print_human_success(config, result)
     return 0
 
 

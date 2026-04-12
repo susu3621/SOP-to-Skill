@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import smtplib
 
@@ -133,6 +134,36 @@ def test_main_returns_zero_for_success(monkeypatch, capsys):
     assert "Mail login succeeded." in captured.out
     assert "transport: ssl" in captured.out
     assert "password" not in captured.out.lower()
+
+
+def test_main_supports_test_only_json_output(monkeypatch, capsys):
+    module = load_script_module("mail_login_probe_json")
+
+    monkeypatch.setattr(module, "load_mail_config", lambda env_file=None: sample_config())
+    monkeypatch.setattr(
+        module,
+        "probe_mail_login",
+        lambda **_: {
+            "transport": "ssl",
+            "host": "smtp.example.com",
+            "port": 465,
+            "username": "bot@example.com",
+            "mail_from": "bot@example.com",
+        },
+    )
+
+    exit_code = module.main(["--test-only", "--json"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert json.loads(captured.out) == {
+        "service_id": "mail",
+        "success": True,
+        "status": "success",
+        "summary": "Mail 连接成功",
+        "details": "host: smtp.example.com\nport: 465\nusername: bot@example.com\nmail_from: bot@example.com\ntransport: ssl",
+    }
+    assert captured.err == ""
 
 
 def test_main_uses_real_cli_arguments(monkeypatch):

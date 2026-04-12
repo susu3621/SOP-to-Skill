@@ -38,8 +38,6 @@ interface SaveFeedback {
   message: string
 }
 
-const CONNECTION_TEST_DEBOUNCE_MS = 700
-
 interface OnboardingDirtyState {
   role: boolean
   baseSkills: boolean
@@ -403,7 +401,6 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   const [savingScope, setSavingScope] = useState<string | null>(null)
   const [connectionTests, setConnectionTests] = useState<Record<string, OnboardingConnectionTestState>>({})
   const connectionTestRequestIdsRef = useRef<Record<string, number>>({})
-  const connectionTestTimeoutsRef = useRef<Record<string, number>>({})
 
   const selectedUseCases = useMemo(
     () => buildSelectedUseCases(state.role_use_case_contents),
@@ -565,17 +562,17 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     [locale]
   )
 
-  const clearConnectionTestTimeout = useCallback((serviceId: string) => {
-    const timeoutId = connectionTestTimeoutsRef.current[serviceId]
-    if (timeoutId != null) {
-      window.clearTimeout(timeoutId)
-      delete connectionTestTimeoutsRef.current[serviceId]
-    }
-  }, [])
-
   const runConnectionTest = useCallback(
-    async (serviceId: string, trigger: OnboardingConnectionTestTrigger) => {
-      const group = credentialGroupById.get(serviceId)
+    async (
+      serviceId: string,
+      trigger: OnboardingConnectionTestTrigger,
+      options?: {
+        credentialValues?: Record<string, string>
+        group?: OnboardingCredentialGroup
+      }
+    ) => {
+      const group = options?.group ?? credentialGroupById.get(serviceId)
+      const credentialValues = options?.credentialValues ?? state.credential_values
 
       if (!group) {
         return
@@ -584,7 +581,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       const requestId = (connectionTestRequestIdsRef.current[serviceId] ?? 0) + 1
       connectionTestRequestIdsRef.current[serviceId] = requestId
 
-      if (!isCredentialGroupComplete(group, state.credential_values)) {
+      if (!isCredentialGroupComplete(group, credentialValues)) {
         setConnectionTests((current) => ({
           ...current,
           [serviceId]: {
@@ -595,7 +592,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
         return
       }
 
-      const testedFingerprint = buildCredentialFingerprint(group, state.credential_values)
+      const testedFingerprint = buildCredentialFingerprint(group, credentialValues)
       setConnectionTests((current) => ({
         ...current,
         [serviceId]: {
@@ -614,7 +611,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
           {
             input: {
               service_id: serviceId,
-              credential_values: pickCredentialValuesForGroup(group, state.credential_values),
+              credential_values: pickCredentialValuesForGroup(group, credentialValues),
               trigger,
               tested_fingerprint: testedFingerprint,
             } satisfies OnboardingConnectionTestInput,
@@ -677,10 +674,27 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
 
   const runManualConnectionTest = useCallback(
     async (serviceId: string) => {
-      clearConnectionTestTimeout(serviceId)
       await runConnectionTest(serviceId, 'manual')
     },
-    [clearConnectionTestTimeout, runConnectionTest]
+    [runConnectionTest]
+  )
+
+  const runAutomaticConnectionTestsForState = useCallback(
+    (persistedState: OnboardingState) => {
+      const persistedGroups = getCredentialGroups(persistedState.selected_base_skill_ids, locale)
+
+      void Promise.allSettled(
+        persistedGroups
+          .filter((group) => isCredentialGroupComplete(group, persistedState.credential_values))
+          .map((group) =>
+            runConnectionTest(group.service_id, 'automatic', {
+              credentialValues: persistedState.credential_values,
+              group,
+            })
+          )
+      )
+    },
+    [locale, runConnectionTest]
   )
 
   useEffect(() => {
@@ -759,22 +773,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   }, [agentStates, selectedUseCases, state])
 
   useEffect(() => {
-    return () => {
-      Object.values(connectionTestTimeoutsRef.current).forEach((timeoutId) => {
-        window.clearTimeout(timeoutId)
-      })
-      connectionTestTimeoutsRef.current = {}
-    }
-  }, [])
-
-  useEffect(() => {
     const selectedServiceIds = new Set(credentialGroups.map((group) => group.service_id))
-
-    Object.keys(connectionTestTimeoutsRef.current).forEach((serviceId) => {
-      if (!selectedServiceIds.has(serviceId)) {
-        clearConnectionTestTimeout(serviceId)
-      }
-    })
 
     setConnectionTests((current) => {
       let changed = false
@@ -794,8 +793,22 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
           return
         }
 
-        if (!isCredentialGroupComplete(group, state.credential_values)) {
-          const resetState = createIdleConnectionTestState(existing.request_id)
+        const isComplete = isCredentialGroupComplete(group, state.credential_values)
+        const nextFingerprint = isComplete
+          ? buildCredentialFingerprint(group, state.credential_values)
+          : null
+        const shouldReset =
+          !isComplete ||
+          (existing.tested_fingerprint != null && existing.tested_fingerprint !== nextFingerprint) ||
+          (isComplete && existing.tested_fingerprint == null && existing.summary != null)
+
+        if (shouldReset) {
+          const resetRequestId = Math.max(
+            existing.request_id,
+            connectionTestRequestIdsRef.current[group.service_id] ?? 0
+          ) + 1
+          connectionTestRequestIdsRef.current[group.service_id] = resetRequestId
+          const resetState = createIdleConnectionTestState(resetRequestId)
           if (
             existing.status !== resetState.status ||
             existing.summary !== resetState.summary ||
@@ -811,41 +824,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
 
       return changed ? next : current
     })
-  }, [clearConnectionTestTimeout, credentialGroups, state.credential_values])
-
-  useEffect(() => {
-    credentialGroups.forEach((group) => {
-      clearConnectionTestTimeout(group.service_id)
-
-      if (!isCredentialGroupComplete(group, state.credential_values)) {
-        return
-      }
-
-      const fingerprint = buildCredentialFingerprint(group, state.credential_values)
-      const currentState = connectionTests[group.service_id]
-
-      if (
-        currentState?.status === 'pending' &&
-        currentState.tested_fingerprint === fingerprint
-      ) {
-        return
-      }
-
-      if (currentState?.tested_fingerprint === fingerprint) {
-        return
-      }
-
-      connectionTestTimeoutsRef.current[group.service_id] = window.setTimeout(() => {
-        void runConnectionTest(group.service_id, 'automatic')
-      }, CONNECTION_TEST_DEBOUNCE_MS)
-    })
-  }, [
-    clearConnectionTestTimeout,
-    connectionTests,
-    credentialGroups,
-    runConnectionTest,
-    state.credential_values,
-  ])
+  }, [credentialGroups, state.credential_values])
 
   const persistState = useCallback(
     async (scope: string, nextState: OnboardingState) => {
@@ -901,6 +880,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
             ...current,
             [scope]: feedback,
           }))
+          if (scope === 'baseSkills' && !errorMessage) {
+            runAutomaticConnectionTestsForState(normalizedState)
+          }
           return {
             state: normalizedState,
             error: errorMessage,
@@ -936,7 +918,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
         setSavingScope((current) => (current === scope ? null : current))
       }
     },
-    [locale]
+    [locale, runAutomaticConnectionTestsForState]
   )
 
   const saveState = useCallback(

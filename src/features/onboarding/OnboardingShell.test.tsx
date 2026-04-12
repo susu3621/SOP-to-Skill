@@ -184,6 +184,10 @@ const fixtures = vi.hoisted(() => {
 const mockControls = vi.hoisted(() => ({
   saveError: null as string | null,
   stateOverride: null as OnboardingState | null,
+  connectionTestResults: {} as Record<
+    string,
+    { success: boolean; summary: string; details: string }
+  >,
 }))
 
 const invokeMock = vi.hoisted(() => vi.fn())
@@ -199,6 +203,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 beforeEach(() => {
   mockControls.saveError = null
   mockControls.stateOverride = null
+  mockControls.connectionTestResults = {}
   invokeMock.mockReset()
   invokeMock.mockImplementation(async (command: string, payload?: any) => {
     const currentState = mockControls.stateOverride ?? fixtures.onboardingState
@@ -222,17 +227,26 @@ beforeEach(() => {
       case 'sync_onboarding_credentials':
         return { success: true }
       case 'test_onboarding_connection':
+        {
+          const serviceId = payload?.input?.service_id ?? 'jira'
+          const configuredResult = mockControls.connectionTestResults[serviceId] ?? {
+            success: true,
+            summary: '连接成功',
+            details: '',
+          }
+
         return {
           success: {
-            service_id: payload?.input?.service_id ?? 'jira',
-            success: true,
-            status: 'success',
-            summary: '连接成功',
-            details: 'ok',
+            service_id: serviceId,
+            success: configuredResult.success,
+            status: configuredResult.success ? 'success' : 'error',
+            summary: configuredResult.summary,
+            details: configuredResult.details,
             trigger: payload?.input?.trigger ?? 'manual',
             tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
           },
         }
+      }
       case 'get_onboarding_install_preview':
         return { success: { ...fixtures.onboardingPreview, selected_install_skill_ids: currentState.selected_install_skill_ids, selected_agent_ids: currentState.selected_agent_ids } }
       case 'stage_onboarding_generated_packages':
@@ -625,7 +639,7 @@ describe('OnboardingShell', () => {
     expect(screen.getAllByRole('button', { name: '测试连接' })).toHaveLength(2)
   })
 
-  it('runs a connection test automatically after a service becomes complete', async () => {
+  it('runs automatic connection tests after saving completed credentials', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
       selected_base_skill_ids: ['jira'],
@@ -644,22 +658,26 @@ describe('OnboardingShell', () => {
     expect(await waitForOnboardingHome()).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
-    vi.useFakeTimers()
-    await act(async () => {
-      fireEvent.change(screen.getByLabelText('Jira 密码 / API Token'), {
-        target: { value: 'jira-secret' },
-      })
+    await user.clear(screen.getByLabelText('Jira 密码 / API Token'))
+    await user.type(screen.getByLabelText('Jira 密码 / API Token'), 'jira-secret')
 
-      vi.advanceTimersByTime(800)
+    expect(getConnectionTestCalls()).toHaveLength(0)
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    await act(async () => {
       await Promise.resolve()
     })
 
+    expect(getSetStateCalls()).toHaveLength(1)
+    expect(getCredentialSyncCalls()).toHaveLength(1)
     expect(getConnectionTestCalls()).toHaveLength(1)
-    const [, payload] = getConnectionTestCalls()[0] as [string, { input: { service_id: string; trigger: string } }]
+    const [, payload] = getConnectionTestCalls()[0] as [
+      string,
+      { input: { service_id: string; trigger: string } },
+    ]
     expect(payload.input.service_id).toBe('jira')
     expect(payload.input.trigger).toBe('automatic')
-
-    vi.useRealTimers()
   })
 
   it('runs a manual connection test for the selected service', async () => {
@@ -690,6 +708,48 @@ describe('OnboardingShell', () => {
     ]
     expect(payload.input.service_id).toBe('jira')
     expect(payload.input.trigger).toBe('manual')
+  })
+
+  it('shows success and failure results inline with status symbols and error details', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['jira', 'confluence'],
+      selected_install_skill_ids: ['jira', 'confluence'],
+      credential_values: {
+        jiraUrl: 'https://jira.example.com',
+        jiraUsername: 'jira.user',
+        jiraPassword: 'jira-secret',
+        confluenceUrl: 'https://wiki.example.com',
+        confluenceUsername: 'wiki.user',
+        confluencePassword: 'wiki-secret',
+      },
+    }
+    mockControls.connectionTestResults = {
+      jira: {
+        success: true,
+        summary: 'Jira 连接成功',
+        details: '',
+      },
+      confluence: {
+        success: false,
+        summary: 'Confluence 连接失败',
+        details: 'HTTP 401: invalid token',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getAllByRole('button', { name: '测试连接' })[0])
+    await user.click(screen.getAllByRole('button', { name: '测试连接' })[1])
+
+    expect(await screen.findByText('✅ 成功')).toBeInTheDocument()
+    expect(await screen.findByText('❌ 失败')).toBeInTheDocument()
+    expect(screen.getByText('HTTP 401: invalid token')).toBeInTheDocument()
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {

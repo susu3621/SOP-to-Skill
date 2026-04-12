@@ -126,6 +126,10 @@ export function CredentialsStep({
                 </p>
               )}
 
+              {connectionTest?.status === 'error' && connectionTest.details && (
+                <p className="error">{connectionTest.details}</p>
+              )}
+
               {triggerText && <p className="muted">{triggerText}</p>}
             </div>
           </section>

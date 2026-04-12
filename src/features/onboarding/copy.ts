@@ -204,16 +204,16 @@ export const onboardingCopy = {
     'en-US': 'Testing...',
   },
   connectionTestSuccess: {
-    'zh-CN': '连接成功',
-    'en-US': 'Connection succeeded',
+    'zh-CN': '✅ 成功',
+    'en-US': '✅ Success',
   },
   connectionTestError: {
-    'zh-CN': '连接失败',
-    'en-US': 'Connection failed',
+    'zh-CN': '❌ 失败',
+    'en-US': '❌ Failed',
   },
   connectionTestAutoHint: {
-    'zh-CN': '填完必填项后会自动测试，也可以手动点击测试连接。',
-    'en-US': 'The app tests automatically after required fields are complete, and you can also run it manually.',
+    'zh-CN': '保存设置后会自动测试，也可以手动点击测试连接。',
+    'en-US': 'The app tests automatically after you save settings, and you can also run it manually.',
   },
   connectionTestIncomplete: {
     'zh-CN': '请先填写当前服务的必填项。',

@@ -79,6 +79,15 @@ pub struct OnboardingConnectionTestResult {
     pub tested_fingerprint: String,
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+struct ScriptConnectionTestResult {
+    service_id: String,
+    success: bool,
+    status: String,
+    summary: String,
+    details: String,
+}
+
 struct OnboardingConnectionServiceConfig {
     service_id: &'static str,
     required_field_ids: &'static [&'static str],
@@ -400,9 +409,25 @@ fn build_onboarding_connection_test_result(
     tested_fingerprint: &str,
     output: Output,
 ) -> OnboardingConnectionTestResult {
-    let success = output.status.success();
     let stdout = trim_process_output(&output.stdout);
     let stderr = trim_process_output(&output.stderr);
+    if let Ok(parsed) = parse_json_with_optional_utf8_bom::<ScriptConnectionTestResult>(&stdout) {
+        return OnboardingConnectionTestResult {
+            service_id: service_id.to_string(),
+            success: parsed.success,
+            status: if parsed.success {
+                "success".to_string()
+            } else {
+                "error".to_string()
+            },
+            summary: parsed.summary,
+            details: parsed.details,
+            trigger: trigger.to_string(),
+            tested_fingerprint: tested_fingerprint.to_string(),
+        };
+    }
+
+    let success = output.status.success();
     let summary = if success {
         first_non_empty_line(&stdout)
             .or_else(|| first_non_empty_line(&stderr))
@@ -501,6 +526,8 @@ fn execute_connection_test_script(script_path: &Path, env_path: &Path) -> Result
         let mut command = Command::new(program);
         command.args(base_args);
         command.arg(script_path);
+        command.arg("--test-only");
+        command.arg("--json");
         command.arg("--env-file");
         command.arg(env_path);
 
@@ -947,6 +974,29 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_connection_test_parses_json_success_output() {
+        let result = build_onboarding_connection_test_result(
+            "jira",
+            "automatic",
+            "fingerprint-1",
+            Output {
+                status: success_status(),
+                stdout: "{\"service_id\":\"jira\",\"success\":true,\"status\":\"success\",\"summary\":\"Jira 连接成功\",\"details\":\"status_code: 200\"}"
+                    .as_bytes()
+                    .to_vec(),
+                stderr: Vec::new(),
+            },
+        );
+
+        assert!(result.success);
+        assert_eq!(result.status, "success");
+        assert_eq!(result.summary, "Jira 连接成功");
+        assert_eq!(result.details, "status_code: 200");
+        assert_eq!(result.trigger, "automatic");
+        assert_eq!(result.tested_fingerprint, "fingerprint-1");
+    }
+
+    #[test]
     fn onboarding_connection_test_normalizes_failure_output() {
         let result = build_onboarding_connection_test_result(
             "mail",
@@ -964,6 +1014,29 @@ mod tests {
         assert_eq!(result.trigger, "manual");
         assert_eq!(result.tested_fingerprint, "fingerprint-2");
         assert!(result.summary.contains("Error: bad credentials"));
+    }
+
+    #[test]
+    fn onboarding_connection_test_parses_json_failure_output() {
+        let result = build_onboarding_connection_test_result(
+            "confluence",
+            "manual",
+            "fingerprint-2",
+            Output {
+                status: failure_status(),
+                stdout: "{\"service_id\":\"confluence\",\"success\":false,\"status\":\"error\",\"summary\":\"Confluence 连接失败\",\"details\":\"HTTP 401: invalid token\"}"
+                    .as_bytes()
+                    .to_vec(),
+                stderr: Vec::new(),
+            },
+        );
+
+        assert!(!result.success);
+        assert_eq!(result.status, "error");
+        assert_eq!(result.summary, "Confluence 连接失败");
+        assert_eq!(result.details, "HTTP 401: invalid token");
+        assert_eq!(result.trigger, "manual");
+        assert_eq!(result.tested_fingerprint, "fingerprint-2");
     }
 
     #[test]
