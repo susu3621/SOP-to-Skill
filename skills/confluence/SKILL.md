@@ -23,14 +23,34 @@ Use this skill for Confluence workflows including reading and writing. It suppor
 | Convert Markdown to Wiki Markup      | `scripts/convert_markdown_to_wiki.py` | Local conversion only                                             |
 | Render Mermaid diagrams              | `scripts/render_mermaid.py`           | Produces PNG/SVG/PDF locally                                      |
 
-## Prerequisites
+## Required Environment
 
+- `python3`
+- Python packages from `scripts/requirements.txt`
+- Confluence credentials discoverable via `scripts/confluence_auth.py`
+- Supported config sources: `CONFLUENCE_*` environment variables, `.env`, `.env.confluence`, `.env.jira`, `.env.atlassian`, parent directories, or `--env-file`
 - Optional: Atlassian MCP server for search and read-only page inspection
-- Required for script-based access:
-  - Confluence credentials discoverable via `scripts/confluence_auth.py`
-  - Supported sources: `CONFLUENCE_*` environment variables, `.env`, `.env.confluence`, `.env.jira`, `.env.atlassian`, parent directories, or `--env-file`
-- Python dependencies from `scripts/requirements.txt`
-- Optional for Mermaid rendering: `@mermaid-js/mermaid-cli`
+- Optional for Mermaid rendering: Node.js plus `@mermaid-js/mermaid-cli`
+
+Check before running script workflows:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+If you need Mermaid rendering, also verify:
+
+```bash
+npx -y @mermaid-js/mermaid-cli -h
+```
+
+## Missing Environment Handling
+
+1. If `python3`, `pip`, `npx`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
+2. If a required tool is missing, ask the user for confirmation before installing anything.
+3. After the user confirms, install the missing dependency automatically with the machine's package manager or `python3 -m pip install -r {{script_dir}}/requirements.txt`.
+4. Re-run the environment checks and `python3 {{script_dir}}/test_connection.py` before continuing with search, download, or page-write commands.
 
 ## Core Workflows
 

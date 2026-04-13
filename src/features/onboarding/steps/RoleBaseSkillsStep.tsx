@@ -37,9 +37,9 @@ export function RoleBaseSkillsStep({
                 type="radio"
                 onChange={() => onSelectRole(role.id)}
               />
-              <span>
-                <span>{role.name}</span>
-                <span className="field-option__hint">{role.description}</span>
+              <span className="field-option__content">
+                <span className="field-option__title">{role.name}</span>
+                <span className="field-option__hint field-option__body">{role.description}</span>
               </span>
             </label>
           ))}
@@ -57,9 +57,9 @@ export function RoleBaseSkillsStep({
                 type="checkbox"
                 onChange={() => onToggleBaseSkill(skill.id)}
               />
-              <span>
-                <span>{skill.name}</span>
-                <span className="field-option__hint">{skill.description}</span>
+              <span className="field-option__content">
+                <span className="field-option__title">{skill.name}</span>
+                <span className="field-option__hint field-option__body">{skill.description}</span>
               </span>
             </label>
           ))}

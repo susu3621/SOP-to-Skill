@@ -352,9 +352,9 @@ function BaseSkillSelectionPanel({
                     type="checkbox"
                     onChange={() => onToggleBaseSkill(skill.id)}
                   />
-                  <span>
-                    <span>{skill.name}</span>
-                    <span className="field-option__hint">{skill.description}</span>
+                  <span className="field-option__content">
+                    <span className="field-option__title">{skill.name}</span>
+                    <span className="field-option__hint field-option__body">{skill.description}</span>
                   </span>
                 </label>
               ))}

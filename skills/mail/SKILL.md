@@ -14,8 +14,10 @@ Use this skill for SMTP email workflows. It supports login probing, strict `MAIL
 | Send one Markdown file as an email | `scripts/send_markdown_mail.py` | Builds plain-text and HTML parts from the Markdown input |
 | Reuse shared mail config loading | `scripts/mail_auth.py` | Auto-loads `.env` or `.env.mail` and fails fast on missing settings |
 
-## Prerequisites
+## Required Environment
 
+- `python3`
+- Python packages from `scripts/requirements.txt`
 - Required environment variables:
   - `MAIL_HOST`
   - `MAIL_PORT`
@@ -31,7 +33,20 @@ Use this skill for SMTP email workflows. It supports login probing, strict `MAIL
   - `.env`
   - `.env.mail`
   - `--env-file /path/to/.env`
-- Python dependencies from `scripts/requirements.txt`
+
+Check before running mail scripts:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+## Missing Environment Handling
+
+1. If `python3`, `pip`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
+2. If a required tool is missing, ask the user for confirmation before installing anything.
+3. After the user confirms, install the missing dependency automatically with the machine's package manager or `python3 -m pip install -r {{script_dir}}/requirements.txt`.
+4. Re-run the environment checks and `python3 {{script_dir}}/test_connection.py` before sending mail.
 
 ## Core Workflows
 

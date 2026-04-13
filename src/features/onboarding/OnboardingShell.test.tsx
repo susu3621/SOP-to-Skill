@@ -612,11 +612,12 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('heading', { name: '公司 IT 工具' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Wiki 系统' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '问题管理系统' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '代码管理' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '版本管理' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '通信系统' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Gerrit' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'SVN' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: '腾讯企业邮箱' })).toBeInTheDocument()
     expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
     expect(
@@ -624,11 +625,37 @@ describe('OnboardingShell', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows Confluence, Jira, and Gerrit HTTP fields in 公司 IT 工具 and keeps Tencent Exmail credentials to username/password only', async () => {
+  it('renders company IT tool cards with a separate title line and read-write descriptions', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    const confluenceCard = screen.getByRole('checkbox', { name: 'Confluence' }).closest('label')
+    const gerritCard = screen.getByRole('checkbox', { name: 'Gerrit' }).closest('label')
+    const svnCard = screen.getByRole('checkbox', { name: 'SVN' }).closest('label')
+
+    expect(confluenceCard?.querySelector('.field-option__content')).not.toBeNull()
+    expect(confluenceCard?.querySelector('.field-option__title')?.textContent).toBe('Confluence')
+    expect(confluenceCard?.querySelector('.field-option__hint')?.textContent).toBe(
+      '读取并写入周报模板、项目文档和会议纪要'
+    )
+    expect(gerritCard?.querySelector('.field-option__hint')?.textContent).toBe(
+      '读取并写入代码评审、提交状态和变更信息'
+    )
+    expect(svnCard?.querySelector('.field-option__hint')?.textContent).toBe(
+      '读取并写入版本库目录、历史提交和工作副本状态'
+    )
+  })
+
+  it('shows Confluence, Jira, Gerrit, and SVN credential fields in 公司 IT 工具 and keeps Tencent Exmail credentials to username/password only', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
-      selected_base_skill_ids: ['jira', 'confluence', 'gerrit', 'mail'],
-      selected_install_skill_ids: ['jira', 'confluence', 'gerrit', 'mail'],
+      selected_base_skill_ids: ['jira', 'confluence', 'gerrit', 'svn', 'mail'],
+      selected_install_skill_ids: ['jira', 'confluence', 'gerrit', 'svn', 'mail'],
     }
     const user = userEvent.setup()
 
@@ -644,6 +671,9 @@ describe('OnboardingShell', () => {
     expect(screen.getByLabelText('Gerrit URL')).toBeInTheDocument()
     expect(screen.getByLabelText('Gerrit 用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('Gerrit 密码 / HTTP 密码')).toBeInTheDocument()
+    expect(screen.getByLabelText('SVN URL')).toBeInTheDocument()
+    expect(screen.getByLabelText('SVN 用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('SVN 密码')).toBeInTheDocument()
     expect(screen.getByLabelText('腾讯企业邮箱用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('腾讯企业邮箱密码 / 授权码')).toBeInTheDocument()
     expect(screen.queryByLabelText('Gerrit SSH 主机')).not.toBeInTheDocument()

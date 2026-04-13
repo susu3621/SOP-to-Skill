@@ -162,8 +162,8 @@
         "en-US": "Confluence"
       },
       "description": {
-        "zh-CN": "读取周报模板、项目文档和会议纪要",
-        "en-US": "Read weekly report templates, project docs, and meeting notes."
+        "zh-CN": "读取并写入周报模板、项目文档和会议纪要",
+        "en-US": "Read and write weekly report templates, project docs, and meeting notes."
       },
       "credentials": {
         "confluenceUrl": {
@@ -258,8 +258,8 @@
         "en-US": "Gerrit"
       },
       "description": {
-        "zh-CN": "读取代码评审、提交状态和变更信息",
-        "en-US": "Read code reviews, submit status, and change information."
+        "zh-CN": "读取并写入代码评审、提交状态和变更信息",
+        "en-US": "Read and write code reviews, submit status, and change information."
       },
       "credentials": {
         "gerritAuthMode": {
@@ -356,6 +356,54 @@
             "en-US": "your.name"
           },
           "type": "text",
+          "required": true
+        }
+      }
+    },
+    "svn": {
+      "name": {
+        "zh-CN": "SVN",
+        "en-US": "SVN"
+      },
+      "description": {
+        "zh-CN": "读取并写入版本库目录、历史提交和工作副本状态",
+        "en-US": "Read and write repository paths, history, and working-copy state."
+      },
+      "credentials": {
+        "svnUrl": {
+          "label": {
+            "zh-CN": "SVN URL",
+            "en-US": "SVN URL"
+          },
+          "placeholder": {
+            "zh-CN": "https://svn.your-company.com/repos/project",
+            "en-US": "https://svn.your-company.com/repos/project"
+          },
+          "type": "text",
+          "required": true
+        },
+        "svnUsername": {
+          "label": {
+            "zh-CN": "SVN 用户名",
+            "en-US": "SVN Username"
+          },
+          "placeholder": {
+            "zh-CN": "your.name",
+            "en-US": "your.name"
+          },
+          "type": "text",
+          "required": true
+        },
+        "svnPassword": {
+          "label": {
+            "zh-CN": "SVN 密码",
+            "en-US": "SVN Password"
+          },
+          "placeholder": {
+            "zh-CN": "输入 SVN 密码",
+            "en-US": "Enter your SVN password"
+          },
+          "type": "password",
           "required": true
         }
       }

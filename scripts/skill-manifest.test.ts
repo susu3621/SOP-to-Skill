@@ -179,7 +179,7 @@ describe('skill manifest validation', () => {
               version: '1.2.3',
               contentHash: 'sha256:test',
               targets: ['codex'],
-              category: 'code-management',
+              category: 'version-management',
             },
           ],
         },
@@ -199,9 +199,41 @@ describe('skill manifest validation', () => {
           version: '1.2.3',
           contentHash: 'sha256:test',
           targets: ['codex'],
-          category: 'code-management',
+          category: 'version-management',
         },
       ],
     })
+  })
+
+  it('ships gerrit and svn under the version-management category in the repository manifest', () => {
+    const { loadSkillManifest } = loadSkillManifestLib()
+    const manifest = loadSkillManifest({ repoRoot: process.cwd() })
+
+    expect(manifest.skills).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'gerrit',
+          path: 'skills/gerrit',
+          category: 'version-management',
+        }),
+        expect.objectContaining({
+          id: 'svn',
+          path: 'skills/svn',
+          category: 'version-management',
+        }),
+      ]),
+    )
+  })
+
+  it('matches current repository skill hashes after packaged skill docs change', () => {
+    const { loadSkillManifest, validateSkillManifest } = loadSkillManifestLib()
+    const manifest = loadSkillManifest({ repoRoot: process.cwd() })
+
+    expect(
+      validateSkillManifest({
+        repoRoot: process.cwd(),
+        currentManifest: manifest,
+      }),
+    ).toEqual([])
   })
 })

@@ -4,31 +4,39 @@
     {
       "id": "confluence",
       "path": "skills/confluence",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "contentHash": "sha256:196a419e2d38fd3b1e36679034a7d35df08a17f1a775dd3049ac219150724cf8"
+      "contentHash": "sha256:f0bd0c3fe1dfd4bef03006365b85a5988582327c59f40b4953b1ebb5eb89d910"
     },
     {
       "id": "jira",
       "path": "skills/jira",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "contentHash": "sha256:fd40c63cdd9b8fce07c907a04829dc9561271bea3e416ab59f3585ba3f5d4b15"
+      "contentHash": "sha256:95383003a84607dd0e155a5e16c075b77db4203302e8b42c4f4ccfa532542e75"
     },
     {
       "id": "gerrit",
       "path": "skills/gerrit",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "category": "code-management",
-      "contentHash": "sha256:1f85a31662a08a9c89a3b5f644fb4eaf7e227d5821e80863a9a5fd2d8c39f8e3"
+      "category": "version-management",
+      "contentHash": "sha256:0c4b7895b03231800ab54fa36b0658f8960293dd4b2753de342310d700fe3771"
+    },
+    {
+      "id": "svn",
+      "path": "skills/svn",
+      "version": "1.0.1",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "category": "version-management",
+      "contentHash": "sha256:5197831b2ef548d1982e924ad97790dcb0d7f9ac36ceb58f215388741a7d5191"
     },
     {
       "id": "mail",
       "path": "skills/mail",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "targets": ["claude-code", "codex", "workbuddy"],
-      "contentHash": "sha256:dfa3a568de53ca97799ddaf240dfd7a4ffb4163590e0f2093c8b39c8e297ab3a"
+      "contentHash": "sha256:219eb98fd34702ff65ce7e64871da68251a24d59f01f732e1e5f0652b3c14a31"
     }
   ]
 }

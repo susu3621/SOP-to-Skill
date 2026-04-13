@@ -332,7 +332,7 @@ describe('onboarding shell smoke coverage', () => {
     expect(screen.getByText('暂无已安装 Skill。')).toBeInTheDocument()
   })
 
-  it('shows the code management category for Gerrit in the skill library', async () => {
+  it('shows the version management category for Gerrit and SVN in the skill library', async () => {
     fixtures.runtime.skills = [
       {
         id: 'gerrit',
@@ -345,7 +345,26 @@ describe('onboarding shell smoke coverage', () => {
           'en-US': 'Read code reviews, submit status, and change information.',
         },
         version: '1.0.0',
-        category: 'code-management',
+        category: 'version-management',
+        author: null,
+        targets: ['codex', 'claude-code', 'workbuddy'],
+        variables: [],
+        is_installed: false,
+        installed_version: null,
+        update_status: 'not-installed',
+      },
+      {
+        id: 'svn',
+        name: {
+          'zh-CN': 'SVN',
+          'en-US': 'SVN',
+        },
+        description: {
+          'zh-CN': '读取版本库目录、历史提交和工作副本状态，支持常见 SVN 操作。',
+          'en-US': 'Read repository paths, history, and working-copy state, and support common SVN operations.',
+        },
+        version: '1.0.0',
+        category: 'version-management',
         author: null,
         targets: ['codex', 'claude-code', 'workbuddy'],
         variables: [],
@@ -362,7 +381,8 @@ describe('onboarding shell smoke coverage', () => {
     await user.click(screen.getByRole('button', { name: 'Skill 库' }))
 
     expect(screen.getByText('Gerrit')).toBeInTheDocument()
-    expect(screen.getByText('代码管理')).toBeInTheDocument()
+    expect(screen.getByText('SVN')).toBeInTheDocument()
+    expect(screen.getAllByText('版本管理').length).toBeGreaterThan(0)
   })
 
   it('shows an install action when a newer desktop app update is available', async () => {

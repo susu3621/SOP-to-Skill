@@ -108,6 +108,9 @@ const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "JIRA_URL",
     "JIRA_USERNAME",
     "JIRA_PASSWORD",
+    "SVN_URL",
+    "SVN_USERNAME",
+    "SVN_PASSWORD",
     "MAIL_HOST",
     "MAIL_PORT",
     "MAIL_USERNAME",
@@ -129,6 +132,10 @@ const ONBOARDING_CONNECTION_SERVICES: &[OnboardingConnectionServiceConfig] = &[
     OnboardingConnectionServiceConfig {
         service_id: "gerrit",
         required_field_ids: &[],
+    },
+    OnboardingConnectionServiceConfig {
+        service_id: "svn",
+        required_field_ids: &["svnUrl", "svnUsername", "svnPassword"],
     },
     OnboardingConnectionServiceConfig {
         service_id: "mail",
@@ -293,6 +300,20 @@ fn build_connection_test_env_entries(
                 _ => Err(format!("Unsupported Gerrit auth mode: {}", auth_mode)),
             }
         }
+        "svn" => Ok(vec![
+            (
+                "SVN_URL".to_string(),
+                require_non_empty_credential_value(credential_values, "svnUrl")?,
+            ),
+            (
+                "SVN_USERNAME".to_string(),
+                require_non_empty_credential_value(credential_values, "svnUsername")?,
+            ),
+            (
+                "SVN_PASSWORD".to_string(),
+                require_non_empty_credential_value(credential_values, "svnPassword")?,
+            ),
+        ]),
         "mail" => {
             let username = require_non_empty_credential_value(credential_values, "mailUsername")?;
             let password = require_non_empty_credential_value(credential_values, "mailPassword")?;
@@ -429,6 +450,7 @@ fn service_label(service_id: &str) -> &str {
         "confluence" => "Confluence",
         "gerrit" => "Gerrit",
         "jira" => "Jira",
+        "svn" => "SVN",
         "mail" => "Mail",
         _ => "Service",
     }
@@ -1026,6 +1048,26 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_connection_test_builds_svn_env_entries() {
+        let entries = build_connection_test_env_entries(
+            "svn",
+            &HashMap::from([
+                ("svnUrl".to_string(), "https://svn.example.com/repo".to_string()),
+                ("svnUsername".to_string(), "svn.user".to_string()),
+                ("svnPassword".to_string(), "svn-secret".to_string()),
+            ]),
+        )
+        .expect("svn env entries");
+
+        assert!(entries.contains(&(
+            "SVN_URL".to_string(),
+            "https://svn.example.com/repo".to_string()
+        )));
+        assert!(entries.contains(&("SVN_USERNAME".to_string(), "svn.user".to_string())));
+        assert!(entries.contains(&("SVN_PASSWORD".to_string(), "svn-secret".to_string())));
+    }
+
+    #[test]
     fn onboarding_connection_test_rejects_missing_required_fields() {
         let error = build_connection_test_env_entries(
             "jira",
@@ -1048,6 +1090,17 @@ mod tests {
         .expect_err("missing gerrit http fields should fail");
 
         assert!(error.contains("gerritHttpUsername"));
+    }
+
+    #[test]
+    fn onboarding_connection_test_rejects_missing_svn_fields() {
+        let error = build_connection_test_env_entries(
+            "svn",
+            &HashMap::from([("svnUrl".to_string(), "https://svn.example.com/repo".to_string())]),
+        )
+        .expect_err("missing svn credentials should fail");
+
+        assert!(error.contains("svnUsername"));
     }
 
     #[test]
@@ -1087,6 +1140,28 @@ mod tests {
         std::env::set_var("SKILL_CONFIGURATOR_SKILLS_DIR", &skills_dir);
 
         let resolved = resolve_connection_test_script_path("gerrit").expect("resolve gerrit script");
+
+        restore_env_var("SKILL_CONFIGURATOR_SKILLS_DIR", original_skills_dir);
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(resolved, script_path);
+    }
+
+    #[test]
+    fn onboarding_connection_test_resolves_svn_script_path_in_skills_dir() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("connection-svn-script-path-data");
+        let skills_dir = temp_dir("connection-svn-script-path-skills");
+        let script_path = skills_dir.join("svn").join("scripts").join("test_connection.py");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+        let original_skills_dir = std::env::var("SKILL_CONFIGURATOR_SKILLS_DIR").ok();
+
+        fs::create_dir_all(script_path.parent().expect("script dir")).expect("create script dir");
+        fs::write(&script_path, "print('ok')\n").expect("write script");
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        std::env::set_var("SKILL_CONFIGURATOR_SKILLS_DIR", &skills_dir);
+
+        let resolved = resolve_connection_test_script_path("svn").expect("resolve svn script");
 
         restore_env_var("SKILL_CONFIGURATOR_SKILLS_DIR", original_skills_dir);
         restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);

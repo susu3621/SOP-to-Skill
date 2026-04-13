@@ -461,8 +461,8 @@ const onboardingBaseSkillGroupDefinitions = [
       'en-US': 'Wiki System',
     },
     description: {
-      'zh-CN': '集中放 SOP、项目文档和会议纪要，方便 AI 读取稳定资料。',
-      'en-US': 'Store SOPs, project docs, and meeting notes in one place so AI can read stable references.',
+      'zh-CN': '集中放 SOP、项目文档和会议纪要，方便 AI 读取和写入稳定资料。',
+      'en-US': 'Store SOPs, project docs, and meeting notes in one place so AI can read and write stable references.',
     },
     skill_ids: ['confluence'],
   },
@@ -479,16 +479,16 @@ const onboardingBaseSkillGroupDefinitions = [
     skill_ids: ['jira'],
   },
   {
-    id: 'code-management',
+    id: 'version-management',
     name: {
-      'zh-CN': '代码管理',
-      'en-US': 'Code Management',
+      'zh-CN': '版本管理',
+      'en-US': 'Version Management',
     },
     description: {
-      'zh-CN': '同步代码评审、提交状态和变更记录，方便 AI 跟进研发协作。',
-      'en-US': 'Sync code reviews, submit status, and change history so AI can follow engineering collaboration.',
+      'zh-CN': '同步版本库、提交历史和版本变更，方便 AI 读取和写入研发协作信息。',
+      'en-US': 'Sync repositories, commit history, and version changes so AI can read and write engineering collaboration records.',
     },
-    skill_ids: ['gerrit'],
+    skill_ids: ['gerrit', 'svn'],
   },
   {
     id: 'communication',

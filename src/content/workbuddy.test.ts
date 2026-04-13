@@ -36,18 +36,26 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyAgentApps.map((app) => app.label['zh-CN'])).not.toContain('Antigravity')
   })
 
-  it('exposes Confluence, Jira, Gerrit, and Tencent Exmail as base skills', () => {
-    expect(Object.keys(sharedConfig.baseSkills)).toEqual(['confluence', 'jira', 'gerrit', 'mail'])
+  it('exposes Confluence, Jira, Gerrit, SVN, and Tencent Exmail as base skills', () => {
+    expect(Object.keys(sharedConfig.baseSkills)).toEqual([
+      'confluence',
+      'jira',
+      'gerrit',
+      'svn',
+      'mail',
+    ])
     expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual([
       'confluence',
       'jira',
       'gerrit',
+      'svn',
       'mail',
     ])
     expect(workbuddyBaseSkills.map((skill) => skill.label['zh-CN'])).toEqual([
       'Confluence',
       'Jira',
       'Gerrit',
+      'SVN',
       '腾讯企业邮箱',
     ])
   })
@@ -56,19 +64,40 @@ describe('workbuddy agent apps', () => {
     expect(onboardingBaseSkillGroups.map((group) => group.name)).toEqual([
       'Wiki 系统',
       '问题管理系统',
-      '代码管理',
+      '版本管理',
       '通信系统',
     ])
     expect(onboardingBaseSkillGroups.map((group) => group.skills.map((skill) => skill.id))).toEqual([
       ['confluence'],
       ['jira'],
-      ['gerrit'],
+      ['gerrit', 'svn'],
       ['mail'],
     ])
   })
 
-  it('exposes Atlassian URLs, Gerrit auth modes, and Tencent Exmail credential fields from shared config', () => {
-    const allCredentialFields = getCredentialFields(['confluence', 'jira', 'gerrit', 'mail'])
+  it('describes wiki and version-management skills as read-write systems', () => {
+    expect(sharedConfig.baseSkills.confluence?.description).toEqual({
+      'zh-CN': '读取并写入周报模板、项目文档和会议纪要',
+      'en-US': 'Read and write weekly report templates, project docs, and meeting notes.',
+    })
+    expect(sharedConfig.baseSkills.gerrit?.description).toEqual({
+      'zh-CN': '读取并写入代码评审、提交状态和变更信息',
+      'en-US': 'Read and write code reviews, submit status, and change information.',
+    })
+    expect(sharedConfig.baseSkills.svn?.description).toEqual({
+      'zh-CN': '读取并写入版本库目录、历史提交和工作副本状态',
+      'en-US': 'Read and write repository paths, history, and working-copy state.',
+    })
+    expect(onboardingBaseSkillGroups.find((group) => group.id === 'wiki')?.description).toBe(
+      '集中放 SOP、项目文档和会议纪要，方便 AI 读取和写入稳定资料。'
+    )
+    expect(
+      onboardingBaseSkillGroups.find((group) => group.id === 'version-management')?.description
+    ).toBe('同步版本库、提交历史和版本变更，方便 AI 读取和写入研发协作信息。')
+  })
+
+  it('exposes Atlassian URLs, version-management credentials, and Tencent Exmail credential fields from shared config', () => {
+    const allCredentialFields = getCredentialFields(['confluence', 'jira', 'gerrit', 'svn', 'mail'])
 
     expect(allCredentialFields.map((field) => field.id)).toEqual([
       'confluenceUrl',
@@ -84,12 +113,16 @@ describe('workbuddy agent apps', () => {
       'gerritSshHost',
       'gerritSshPort',
       'gerritSshUsername',
+      'svnUrl',
+      'svnUsername',
+      'svnPassword',
       'mailUsername',
       'mailPassword',
     ])
     expect(sharedConfig.baseSkills.confluence?.credentials).toHaveProperty('confluenceUrl')
     expect(sharedConfig.baseSkills.jira?.credentials).toHaveProperty('jiraUrl')
     expect(sharedConfig.baseSkills.gerrit?.credentials).toHaveProperty('gerritAuthMode')
+    expect(sharedConfig.baseSkills.svn?.credentials).toHaveProperty('svnUrl')
     expect(sharedConfig.baseSkills.mail?.name).toEqual({
       'zh-CN': '腾讯企业邮箱',
       'en-US': 'Tencent Exmail',
@@ -127,6 +160,18 @@ describe('workbuddy agent apps', () => {
       'gerritSshPort',
       'gerritSshUsername',
     ])
+  })
+
+  it('shows SVN credential fields as a simple HTTP credential group', () => {
+    const svnGroup = getCredentialGroups(['svn'])[0]
+
+    expect(svnGroup?.service_name).toBe('SVN')
+    expect(svnGroup?.fields.map((field) => field.id)).toEqual([
+      'svnUrl',
+      'svnUsername',
+      'svnPassword',
+    ])
+    expect(svnGroup?.required_field_ids).toEqual(['svnUrl', 'svnUsername', 'svnPassword'])
   })
 
   it('exposes project manager, quality manager, and IT manager in visible role selectors while keeping legacy role labels', () => {

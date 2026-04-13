@@ -23,13 +23,28 @@ Use this skill for Jira workflows including reading and writing. It supports iss
 | Verify Jira authentication only | `scripts/test_connection.py`                              | Checks login without running a search                |
 | Inspect one issue in detail     | `scripts/get_jira_issue.py`                               | Fetches a single issue by key with sectioned context |
 
-## Prerequisites
+## Required Environment
 
+- `python3`
+- Python packages from `scripts/requirements.txt`
 - Required environment variables:
   - `JIRA_URL`
   - `JIRA_USERNAME`
   - `JIRA_PASSWORD`
-- Python dependencies from `scripts/requirements.txt`
+
+Check before running Jira scripts:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+## Missing Environment Handling
+
+1. If `python3`, `pip`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
+2. If a required tool is missing, ask the user for confirmation before installing anything.
+3. After the user confirms, install the missing dependency automatically with the machine's package manager or `python3 -m pip install -r {{script_dir}}/requirements.txt`.
+4. Re-run the environment checks and `python3 {{script_dir}}/test_connection.py` before creating, updating, or planning Jira issues.
 
 ## Core Workflows
 

@@ -10,6 +10,39 @@ Gerrit 代码审查系统的工作流指南。团队使用 Gerrit 管理所有�
 
 > **绝对不要** 执行 `git push origin master`。所有变更必须提交到 `refs/for/master` 进入评审流程。
 
+## Required Environment
+
+- `git`
+- `python3` for the bundled connectivity probe
+- `ssh` when using SSH auth or running `gerrit review`
+- `scp` when installing the `commit-msg` hook from Gerrit
+- Network access to the Gerrit server
+- Required environment contract:
+  - Common: `GERRIT_AUTH_MODE`
+  - HTTP mode: `GERRIT_URL`, `GERRIT_USERNAME`, `GERRIT_PASSWORD`
+  - SSH mode: `GERRIT_SSH_HOST`, `GERRIT_SSH_PORT`, `GERRIT_SSH_USERNAME`
+
+Check before running Gerrit workflows:
+
+```bash
+git --version
+python3 --version
+```
+
+If the workflow needs SSH review or hook installation, also verify:
+
+```bash
+ssh -V
+scp -V
+```
+
+## Missing Environment Handling
+
+1. If `git`, `python3`, `ssh`, `scp`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
+2. If a required tool is missing, ask the user for confirmation before installing anything.
+3. After the user confirms, install the missing dependency automatically with the machine's package manager. If the Python probe dependencies are missing, install them with `python3 -m pip install -r {{script_dir}}/requirements.txt` when this skill package includes that file.
+4. Re-run the environment checks and the bundled connection probe before pushing, reviewing, or submitting changes.
+
 ## 提交评审（最常用）
 
 ```bash

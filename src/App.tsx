@@ -22,7 +22,8 @@ function formatVersionLabel(locale: Locale, version?: string) {
 function getSkillCategoryLabel(category: string, locale: Locale) {
   switch (category) {
     case 'code-management':
-      return locale === 'zh-CN' ? '代码管理' : 'Code Management'
+    case 'version-management':
+      return locale === 'zh-CN' ? '版本管理' : 'Version Management'
     default:
       return category
   }
