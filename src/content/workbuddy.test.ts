@@ -1,10 +1,12 @@
 import {
   buildGeneratedSkillIdsForRoleUseCase,
+  createCustomRoleUseCaseContent,
   createDefaultRoleUseCaseContents,
   getCredentialFields,
   getCredentialGroups,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
+  getOnboardingUseCaseOptionById,
   getRoleNameById,
   onboardingBaseSkillGroups,
   onboardingUseCases,
@@ -157,7 +159,7 @@ describe('workbuddy agent apps', () => {
     )
   })
 
-  it('prefills editable project-manager descriptions with summary, usage notes, and input guidance', () => {
+  it('prefills built-in project-manager descriptions with system guidance and normalized question answers', () => {
     const defaults = createDefaultRoleUseCaseContents('project-manager')
     const requirementAssessmentOption = onboardingUseCases.find((useCase) => useCase.name === '需求评估')
     const requirementAssessment = defaults.find((useCase) => useCase.use_case_id === 'requirement-assessment')
@@ -213,9 +215,20 @@ describe('workbuddy agent apps', () => {
     )
     expect(normalized.find((useCase) => useCase.use_case_id === 'weekly-report')).toEqual(
       expect.objectContaining({
-        description: '保留自定义说明',
+        description_locked: true,
+        description: getLocalizedConfigValue(sharedConfig.useCases['项目周报']?.defaultDescription, 'zh-CN'),
         info_sources: '保留自定义来源',
         rules: '保留自定义流程',
+        questions: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'project-info-navigation',
+            answer: '保留自定义来源',
+          }),
+          expect.objectContaining({
+            id: 'weekly-report-sop',
+            answer: '保留自定义流程',
+          }),
+        ]),
       })
     )
   })
@@ -315,5 +328,85 @@ describe('workbuddy agent apps', () => {
     )
     expect(generatedIds.production_skill_id).toBe('project-manager-客户回访')
     expect(generatedIds.test_skill_id).toBe('test-project-manager-客户回访')
+  })
+
+  it('defines structured weekly-report questions with corrected project-info navigation wording', () => {
+    const weeklyReport = getOnboardingUseCaseOptionById('weekly-report')
+
+    expect(weeklyReport?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'project-list-source',
+        label: '从哪里获取负责的项目清单？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'project-info-navigation',
+        label: '从哪里可以知道如何寻找每个项目的信息？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'weekly-report-sop',
+        label: '从哪里获取周报 SOP？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+  })
+
+  it('creates built-in use cases with locked descriptions and structured questions', () => {
+    const defaults = createDefaultRoleUseCaseContents('project-manager')
+    const weeklyReport = defaults.find((useCase) => useCase.use_case_id === 'weekly-report')
+
+    expect(weeklyReport).toEqual(
+      expect.objectContaining({
+        description_locked: true,
+        description: expect.stringContaining('汇总项目状态、风险和下周动作'),
+        questions: [
+          expect.objectContaining({
+            id: 'project-list-source',
+            label: '从哪里获取负责的项目清单？',
+            answer: '',
+            locked: true,
+            required: true,
+          }),
+          expect.objectContaining({
+            id: 'project-info-navigation',
+            label: '从哪里可以知道如何寻找每个项目的信息？',
+            answer: '',
+            locked: true,
+            required: true,
+          }),
+          expect.objectContaining({
+            id: 'weekly-report-sop',
+            label: '从哪里获取周报 SOP？',
+            answer: '',
+            locked: true,
+            required: true,
+          }),
+          expect.objectContaining({
+            id: 'other',
+            label: '其他',
+            answer: '',
+            locked: true,
+            required: false,
+          }),
+        ],
+      })
+    )
+  })
+
+  it('creates custom use cases with editable descriptions and no default questions', () => {
+    expect(createCustomRoleUseCaseContent('project-manager', '客户拜访纪要', [])).toEqual(
+      expect.objectContaining({
+        use_case_name: '客户拜访纪要',
+        description_locked: false,
+        description: '',
+        questions: [],
+      })
+    )
   })
 })

@@ -137,13 +137,27 @@ export interface OnboardingGeneratedSkillIds {
   test_skill_id: string
 }
 
+export interface OnboardingUseCaseQuestionDefinition {
+  id: string
+  label: string
+  placeholder: string
+  required: boolean
+}
+
+export interface OnboardingUseCaseQuestionRecord extends OnboardingUseCaseQuestionDefinition {
+  answer: string
+  locked: boolean
+}
+
 export interface OnboardingEditableUseCaseRecord {
   role_id: string
   use_case_id: string
   use_case_name: string
   description: string
+  description_locked?: boolean
   info_sources: string
   rules: string
+  questions?: OnboardingUseCaseQuestionRecord[]
 }
 
 export type OnboardingRoleUseCaseContent = OnboardingEditableUseCaseRecord

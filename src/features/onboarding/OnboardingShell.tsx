@@ -550,8 +550,12 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     getUseCaseSaveScope,
     toggleInstallSkill,
     addUseCase,
+    addUseCaseQuestion,
+    removeUseCaseQuestion,
     updateCredentialValue,
-    updateUseCaseContent,
+    updateUseCaseDescription,
+    updateUseCaseQuestionAnswer,
+    updateUseCaseQuestionLabel,
     selectRole,
   } = useOnboarding(installedSkills, locale)
 
@@ -998,7 +1002,11 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                         <UseCaseConfigStep
                           locale={locale}
                           useCases={[activeUseCase]}
-                          onUpdate={updateUseCaseContent}
+                          onAddQuestion={addUseCaseQuestion}
+                          onRemoveQuestion={removeUseCaseQuestion}
+                          onUpdateDescription={updateUseCaseDescription}
+                          onUpdateQuestionAnswer={updateUseCaseQuestionAnswer}
+                          onUpdateQuestionLabel={updateUseCaseQuestionLabel}
                         />
                         <div className="button-row">
                           <button

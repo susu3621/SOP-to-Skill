@@ -2,7 +2,10 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { act } from 'react'
 import userEvent from '@testing-library/user-event'
 import App from '../../App'
-import { buildGeneratedSkillIdsForRoleUseCase } from '../../content/workbuddy'
+import {
+  buildGeneratedSkillIdsForRoleUseCase,
+  getOnboardingUseCaseOptionById,
+} from '../../content/workbuddy'
 import type {
   OnboardingAgentSyncResult,
   OnboardingBatchSyncResult,
@@ -287,6 +290,30 @@ async function waitForInstallModule() {
   return screen.findByRole('checkbox', { name: 'Codex' })
 }
 
+function getUseCaseQuestionLabel(useCaseId: string, index = 0) {
+  const question = getOnboardingUseCaseOptionById(useCaseId, 'zh-CN')?.structured_questions[index]
+
+  if (!question) {
+    throw new Error(`Missing structured question ${index} for use case ${useCaseId}`)
+  }
+
+  return question.label
+}
+
+function buildStructuredQuestionAnswers(useCaseId: string, answers: Record<string, string>) {
+  const questions = getOnboardingUseCaseOptionById(useCaseId, 'zh-CN')?.structured_questions
+
+  if (!questions) {
+    throw new Error(`Missing structured questions for use case ${useCaseId}`)
+  }
+
+  return questions.map((question) => ({
+    ...question,
+    answer: answers[question.id] ?? '',
+    locked: true,
+  }))
+}
+
 describe('OnboardingShell', () => {
   it('shows no selected role while leaving all onboarding sections incomplete for a fresh state', async () => {
     mockControls.stateOverride = {
@@ -399,6 +426,7 @@ describe('OnboardingShell', () => {
 
   it('shows the work list and editor after switching to the 工作 tab', async () => {
     const user = userEvent.setup()
+    const requirementAssessmentQuestionLabel = getUseCaseQuestionLabel('requirement-assessment')
 
     render(<App />)
 
@@ -409,8 +437,10 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('tab', { name: '选择岗位', selected: false })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: '选择工作', selected: true })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '需求评估' })).toBeInTheDocument()
-    expect(screen.getByLabelText('用例描述')).toBeInTheDocument()
-    expect(screen.getByText('直接把流程 / SOP / 模板的链接贴到这里就行。')).toBeInTheDocument()
+    expect(screen.getByText('系统内置说明')).toBeInTheDocument()
+    expect(screen.getByText('你需要填写的问题')).toBeInTheDocument()
+    expect(screen.getByLabelText(requirementAssessmentQuestionLabel)).toBeInTheDocument()
+    expect(screen.queryByLabelText('用例说明')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存设置' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '保存岗位' })).not.toBeInTheDocument()
   })
@@ -517,8 +547,9 @@ describe('OnboardingShell', () => {
     expect(within(baseSkillsGroup).getByText('Jira')).toBeInTheDocument()
     expect(within(baseSkillsGroup).getByText('Confluence')).toBeInTheDocument()
     expect(within(summary).getByText('已配置工作')).toBeInTheDocument()
+    expect(within(useCasesGroup).getByText('记录日志')).toBeInTheDocument()
     expect(within(useCasesGroup).getByText('记录计划')).toBeInTheDocument()
-    expect(within(useCasesGroup).getByText('项目周报')).toBeInTheDocument()
+    expect(within(useCasesGroup).queryByText('项目周报')).not.toBeInTheDocument()
     expect(within(summary).getByText('安装目标')).toBeInTheDocument()
     expect(within(installTargetsGroup).getByText('Codex')).toBeInTheDocument()
     expect(within(installTargetsGroup).getByText('Claude Code')).toBeInTheDocument()
@@ -939,6 +970,7 @@ describe('OnboardingShell', () => {
     }
 
     const temporaryEdit = '临时未保存的工作说明'
+    const requirementAssessmentQuestionLabel = getUseCaseQuestionLabel('requirement-assessment')
     const user = userEvent.setup()
 
     render(<App />)
@@ -950,10 +982,11 @@ describe('OnboardingShell', () => {
     expect(await waitForUseCasesModule()).toBeInTheDocument()
     await user.click(screen.getByRole('radio', { name: '项目经理' }))
     await user.click(screen.getByRole('tab', { name: '选择工作' }))
+    await user.click(screen.getByRole('button', { name: '需求评估' }))
 
-    const descriptionInput = screen.getByLabelText('用例描述') as HTMLTextAreaElement
-    await user.clear(descriptionInput)
-    await user.type(descriptionInput, temporaryEdit)
+    const answerInput = screen.getByLabelText(requirementAssessmentQuestionLabel) as HTMLInputElement
+    await user.clear(answerInput)
+    await user.type(answerInput, temporaryEdit)
 
     await user.click(screen.getByRole('tab', { name: '选择岗位' }))
     await user.click(screen.getByRole('button', { name: '保存岗位' }))
@@ -962,11 +995,13 @@ describe('OnboardingShell', () => {
     const [, payload] = getSetStateCalls()[0] as [string, { state: OnboardingState }]
     expect(
       payload.state.role_use_case_contents.some((record) =>
-        record.description.includes(temporaryEdit)
+        (record.questions ?? []).some((question) => question.answer.includes(temporaryEdit))
       )
     ).toBe(false)
     await user.click(screen.getByRole('tab', { name: '选择工作' }))
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toContain(temporaryEdit)
+    expect(
+      (screen.getByLabelText(requirementAssessmentQuestionLabel) as HTMLInputElement).value
+    ).toContain(temporaryEdit)
   })
 
   it('falls back to an empty onboarding role state when loading onboarding state fails', async () => {
@@ -1135,6 +1170,7 @@ describe('OnboardingShell', () => {
 
   it('shows a use-case list first, marks configured items, and saves only on demand', async () => {
     const user = userEvent.setup()
+    const requirementAssessmentQuestionLabel = getUseCaseQuestionLabel('requirement-assessment')
 
     render(<App />)
 
@@ -1155,11 +1191,11 @@ describe('OnboardingShell', () => {
     expect(within(requirementAssessmentItem).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(planningItem).getByText('已设置')).toBeInTheDocument()
     expect(within(dailyLogItem).getByText('已设置')).toBeInTheDocument()
-    expect(within(weeklyReportItem).getByText('已设置')).toBeInTheDocument()
+    expect(within(weeklyReportItem).queryByText('已设置')).not.toBeInTheDocument()
 
-    const descriptionInput = screen.getByLabelText('用例描述')
-    await user.clear(descriptionInput)
-    await user.type(descriptionInput, '更新后的记录计划说明')
+    const answerInput = screen.getByLabelText(requirementAssessmentQuestionLabel)
+    await user.clear(answerInput)
+    await user.type(answerInput, 'https://wiki.example.com/pre-sales')
 
     expect(getSetStateCalls()).toHaveLength(0)
 
@@ -1169,12 +1205,22 @@ describe('OnboardingShell', () => {
     expect(await screen.findByText('保存成功')).toBeInTheDocument()
   })
 
-  it('treats a prefilled description plus SOP as enough to mark a use case configured', async () => {
+  it('treats a built-in use case with all required answers as configured', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
       role_use_case_contents: fixtures.onboardingState.role_use_case_contents.map((useCase) => ({
         ...useCase,
-        info_sources: '',
+        ...(useCase.use_case_id === 'weekly-report'
+          ? {
+              info_sources: '',
+              rules: '',
+              questions: buildStructuredQuestionAnswers('weekly-report', {
+                'project-list-source': 'https://wiki.example.com/projects',
+                'project-info-navigation': 'https://wiki.example.com/project-navigation',
+                'weekly-report-sop': 'https://wiki.example.com/weekly-report-sop',
+              }),
+            }
+          : {}),
       })),
     }
 
@@ -1275,7 +1321,8 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '添加用例' }))
 
     expect(screen.getByRole('button', { name: customUseCaseName })).toBeInTheDocument()
-    expect((screen.getByLabelText('用例描述') as HTMLTextAreaElement).value).toBe('')
+    expect((screen.getByLabelText('用例说明') as HTMLTextAreaElement).value).toBe('')
+    expect(screen.getByText('先新增一个问题。')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '保存设置' }))
 

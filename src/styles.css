@@ -1200,6 +1200,63 @@ textarea {
   font-size: 1.1rem;
 }
 
+.onboarding-use-case-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.onboarding-use-case-section--system {
+  background: rgba(20, 94, 83, 0.06);
+}
+
+.onboarding-use-case-section__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.onboarding-use-case-section__title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #163029;
+}
+
+.onboarding-use-case-system-description {
+  margin: 0;
+  color: rgba(22, 48, 41, 0.8);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.onboarding-question-list {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-question-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.onboarding-question-card--editable {
+  gap: 12px;
+}
+
+.onboarding-question-card__actions {
+  justify-content: flex-end;
+  margin-top: 0;
+}
+
 .onboarding-install-layout {
   gap: 16px;
 }

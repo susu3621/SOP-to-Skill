@@ -50,15 +50,30 @@ fn build_skill_markdown(input: &StageOnboardingPackageInput, skill_id: &str, inc
     };
 
     let mut body = format!(
-        "---\nname: {skill_id}\ndescription: {role_name} - {use_case_name}\n---\n\n# {skill_id}\n\n## 配置信息\n\n- **岗位**: {role_name}\n- **用例**: {use_case_name}\n- **Agent**: {agent_ids}\n- **基础技能**: {base_skill_ids}\n- **信息来源**: {info_sources}\n- **规则**: {rules}\n\n",
+        "---\nname: {skill_id}\ndescription: {role_name} - {use_case_name}\n---\n\n# {skill_id}\n\n## 配置信息\n\n- **岗位**: {role_name}\n- **用例**: {use_case_name}\n- **Agent**: {agent_ids}\n- **基础技能**: {base_skill_ids}\n\n## 用例说明\n\n{description}\n\n",
         skill_id = skill_id,
         role_name = input.role_name,
         use_case_name = input.use_case.use_case_name,
         agent_ids = agent_ids,
         base_skill_ids = base_skill_ids,
-        info_sources = input.use_case.info_sources,
-        rules = input.use_case.rules,
+        description = input.use_case.description,
     );
+
+    if input.use_case.questions.is_empty() {
+        body.push_str(&format!(
+            "## 配置详情\n\n- **信息来源**: {info_sources}\n- **规则**: {rules}\n\n",
+            info_sources = input.use_case.info_sources,
+            rules = input.use_case.rules,
+        ));
+    } else {
+        body.push_str("## 结构化填写\n\n");
+
+        for question in &input.use_case.questions {
+            body.push_str(&format!("- **{}**: {}\n", question.label, question.answer));
+        }
+
+        body.push('\n');
+    }
 
     if include_test_guidance {
         body.push_str(
@@ -117,6 +132,7 @@ fn stage_generated_use_case_skill_packages_with_data_root(
 #[cfg(test)]
 mod tests {
     use super::{stage_generated_use_case_skill_packages_with_data_root, StageOnboardingPackageInput};
+    use crate::models::OnboardingUseCaseQuestion;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -146,8 +162,10 @@ mod tests {
                 use_case_id: "weekly-report".to_string(),
                 use_case_name: "项目周报".to_string(),
                 description: "按周报模板输出项目状态".to_string(),
+                description_locked: false,
                 info_sources: "Jira 看板、Confluence 模板".to_string(),
                 rules: "先风险后里程碑".to_string(),
+                questions: vec![],
             },
             use_case_directory: "weekly-report".to_string(),
         }, Some(&data_dir))
@@ -179,8 +197,10 @@ mod tests {
                 use_case_id: "weekly-report".to_string(),
                 use_case_name: "项目周报".to_string(),
                 description: "按周报模板输出项目状态".to_string(),
+                description_locked: false,
                 info_sources: "Jira 看板".to_string(),
                 rules: "先风险后里程碑".to_string(),
+                questions: vec![],
             },
             use_case_directory: String::new(),
         }, None);
@@ -190,5 +210,59 @@ mod tests {
             result.err().unwrap().to_string(),
             "Failed to write output file: Use case directory cannot be empty"
         );
+    }
+
+    #[test]
+    fn onboarding_renders_structured_questions_into_generated_markdown() {
+        let data_dir = temp_data_dir("onboarding-structured");
+
+        let result = stage_generated_use_case_skill_packages_with_data_root(&StageOnboardingPackageInput {
+            role_id: "project-manager".to_string(),
+            role_name: "项目经理".to_string(),
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
+            use_case: crate::models::OnboardingRoleUseCaseContent {
+                role_id: "project-manager".to_string(),
+                use_case_id: "weekly-report".to_string(),
+                use_case_name: "项目周报".to_string(),
+                description: "汇总项目状态、风险和下周动作，形成标准化周报输出。".to_string(),
+                description_locked: true,
+                info_sources: "".to_string(),
+                rules: "".to_string(),
+                questions: vec![
+                    OnboardingUseCaseQuestion {
+                        id: "project-list-source".to_string(),
+                        label: "从哪里获取负责的项目清单？".to_string(),
+                        placeholder: "".to_string(),
+                        required: true,
+                        answer: "https://wiki.company.com/project-list".to_string(),
+                        locked: true,
+                    },
+                    OnboardingUseCaseQuestion {
+                        id: "weekly-report-sop".to_string(),
+                        label: "从哪里获取周报 SOP？".to_string(),
+                        placeholder: "".to_string(),
+                        required: true,
+                        answer: "https://wiki.company.com/pmo/weekly-report-template".to_string(),
+                        locked: true,
+                    },
+                ],
+            },
+            use_case_directory: "weekly-report".to_string(),
+        }, Some(&data_dir))
+        .expect("stage packages");
+
+        let production_markdown =
+            fs::read_to_string(result.production.source_dir.join("SKILL.md")).expect("production skill md");
+
+        assert!(production_markdown.contains("## 用例说明"));
+        assert!(production_markdown.contains("汇总项目状态、风险和下周动作，形成标准化周报输出。"));
+        assert!(production_markdown.contains("## 结构化填写"));
+        assert!(production_markdown.contains("从哪里获取负责的项目清单？"));
+        assert!(production_markdown.contains("https://wiki.company.com/project-list"));
+        assert!(production_markdown.contains("从哪里获取周报 SOP？"));
+        assert!(production_markdown.contains("https://wiki.company.com/pmo/weekly-report-template"));
+        assert!(!production_markdown.contains("- **信息来源**:"));
+        assert!(!production_markdown.contains("- **规则**:"));
     }
 }

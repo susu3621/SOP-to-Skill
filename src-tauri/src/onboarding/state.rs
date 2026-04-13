@@ -220,8 +220,10 @@ mod tests {
                 use_case_id: "weekly-report".to_string(),
                 use_case_name: "项目周报".to_string(),
                 description: "按周报模板输出项目状态".to_string(),
+                description_locked: false,
                 info_sources: "Jira 看板".to_string(),
                 rules: "先风险后里程碑".to_string(),
+                questions: vec![],
             }],
             selected_install_skill_ids: vec![
                 "jira".to_string(),
@@ -283,8 +285,10 @@ mod tests {
                 use_case_id: "weekly-report".to_string(),
                 use_case_name: "项目周报".to_string(),
                 description: "按周报模板输出项目状态".to_string(),
+                description_locked: false,
                 info_sources: "Jira 看板".to_string(),
                 rules: "先风险后里程碑".to_string(),
+                questions: vec![],
             }
         );
     }

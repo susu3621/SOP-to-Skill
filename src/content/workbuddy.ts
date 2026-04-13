@@ -9,6 +9,8 @@ import type {
   Locale,
   LocalizedText,
   OnboardingCredentialGroup,
+  OnboardingUseCaseQuestionDefinition,
+  OnboardingUseCaseQuestionRecord,
   WizardField,
   WizardOption,
   WizardStep,
@@ -59,6 +61,15 @@ interface UseCaseConfig {
   defaultDescription?: ConfigText
   defaultInfoSources?: ConfigText
   defaultRules?: ConfigText
+  structuredQuestions?: UseCaseQuestionConfig[]
+}
+
+interface UseCaseQuestionConfig {
+  id: string
+  label: ConfigText
+  placeholder?: ConfigText
+  required?: boolean
+  legacyField?: 'info_sources' | 'rules'
 }
 
 interface SharedConfig {
@@ -234,10 +245,12 @@ export interface OnboardingUseCaseOption {
   name: string
   directory: string
   description: string
+  system_description: string
   guidance: string[]
   description_prompt: string
   info_sources_prompt: string
   rules_prompt: string
+  structured_questions: OnboardingUseCaseQuestionDefinition[]
   applicable_role_ids: string[]
 }
 
@@ -305,20 +318,89 @@ function isVisibleCredentialField(
   return fieldId === 'gerritUrl' || fieldId.startsWith('gerritHttp')
 }
 
+function buildQuestionDefinition(
+  question: UseCaseQuestionConfig,
+  locale: Locale = 'zh-CN'
+): OnboardingUseCaseQuestionDefinition {
+  return {
+    id: question.id,
+    label: readConfigText(question.label, locale),
+    placeholder: readConfigText(question.placeholder, locale),
+    required: question.required ?? true,
+  }
+}
+
+function buildFallbackStructuredQuestions(
+  useCase: UseCaseConfig,
+  locale: Locale = 'zh-CN'
+): Array<OnboardingUseCaseQuestionDefinition & { legacyField?: 'info_sources' | 'rules' }> {
+  const localizedName = readConfigText(useCase.name, locale)
+
+  return [
+    {
+      id: 'information-source',
+      label:
+        locale === 'zh-CN'
+          ? `从哪里获取${localizedName}需要的信息？`
+          : `Where can AI find the information needed for ${localizedName}?`,
+      placeholder: readConfigText(useCase.infoSourcesPrompt, locale),
+      required: true,
+      legacyField: 'info_sources',
+    },
+    {
+      id: 'workflow-sop',
+      label:
+        locale === 'zh-CN'
+          ? `从哪里获取${localizedName}的 SOP？`
+          : `Where can AI find the SOP for ${localizedName}?`,
+      placeholder: readConfigText(useCase.rulesPrompt, locale),
+      required: true,
+      legacyField: 'rules',
+    },
+    {
+      id: 'other',
+      label: locale === 'zh-CN' ? '其他' : 'Other',
+      placeholder: '',
+      required: false,
+    },
+  ]
+}
+
+function buildStructuredQuestionsForOption(
+  useCase: UseCaseConfig,
+  locale: Locale = 'zh-CN'
+): Array<OnboardingUseCaseQuestionDefinition & { legacyField?: 'info_sources' | 'rules' }> {
+  if (useCase.structuredQuestions?.length) {
+    return useCase.structuredQuestions.map((question) => ({
+      ...buildQuestionDefinition(question, locale),
+      legacyField: question.legacyField,
+    }))
+  }
+
+  return buildFallbackStructuredQuestions(useCase, locale)
+}
+
 function buildOnboardingUseCaseOption(
   useCaseName: string,
   useCase: UseCaseConfig,
   locale: Locale = 'zh-CN'
 ): OnboardingUseCaseOption {
+  const structuredQuestions = buildStructuredQuestionsForOption(useCase, locale)
+
   return {
     id: toUseCaseId(useCaseName),
     name: readConfigText(useCase.name, locale),
     directory: getUseCaseDirectoryByName(useCaseName),
     description: readConfigText(useCase.description, locale),
+    system_description: readConfigText(
+      useCase.defaultDescription ?? useCase.description,
+      locale
+    ),
     guidance: (useCase.guidance ?? []).map((value) => readConfigText(value, locale)),
     description_prompt: readConfigText(useCase.descriptionPrompt, locale),
     info_sources_prompt: readConfigText(useCase.infoSourcesPrompt, locale),
     rules_prompt: readConfigText(useCase.rulesPrompt, locale),
+    structured_questions: structuredQuestions.map(({ legacyField, ...question }) => question),
     applicable_role_ids: Object.entries(typedConfig.roles)
       .filter(([, role]) => role.useCases.includes(useCaseName))
       .map(([roleId]) => roleId),
@@ -485,6 +567,7 @@ function getLocalizedUseCaseConfigById(useCaseId: string, locale: Locale = 'zh-C
     defaultDescription: readConfigText(useCase.defaultDescription, locale),
     defaultInfoSources: readConfigText(useCase.defaultInfoSources, locale),
     defaultRules: readConfigText(useCase.defaultRules, locale),
+    structuredQuestions: buildStructuredQuestionsForOption(useCase, locale),
   }
 }
 
@@ -526,6 +609,74 @@ function resolveLocalizedConfigBackedValue(
   }
 
   return matchesConfigTextVariant(currentValue, configVariants) ? localizedValue : currentValue
+}
+
+function buildStructuredQuestionRecords(
+  useCaseId: string,
+  existingRecord: OnboardingEditableUseCaseRecord | undefined,
+  locale: Locale = 'zh-CN'
+): OnboardingUseCaseQuestionRecord[] {
+  const useCase = getUseCaseConfigById(useCaseId)
+  const localizedConfig = getLocalizedUseCaseConfigById(useCaseId, locale)
+
+  if (!useCase || !localizedConfig) {
+    return existingRecord?.questions ?? []
+  }
+
+  const existingAnswers = new Map(
+    (existingRecord?.questions ?? []).map((question) => [question.id, question.answer] as const)
+  )
+
+  return localizedConfig.structuredQuestions.map((question) => ({
+    ...question,
+    answer:
+      existingAnswers.get(question.id) ??
+      ((question as OnboardingUseCaseQuestionDefinition & {
+        legacyField?: 'info_sources' | 'rules'
+      }).legacyField
+        ? existingRecord?.[(question as OnboardingUseCaseQuestionDefinition & {
+            legacyField?: 'info_sources' | 'rules'
+          }).legacyField!] ?? ''
+        : ''),
+    locked: true,
+  }))
+}
+
+function buildCustomUseCaseQuestions(
+  existingRecord: OnboardingEditableUseCaseRecord | undefined
+): OnboardingUseCaseQuestionRecord[] {
+  if (existingRecord?.questions?.length) {
+    return existingRecord.questions.map((question) => ({
+      ...question,
+      locked: false,
+    }))
+  }
+
+  const questions: OnboardingUseCaseQuestionRecord[] = []
+
+  if (existingRecord?.info_sources.trim()) {
+    questions.push({
+      id: 'information-source',
+      label: '从哪里获取这个用例需要的信息？',
+      placeholder: '',
+      required: true,
+      answer: existingRecord.info_sources,
+      locked: false,
+    })
+  }
+
+  if (existingRecord?.rules.trim()) {
+    questions.push({
+      id: 'workflow-sop',
+      label: '从哪里获取这个用例的 SOP？',
+      placeholder: '',
+      required: true,
+      answer: existingRecord.rules,
+      locked: false,
+    })
+  }
+
+  return questions
 }
 
 export function getOnboardingAgentNameById(agentId: string, locale: Locale = 'zh-CN'): string {
@@ -588,8 +739,10 @@ export function createCustomRoleUseCaseContent(
     use_case_id: buildCustomUseCaseId(trimmedName, existingUseCaseIds),
     use_case_name: trimmedName,
     description: '',
+    description_locked: false,
     info_sources: '',
     rules: '',
+    questions: [],
   }
 }
 
@@ -611,11 +764,6 @@ export function createDefaultRoleUseCaseContents(
     )
     const localizedConfig = getLocalizedUseCaseConfigById(useCase.id, locale)
     const rawConfig = getUseCaseConfigById(useCase.id)
-    const descriptionVariants = [
-      ...readConfigTextVariants(rawConfig?.description),
-      ...readConfigTextVariants(rawConfig?.descriptionPrompt),
-      ...readConfigTextVariants(rawConfig?.defaultDescription),
-    ]
     const infoSourcesVariants = [
       ...readConfigTextVariants(rawConfig?.infoSourcesPrompt),
       ...readConfigTextVariants(rawConfig?.defaultInfoSources),
@@ -629,11 +777,8 @@ export function createDefaultRoleUseCaseContents(
       role_id: roleId,
       use_case_id: useCase.id,
       use_case_name: localizedConfig?.name ?? useCase.name,
-      description: resolveLocalizedConfigBackedValue(
-        existingRecord?.description,
-        localizedConfig?.defaultDescription ?? '',
-        descriptionVariants
-      ),
+      description: localizedConfig?.defaultDescription ?? '',
+      description_locked: true,
       info_sources: resolveLocalizedConfigBackedValue(
         existingRecord?.info_sources,
         localizedConfig?.defaultInfoSources ?? '',
@@ -644,13 +789,18 @@ export function createDefaultRoleUseCaseContents(
         localizedConfig?.defaultRules ?? '',
         rulesVariants
       ),
+      questions: buildStructuredQuestionRecords(useCase.id, existingRecord, locale),
     }
   })
 
   const customUseCases = existing.filter(
     (record) =>
       record.role_id === roleId && getOnboardingUseCaseOptionById(record.use_case_id) == null
-  )
+  ).map((record) => ({
+    ...record,
+    description_locked: false,
+    questions: buildCustomUseCaseQuestions(record),
+  }))
 
   return [...configuredDefaults, ...customUseCases]
 }

@@ -291,9 +291,45 @@ export const onboardingCopy = {
     'zh-CN': '用例描述',
     'en-US': 'Use case description',
   },
+  useCaseSummary: {
+    'zh-CN': '用例说明',
+    'en-US': 'Use case summary',
+  },
   useCaseDescriptionHint: {
     'zh-CN': '已预置一版描述，可按实际业务改写；重点写清每次执行需要提供什么信息。',
     'en-US': 'A starter description is prefilled. Rewrite it for the real workflow and clarify what information is required each run.',
+  },
+  customUseCaseDescriptionHint: {
+    'zh-CN': '写清这个自定义用例要做什么。',
+    'en-US': 'Describe what this custom use case is for.',
+  },
+  systemUseCaseDescription: {
+    'zh-CN': '系统内置说明',
+    'en-US': 'Built-in guidance',
+  },
+  useCaseQuestionsTitle: {
+    'zh-CN': '你需要填写的问题',
+    'en-US': 'Questions to answer',
+  },
+  addQuestion: {
+    'zh-CN': '新增问题',
+    'en-US': 'Add question',
+  },
+  emptyQuestionHint: {
+    'zh-CN': '先新增一个问题。',
+    'en-US': 'Add a question first.',
+  },
+  questionLabelPrefix: {
+    'zh-CN': '问题',
+    'en-US': 'Question',
+  },
+  answerLabelPrefix: {
+    'zh-CN': '回答',
+    'en-US': 'Answer',
+  },
+  removeQuestion: {
+    'zh-CN': '删除问题',
+    'en-US': 'Delete question',
   },
   sopLabel: {
     'zh-CN': '当前流程 / SOP / 模板',

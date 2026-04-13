@@ -27,6 +27,7 @@ import type {
   OnboardingInstallCandidateGroup,
   OnboardingInstallPreview,
   OnboardingState,
+  OnboardingUseCaseQuestionRecord,
   OnboardingUseCase,
   SkillResult,
   StagedOnboardingPackages,
@@ -57,6 +58,21 @@ interface OnboardingCompletionState {
 
 function unique(values: string[]) {
   return Array.from(new Set(values))
+}
+
+function buildNextQuestionId(records: OnboardingUseCaseQuestionRecord[]) {
+  let suffix = records.length + 1
+  let candidate = `question-${suffix}`
+
+  while (records.some((record) => record.id === candidate)) {
+    suffix += 1
+    candidate = `question-${suffix}`
+  }
+
+  return {
+    id: candidate,
+    index: suffix,
+  }
 }
 
 function isBaseSkillId(skillId: string) {
@@ -227,9 +243,33 @@ function areSameUseCaseRecord(
     left.use_case_id === right.use_case_id &&
     left.use_case_name === right.use_case_name &&
     left.description === right.description &&
+    (left.description_locked ?? false) === (right.description_locked ?? false) &&
     left.info_sources === right.info_sources &&
-    left.rules === right.rules
+    left.rules === right.rules &&
+    areSameQuestionRecords(left.questions ?? [], right.questions ?? [])
   )
+}
+
+function areSameQuestionRecords(
+  left: OnboardingUseCaseQuestionRecord[],
+  right: OnboardingUseCaseQuestionRecord[]
+) {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((question, index) => {
+    const matching = right[index]
+
+    return (
+      question.id === matching?.id &&
+      question.label === matching?.label &&
+      question.placeholder === matching?.placeholder &&
+      question.required === matching?.required &&
+      question.answer === matching?.answer &&
+      question.locked === matching?.locked
+    )
+  })
 }
 
 function isConfiguredText(value: string) {
@@ -274,6 +314,20 @@ function pickCredentialValuesForGroup(
 }
 
 function isUseCaseConfigured(record: OnboardingEditableUseCaseRecord) {
+  const questions = record.questions ?? []
+
+  if (questions.length > 0) {
+    const requiredQuestionsConfigured = questions
+      .filter((question) => question.required)
+      .every((question) => isConfiguredText(question.answer))
+
+    if (record.description_locked) {
+      return requiredQuestionsConfigured
+    }
+
+    return isConfiguredText(record.description) && requiredQuestionsConfigured
+  }
+
   return isConfiguredText(record.description) && isConfiguredText(record.rules)
 }
 
@@ -1002,16 +1056,99 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     [updateState]
   )
 
-  const updateUseCaseContent = useCallback(
-    (
-      useCaseId: string,
-      field: keyof Pick<OnboardingEditableUseCaseRecord, 'description' | 'info_sources' | 'rules'>,
-      value: string
-    ) => {
+  const updateUseCaseDescription = useCallback(
+    (useCaseId: string, value: string) => {
       updateState((current) => ({
         ...current,
         role_use_case_contents: current.role_use_case_contents.map((record) =>
-          record.use_case_id === useCaseId ? { ...record, [field]: value } : record
+          record.use_case_id === useCaseId ? { ...record, description: value } : record
+        ),
+      }))
+    },
+    [updateState]
+  )
+
+  const updateUseCaseQuestionLabel = useCallback(
+    (useCaseId: string, questionId: string, value: string) => {
+      updateState((current) => ({
+        ...current,
+        role_use_case_contents: current.role_use_case_contents.map((record) =>
+          record.use_case_id === useCaseId
+            ? {
+                ...record,
+                questions: (record.questions ?? []).map((question) =>
+                  question.id === questionId ? { ...question, label: value } : question
+                ),
+              }
+            : record
+        ),
+      }))
+    },
+    [updateState]
+  )
+
+  const updateUseCaseQuestionAnswer = useCallback(
+    (useCaseId: string, questionId: string, value: string) => {
+      updateState((current) => ({
+        ...current,
+        role_use_case_contents: current.role_use_case_contents.map((record) =>
+          record.use_case_id === useCaseId
+            ? {
+                ...record,
+                questions: (record.questions ?? []).map((question) =>
+                  question.id === questionId ? { ...question, answer: value } : question
+                ),
+              }
+            : record
+        ),
+      }))
+    },
+    [updateState]
+  )
+
+  const addUseCaseQuestion = useCallback(
+    (useCaseId: string) => {
+      updateState((current) => ({
+        ...current,
+        role_use_case_contents: current.role_use_case_contents.map((record) => {
+          if (record.use_case_id !== useCaseId) {
+            return record
+          }
+
+          const existingQuestions = record.questions ?? []
+          const nextQuestion = buildNextQuestionId(existingQuestions)
+
+          return {
+            ...record,
+            questions: [
+              ...existingQuestions,
+              {
+                id: nextQuestion.id,
+                label: locale === 'zh-CN' ? `问题 ${nextQuestion.index}` : `Question ${nextQuestion.index}`,
+                placeholder: '',
+                required: true,
+                answer: '',
+                locked: false,
+              },
+            ],
+          }
+        }),
+      }))
+    },
+    [locale, updateState]
+  )
+
+  const removeUseCaseQuestion = useCallback(
+    (useCaseId: string, questionId: string) => {
+      updateState((current) => ({
+        ...current,
+        role_use_case_contents: current.role_use_case_contents.map((record) =>
+          record.use_case_id === useCaseId
+            ? {
+                ...record,
+                questions: (record.questions ?? []).filter((question) => question.id !== questionId),
+              }
+            : record
         ),
       }))
     },
@@ -1218,7 +1355,11 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     toggleInstallSkill,
     runManualConnectionTest,
     updateCredentialValue,
-    updateUseCaseContent,
+    updateUseCaseDescription,
+    updateUseCaseQuestionAnswer,
+    updateUseCaseQuestionLabel,
+    addUseCaseQuestion,
+    removeUseCaseQuestion,
     selectRole,
     addUseCase,
     getUseCaseSaveScope,

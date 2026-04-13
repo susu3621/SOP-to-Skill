@@ -409,11 +409,13 @@ describe('onboarding shell smoke coverage', () => {
     await user.click(screen.getByRole('tab', { name: 'Choose work' }))
 
     expect(await screen.findByRole('button', { name: 'Requirement Assessment' })).toBeInTheDocument()
+    expect(screen.getByText('Built-in guidance')).toBeInTheDocument()
+    expect(screen.getByText('Questions to answer')).toBeInTheDocument()
     expect(
-      (screen.getByLabelText('Use case description') as HTMLTextAreaElement).value
-    ).toContain(
-      'Input (information required every run): the name of the requirement to assess.'
-    )
+      screen.getByText(
+        'Review the incoming requirement, internal technical assets, and boundary constraints to form an initial assessment.'
+      )
+    ).toBeInTheDocument()
     expect(screen.queryByDisplayValue(/输入（每次执行都需要提供给Skill的信息）/)).not.toBeInTheDocument()
   })
 

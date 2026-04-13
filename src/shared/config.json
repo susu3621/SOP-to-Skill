@@ -691,7 +691,59 @@
       "defaultRules": {
         "zh-CN": "",
         "en-US": ""
-      }
+      },
+      "structuredQuestions": [
+        {
+          "id": "project-list-source",
+          "label": {
+            "zh-CN": "从哪里获取负责的项目清单？",
+            "en-US": "Where can AI get the list of projects I own?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：Wiki 项目清单页",
+            "en-US": "Example: project list wiki page"
+          },
+          "required": true
+        },
+        {
+          "id": "project-info-navigation",
+          "label": {
+            "zh-CN": "从哪里可以知道如何寻找每个项目的信息？",
+            "en-US": "Where can AI learn how to find information for each project?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：项目导航 Wiki 链接",
+            "en-US": "Example: project navigation wiki link"
+          },
+          "required": true,
+          "legacyField": "info_sources"
+        },
+        {
+          "id": "weekly-report-sop",
+          "label": {
+            "zh-CN": "从哪里获取周报 SOP？",
+            "en-US": "Where can AI find the weekly report SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：周报模板 Wiki 链接",
+            "en-US": "Example: weekly report SOP wiki link"
+          },
+          "required": true,
+          "legacyField": "rules"
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
     },
     "项目复盘": {
       "name": {

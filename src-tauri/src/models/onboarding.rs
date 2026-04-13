@@ -31,8 +31,26 @@ pub struct OnboardingRoleUseCaseContent {
     pub use_case_id: String,
     pub use_case_name: String,
     pub description: String,
+    #[serde(default)]
+    pub description_locked: bool,
     pub info_sources: String,
     pub rules: String,
+    #[serde(default)]
+    pub questions: Vec<OnboardingUseCaseQuestion>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingUseCaseQuestion {
+    pub id: String,
+    pub label: String,
+    #[serde(default)]
+    pub placeholder: String,
+    #[serde(default)]
+    pub required: bool,
+    #[serde(default)]
+    pub answer: String,
+    #[serde(default)]
+    pub locked: bool,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
