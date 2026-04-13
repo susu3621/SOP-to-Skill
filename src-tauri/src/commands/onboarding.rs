@@ -1608,12 +1608,15 @@ pub fn test_onboarding_connection(
 }
 
 #[tauri::command]
-pub fn check_onboarding_skill_environment(
+pub async fn check_onboarding_skill_environment(
     input: OnboardingEnvironmentCheckInput,
 ) -> SkillResult<OnboardingEnvironmentCheckResult> {
-    match run_onboarding_environment_check(&input) {
-        Ok(result) => SkillResult::Success { success: result },
-        Err(error) => SkillResult::Error { error },
+    match tokio::task::spawn_blocking(move || run_onboarding_environment_check(&input)).await {
+        Ok(Ok(result)) => SkillResult::Success { success: result },
+        Ok(Err(error)) => SkillResult::Error { error },
+        Err(error) => SkillResult::Error {
+            error: format!("Failed to run onboarding environment check: {error}"),
+        },
     }
 }
 

@@ -946,6 +946,107 @@ describe('OnboardingShell', () => {
     expect(payload.input.trigger).toBe('automatic')
   })
 
+  it('shows the environment as pending while the automatic Linux check is still running', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      selected_install_skill_ids: [],
+      credential_values: {},
+    }
+
+    const defaultInvoke = invokeMock.getMockImplementation()
+    let resolveEnvironmentCheck: (() => void) | null = null
+
+    invokeMock.mockImplementation((command: string, payload?: any) => {
+      if (command === 'check_onboarding_skill_environment' && payload?.input?.service_id === 'linux') {
+        return new Promise((resolve) => {
+          resolveEnvironmentCheck = () =>
+            resolve({
+              success: {
+                service_id: 'linux',
+                platform: 'macos',
+                status: 'missing',
+                summary: '缺少环境：Python 3、Paramiko',
+                details: '未检测到 Paramiko',
+                requirements: [
+                  {
+                    id: 'python3',
+                    label: 'Python 3',
+                    required: true,
+                    status: 'ready',
+                    details: 'Python 3.12.0',
+                  },
+                  {
+                    id: 'paramiko',
+                    label: 'Paramiko',
+                    required: true,
+                    status: 'missing',
+                    details: '未安装',
+                  },
+                ],
+                missing_requirement_ids: ['paramiko'],
+                install_supported: true,
+                install_support_message: '可自动安装缺失环境',
+                trigger: payload?.input?.trigger ?? 'automatic',
+                tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
+              },
+            })
+        })
+      }
+
+      return defaultInvoke?.(command, payload)
+    })
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Linux' }))
+
+    expect(screen.getByText('检测中...')).toBeInTheDocument()
+    expect(resolveEnvironmentCheck).not.toBeNull()
+
+    await act(async () => {
+      resolveEnvironmentCheck?.()
+      await Promise.resolve()
+    })
+
+    expect(await screen.findByText('缺少环境：Python 3、Paramiko')).toBeInTheDocument()
+  })
+
+  it('shows a module-level hint while environment checks are pending', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      selected_install_skill_ids: [],
+      credential_values: {},
+    }
+
+    const defaultInvoke = invokeMock.getMockImplementation()
+
+    invokeMock.mockImplementation((command: string, payload?: any) => {
+      if (command === 'check_onboarding_skill_environment' && payload?.input?.service_id === 'linux') {
+        return new Promise(() => {})
+      }
+
+      return defaultInvoke?.(command, payload)
+    })
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Linux' }))
+
+    expect(screen.getByText('正在检测所需环境，请稍候...')).toBeInTheDocument()
+  })
+
   it('persists Linux devices as structured records when saving base skills', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,

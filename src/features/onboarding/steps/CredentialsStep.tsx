@@ -106,10 +106,19 @@ export function CredentialsStep({
   onRunConnectionTest,
   onInstallEnvironment,
 }: CredentialsStepProps) {
+  const hasPendingEnvironmentChecks = credentialGroups.some(
+    (group) => environmentChecks[group.service_id]?.status === 'pending'
+  )
+
   return (
     <div className="field-stack">
       {credentialGroups.length === 0 && (
         <p className="muted">{getOnboardingCopy(locale, onboardingCopy.noCredentials)}</p>
+      )}
+      {hasPendingEnvironmentChecks && (
+        <p className="muted">
+          {getOnboardingCopy(locale, onboardingCopy.environmentPendingHint)}
+        </p>
       )}
       {credentialGroups.map((group) => {
         const connectionTest = connectionTests[group.service_id]

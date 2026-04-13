@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import {
@@ -354,6 +354,31 @@ function createIdleEnvironmentCheckState(requestId = 0): OnboardingEnvironmentCh
     last_trigger: null,
     tested_fingerprint: null,
     request_id: requestId,
+  }
+}
+
+function createPendingEnvironmentCheckState(
+  locale: Locale,
+  options?: {
+    previous?: OnboardingEnvironmentCheckState
+    requestId?: number
+    trigger?: OnboardingEnvironmentTrigger | null
+    testedFingerprint?: string | null
+  }
+): OnboardingEnvironmentCheckState {
+  const previous = options?.previous
+
+  return {
+    status: 'pending',
+    summary: getOnboardingCopy(locale, onboardingCopy.environmentPending),
+    details: null,
+    requirements: previous?.requirements ?? [],
+    missing_requirement_ids: previous?.missing_requirement_ids ?? [],
+    install_supported: previous?.install_supported ?? false,
+    install_support_message: previous?.install_support_message ?? null,
+    last_trigger: options?.trigger ?? previous?.last_trigger ?? null,
+    tested_fingerprint: options?.testedFingerprint ?? previous?.tested_fingerprint ?? null,
+    request_id: options?.requestId ?? previous?.request_id ?? 0,
   }
 }
 
@@ -874,18 +899,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
 
       setEnvironmentChecks((current) => ({
         ...current,
-        [serviceId]: {
-          status: 'pending',
-          summary: getOnboardingCopy(locale, onboardingCopy.environmentPending),
-          details: null,
-          requirements: current[serviceId]?.requirements ?? [],
-          missing_requirement_ids: current[serviceId]?.missing_requirement_ids ?? [],
-          install_supported: current[serviceId]?.install_supported ?? false,
-          install_support_message: current[serviceId]?.install_support_message ?? null,
-          last_trigger: trigger,
-          tested_fingerprint: testedFingerprint,
-          request_id: requestId,
-        },
+        [serviceId]: createPendingEnvironmentCheckState(locale, {
+          previous: current[serviceId],
+          requestId,
+          trigger,
+          testedFingerprint,
+        }),
       }))
 
       try {
@@ -1281,7 +1300,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     })
   }, [credentialGroups])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     credentialGroups.forEach((group) => {
       const nextFingerprint = buildEnvironmentFingerprint(group, state.credential_values)
       const existing = environmentChecks[group.service_id]

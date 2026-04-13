@@ -291,6 +291,10 @@ export const onboardingCopy = {
     'zh-CN': '检测中...',
     'en-US': 'Checking...',
   },
+  environmentPendingHint: {
+    'zh-CN': '正在检测所需环境，请稍候...',
+    'en-US': 'Checking required runtime tools. Please wait...',
+  },
   environmentReady: {
     'zh-CN': '环境已就绪',
     'en-US': 'Environment ready',
