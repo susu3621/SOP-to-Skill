@@ -185,6 +185,7 @@ const fixtures = vi.hoisted(() => {
     preferredLocale: 'zh-CN' as 'zh-CN' | 'en-US',
     updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
     trayNavigateHandler: null as null | ((event: { payload: string }) => void),
+    skills: [] as Array<Record<string, unknown>>,
   }
 
   return {
@@ -200,7 +201,7 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(async (command: string, payload?: any) => {
     switch (command) {
       case 'list_skills':
-        return { success: [] }
+        return { success: fixtures.runtime.skills }
       case 'list_installed':
         return { success: [] }
       case 'get_target_apps':
@@ -268,6 +269,7 @@ describe('onboarding shell smoke coverage', () => {
     fixtures.runtime.preferredLocale = 'zh-CN'
     fixtures.runtime.updatedLocales = []
     fixtures.runtime.trayNavigateHandler = null
+    fixtures.runtime.skills = []
   })
 
   it('opens the onboarding home menu instead of the legacy long-form shell', async () => {
@@ -328,6 +330,39 @@ describe('onboarding shell smoke coverage', () => {
       screen.getByText('管理已经安装到各个 AI 工具中的 Skill。')
     ).toBeInTheDocument()
     expect(screen.getByText('暂无已安装 Skill。')).toBeInTheDocument()
+  })
+
+  it('shows the code management category for Gerrit in the skill library', async () => {
+    fixtures.runtime.skills = [
+      {
+        id: 'gerrit',
+        name: {
+          'zh-CN': 'Gerrit',
+          'en-US': 'Gerrit',
+        },
+        description: {
+          'zh-CN': '读取代码评审、提交状态和变更信息',
+          'en-US': 'Read code reviews, submit status, and change information.',
+        },
+        version: '1.0.0',
+        category: 'code-management',
+        author: null,
+        targets: ['codex', 'claude-code', 'workbuddy'],
+        variables: [],
+        is_installed: false,
+        installed_version: null,
+        update_status: 'not-installed',
+      },
+    ]
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    await waitForOnboardingHome()
+    await user.click(screen.getByRole('button', { name: 'Skill 库' }))
+
+    expect(screen.getByText('Gerrit')).toBeInTheDocument()
+    expect(screen.getByText('代码管理')).toBeInTheDocument()
   })
 
   it('shows an install action when a newer desktop app update is available', async () => {

@@ -19,6 +19,15 @@ function formatVersionLabel(locale: Locale, version?: string) {
   return version === 'local' ? getCopy(locale, pageCopy.localPackage) : `v${version}`
 }
 
+function getSkillCategoryLabel(category: string, locale: Locale) {
+  switch (category) {
+    case 'code-management':
+      return locale === 'zh-CN' ? '代码管理' : 'Code Management'
+    default:
+      return category
+  }
+}
+
 function App() {
   const [view, setView] = useState<ViewType>('onboarding')
   const [selectedSkill, setSelectedSkill] = useState<SkillInfo | null>(null)
@@ -281,6 +290,7 @@ function App() {
                             <p>{skill.description?.[locale] || skill.description?.['zh-CN'] || getCopy(locale, pageCopy.noDescription)}</p>
                             <div className="skill-meta">
                               <span>{formatVersionLabel(locale, skill.version)}</span>
+                              {skill.category && <span>{getSkillCategoryLabel(skill.category, locale)}</span>}
                               <span>{skill.targets.join(', ')}</span>
                             </div>
                           </section>
@@ -309,6 +319,14 @@ function App() {
                         <div>
                           <strong>{getCopy(locale, pageCopy.versionLabel)}</strong>
                           <p>{formatVersionLabel(locale, selectedSkill.version)}</p>
+                        </div>
+                        <div>
+                          <strong>{getCopy(locale, pageCopy.categoryLabel)}</strong>
+                          <p>
+                            {selectedSkill.category
+                              ? getSkillCategoryLabel(selectedSkill.category, locale)
+                              : getCopy(locale, pageCopy.noDescription)}
+                          </p>
                         </div>
                         <div>
                           <strong>{getCopy(locale, pageCopy.authorLabel)}</strong>

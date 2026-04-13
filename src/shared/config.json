@@ -232,6 +232,114 @@
         }
       }
     },
+    "gerrit": {
+      "name": {
+        "zh-CN": "Gerrit",
+        "en-US": "Gerrit"
+      },
+      "description": {
+        "zh-CN": "读取代码评审、提交状态和变更信息",
+        "en-US": "Read code reviews, submit status, and change information."
+      },
+      "credentials": {
+        "gerritAuthMode": {
+          "label": {
+            "zh-CN": "连接方式",
+            "en-US": "Connection Mode"
+          },
+          "type": "single-select",
+          "required": true,
+          "options": [
+            {
+              "value": "http",
+              "label": {
+                "zh-CN": "网页/API 登录（推荐）",
+                "en-US": "Web/API Login (Recommended)"
+              }
+            },
+            {
+              "value": "ssh",
+              "label": {
+                "zh-CN": "SSH 命令行（高级）",
+                "en-US": "SSH Command Line (Advanced)"
+              }
+            }
+          ]
+        },
+        "gerritUrl": {
+          "label": {
+            "zh-CN": "Gerrit URL",
+            "en-US": "Gerrit URL"
+          },
+          "placeholder": {
+            "zh-CN": "https://gerrit.your-company.com",
+            "en-US": "https://gerrit.your-company.com"
+          },
+          "type": "text",
+          "required": true
+        },
+        "gerritHttpUsername": {
+          "label": {
+            "zh-CN": "Gerrit 用户名",
+            "en-US": "Gerrit Username"
+          },
+          "placeholder": {
+            "zh-CN": "your.name",
+            "en-US": "your.name"
+          },
+          "type": "text",
+          "required": true
+        },
+        "gerritHttpPassword": {
+          "label": {
+            "zh-CN": "Gerrit 密码 / HTTP 密码",
+            "en-US": "Gerrit Password / HTTP Password"
+          },
+          "placeholder": {
+            "zh-CN": "输入 Gerrit HTTP 密码",
+            "en-US": "Enter your Gerrit HTTP password"
+          },
+          "type": "password",
+          "required": true
+        },
+        "gerritSshHost": {
+          "label": {
+            "zh-CN": "Gerrit SSH 主机",
+            "en-US": "Gerrit SSH Host"
+          },
+          "placeholder": {
+            "zh-CN": "gerrit.your-company.com",
+            "en-US": "gerrit.your-company.com"
+          },
+          "type": "text",
+          "required": true
+        },
+        "gerritSshPort": {
+          "label": {
+            "zh-CN": "Gerrit SSH 端口",
+            "en-US": "Gerrit SSH Port"
+          },
+          "placeholder": {
+            "zh-CN": "29418",
+            "en-US": "29418"
+          },
+          "type": "text",
+          "required": true
+        },
+        "gerritSshUsername": {
+          "label": {
+            "zh-CN": "Gerrit SSH 用户名",
+            "en-US": "Gerrit SSH Username"
+          },
+          "placeholder": {
+            "zh-CN": "your.name",
+            "en-US": "your.name"
+          },
+          "type": "text",
+          "required": true
+        }
+      }
+    },
     "mail": {
       "name": {
         "zh-CN": "腾讯企业邮箱",

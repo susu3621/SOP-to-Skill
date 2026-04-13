@@ -18,6 +18,7 @@ function loadSkillManifestLib() {
         version: string
         contentHash: string
         targets: string[]
+        category?: string
       }>
     }
     validateSkillManifest: (input: {
@@ -30,6 +31,7 @@ function loadSkillManifestLib() {
           version: string
           contentHash: string
           targets: string[]
+          category?: string
         }>
       }
       previousManifest?: {
@@ -40,6 +42,7 @@ function loadSkillManifestLib() {
           version: string
           contentHash: string
           targets: string[]
+          category?: string
         }>
       }
     }) => string[]
@@ -176,6 +179,7 @@ describe('skill manifest validation', () => {
               version: '1.2.3',
               contentHash: 'sha256:test',
               targets: ['codex'],
+              category: 'code-management',
             },
           ],
         },
@@ -195,6 +199,7 @@ describe('skill manifest validation', () => {
           version: '1.2.3',
           contentHash: 'sha256:test',
           targets: ['codex'],
+          category: 'code-management',
         },
       ],
     })

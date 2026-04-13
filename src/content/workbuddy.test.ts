@@ -2,6 +2,7 @@ import {
   buildGeneratedSkillIdsForRoleUseCase,
   createDefaultRoleUseCaseContents,
   getCredentialFields,
+  getCredentialGroups,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
   getRoleNameById,
@@ -33,12 +34,18 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyAgentApps.map((app) => app.label['zh-CN'])).not.toContain('Antigravity')
   })
 
-  it('exposes only Confluence, Jira, and Tencent Exmail as base skills', () => {
-    expect(Object.keys(sharedConfig.baseSkills)).toEqual(['confluence', 'jira', 'mail'])
-    expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual(['confluence', 'jira', 'mail'])
+  it('exposes Confluence, Jira, Gerrit, and Tencent Exmail as base skills', () => {
+    expect(Object.keys(sharedConfig.baseSkills)).toEqual(['confluence', 'jira', 'gerrit', 'mail'])
+    expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual([
+      'confluence',
+      'jira',
+      'gerrit',
+      'mail',
+    ])
     expect(workbuddyBaseSkills.map((skill) => skill.label['zh-CN'])).toEqual([
       'Confluence',
       'Jira',
+      'Gerrit',
       '腾讯企业邮箱',
     ])
   })
@@ -47,17 +54,19 @@ describe('workbuddy agent apps', () => {
     expect(onboardingBaseSkillGroups.map((group) => group.name)).toEqual([
       'Wiki 系统',
       '问题管理系统',
+      '代码管理',
       '通信系统',
     ])
     expect(onboardingBaseSkillGroups.map((group) => group.skills.map((skill) => skill.id))).toEqual([
       ['confluence'],
       ['jira'],
+      ['gerrit'],
       ['mail'],
     ])
   })
 
-  it('exposes Atlassian URLs and Tencent Exmail-only credential fields from shared config', () => {
-    const allCredentialFields = getCredentialFields(['confluence', 'jira', 'mail'])
+  it('exposes Atlassian URLs, Gerrit auth modes, and Tencent Exmail credential fields from shared config', () => {
+    const allCredentialFields = getCredentialFields(['confluence', 'jira', 'gerrit', 'mail'])
 
     expect(allCredentialFields.map((field) => field.id)).toEqual([
       'confluenceUrl',
@@ -66,17 +75,56 @@ describe('workbuddy agent apps', () => {
       'jiraUrl',
       'jiraUsername',
       'jiraPassword',
+      'gerritAuthMode',
+      'gerritUrl',
+      'gerritHttpUsername',
+      'gerritHttpPassword',
+      'gerritSshHost',
+      'gerritSshPort',
+      'gerritSshUsername',
       'mailUsername',
       'mailPassword',
     ])
     expect(sharedConfig.baseSkills.confluence?.credentials).toHaveProperty('confluenceUrl')
     expect(sharedConfig.baseSkills.jira?.credentials).toHaveProperty('jiraUrl')
+    expect(sharedConfig.baseSkills.gerrit?.credentials).toHaveProperty('gerritAuthMode')
     expect(sharedConfig.baseSkills.mail?.name).toEqual({
       'zh-CN': '腾讯企业邮箱',
       'en-US': 'Tencent Exmail',
     })
     expect(sharedConfig.baseSkills.mail?.credentials).not.toHaveProperty('mailHost')
     expect(sharedConfig.baseSkills.mail?.credentials).not.toHaveProperty('mailFrom')
+  })
+
+  it('shows Gerrit HTTP fields by default and switches required fields for SSH mode', () => {
+    const defaultGroup = getCredentialGroups(['gerrit'])[0]
+    expect(defaultGroup?.service_name).toBe('Gerrit')
+    expect(defaultGroup?.fields.map((field) => field.id)).toEqual([
+      'gerritAuthMode',
+      'gerritUrl',
+      'gerritHttpUsername',
+      'gerritHttpPassword',
+    ])
+    expect(defaultGroup?.required_field_ids).toEqual([
+      'gerritUrl',
+      'gerritHttpUsername',
+      'gerritHttpPassword',
+    ])
+
+    const sshGroup = getCredentialGroups(['gerrit'], 'zh-CN', {
+      gerritAuthMode: 'ssh',
+    })[0]
+    expect(sshGroup?.fields.map((field) => field.id)).toEqual([
+      'gerritAuthMode',
+      'gerritSshHost',
+      'gerritSshPort',
+      'gerritSshUsername',
+    ])
+    expect(sshGroup?.required_field_ids).toEqual([
+      'gerritSshHost',
+      'gerritSshPort',
+      'gerritSshUsername',
+    ])
   })
 
   it('exposes only project manager in visible role selectors while keeping legacy role labels', () => {

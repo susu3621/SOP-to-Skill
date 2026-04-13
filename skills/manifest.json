@@ -16,6 +16,14 @@
       "contentHash": "sha256:fd40c63cdd9b8fce07c907a04829dc9561271bea3e416ab59f3585ba3f5d4b15"
     },
     {
+      "id": "gerrit",
+      "path": "skills/gerrit",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "category": "code-management",
+      "contentHash": "sha256:1f85a31662a08a9c89a3b5f644fb4eaf7e227d5821e80863a9a5fd2d8c39f8e3"
+    },
+    {
       "id": "mail",
       "path": "skills/mail",
       "version": "1.0.1",

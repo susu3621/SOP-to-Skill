@@ -45,6 +45,7 @@ pub struct SkillInfo {
     pub name: HashMap<String, String>,
     pub description: Option<HashMap<String, String>>,
     pub version: String,
+    pub category: Option<String>,
     pub author: Option<String>,
     pub targets: Vec<String>,
     pub variables: Vec<VariableInfo>,
@@ -123,6 +124,7 @@ fn template_to_info(template: SkillTemplate, installed: Option<&InstalledSkill>)
         name: template.name.clone(),
         description: template.description.clone(),
         version: template.version.clone(),
+        category: template.category.clone(),
         author: template.author.clone(),
         targets,
         variables,
@@ -581,6 +583,7 @@ mod tests {
             path: "skills/jira".to_string(),
             version: "1.2.3".to_string(),
             targets: vec![TargetAppId::Codex],
+            category: None,
             content_hash: "sha256:test".to_string(),
         };
 

@@ -579,9 +579,11 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('heading', { name: '公司 IT 工具' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Wiki 系统' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '问题管理系统' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '代码管理' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '通信系统' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Gerrit' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: '腾讯企业邮箱' })).toBeInTheDocument()
     expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
     expect(
@@ -589,11 +591,11 @@ describe('OnboardingShell', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows Confluence and Jira URL fields in 公司 IT 工具 and keeps Tencent Exmail credentials to username/password only', async () => {
+  it('shows Confluence, Jira, and Gerrit HTTP fields in 公司 IT 工具 and keeps Tencent Exmail credentials to username/password only', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
-      selected_base_skill_ids: ['jira', 'confluence', 'mail'],
-      selected_install_skill_ids: ['jira', 'confluence', 'mail'],
+      selected_base_skill_ids: ['jira', 'confluence', 'gerrit', 'mail'],
+      selected_install_skill_ids: ['jira', 'confluence', 'gerrit', 'mail'],
     }
     const user = userEvent.setup()
 
@@ -605,8 +607,15 @@ describe('OnboardingShell', () => {
 
     expect(screen.getByLabelText('Confluence URL')).toBeInTheDocument()
     expect(screen.getByLabelText('Jira URL')).toBeInTheDocument()
+    expect(screen.getByLabelText('连接方式')).toBeInTheDocument()
+    expect(screen.getByLabelText('Gerrit URL')).toBeInTheDocument()
+    expect(screen.getByLabelText('Gerrit 用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('Gerrit 密码 / HTTP 密码')).toBeInTheDocument()
     expect(screen.getByLabelText('腾讯企业邮箱用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('腾讯企业邮箱密码 / 授权码')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Gerrit SSH 主机')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Gerrit SSH 端口')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Gerrit SSH 用户名')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Mail SMTP Host')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Mail 发件邮箱')).not.toBeInTheDocument()
 
@@ -617,6 +626,36 @@ describe('OnboardingShell', () => {
     expect(screen.queryByText('账号凭证')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Confluence URL')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Jira URL')).not.toBeInTheDocument()
+  })
+
+  it('switches Gerrit credential fields when auth mode changes', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['gerrit'],
+      selected_install_skill_ids: ['gerrit'],
+      credential_values: {
+        gerritAuthMode: 'http',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    expect(screen.getByLabelText('Gerrit URL')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Gerrit SSH 主机')).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('连接方式'), 'ssh')
+
+    expect(screen.queryByLabelText('Gerrit URL')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Gerrit SSH 主机')).toBeInTheDocument()
+    expect(screen.getByLabelText('Gerrit SSH 端口')).toBeInTheDocument()
+    expect(screen.getByLabelText('Gerrit SSH 用户名')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Gerrit 密码 / HTTP 密码')).not.toBeInTheDocument()
   })
 
   it('shows one test button per selected infrastructure service', async () => {

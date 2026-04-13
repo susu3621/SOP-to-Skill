@@ -438,8 +438,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     [state.role_use_case_contents, state.selected_role_id]
   )
   const credentialGroups = useMemo(
-    () => getCredentialGroups(state.selected_base_skill_ids, locale),
-    [locale, state.selected_base_skill_ids]
+    () => getCredentialGroups(state.selected_base_skill_ids, locale, state.credential_values),
+    [locale, state.credential_values, state.selected_base_skill_ids]
   )
   const credentialFields = useMemo(
     () => getCredentialFields(state.selected_base_skill_ids),
@@ -681,7 +681,11 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
 
   const runAutomaticConnectionTestsForState = useCallback(
     (persistedState: OnboardingState) => {
-      const persistedGroups = getCredentialGroups(persistedState.selected_base_skill_ids, locale)
+      const persistedGroups = getCredentialGroups(
+        persistedState.selected_base_skill_ids,
+        locale,
+        persistedState.credential_values
+      )
 
       void Promise.allSettled(
         persistedGroups

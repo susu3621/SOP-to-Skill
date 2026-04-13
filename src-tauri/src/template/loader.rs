@@ -350,6 +350,7 @@ fn load_directory_package_template(
         id: skill_id.to_string(),
         name: duplicate_text(&display_name),
         description: frontmatter.description.as_deref().map(duplicate_text),
+        category: manifest_entry.and_then(|entry| entry.category.clone()),
         version: manifest_entry
             .map(|entry| entry.version.clone())
             .unwrap_or_else(|| "local".to_string()),

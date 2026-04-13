@@ -21,9 +21,13 @@ type ConfigText = string | LocalizedText
 
 interface CredentialFieldConfig {
   label: ConfigText
-  placeholder: ConfigText
-  type: 'text' | 'password'
+  placeholder?: ConfigText
+  type: 'text' | 'password' | 'single-select'
   required: boolean
+  options?: Array<{
+    value: string
+    label: ConfigText
+  }>
 }
 
 interface BaseSkillConfig {
@@ -275,6 +279,32 @@ function buildOnboardingBaseSkillOption(
   }
 }
 
+function getGerritAuthMode(credentialValues: Record<string, string> = {}) {
+  return credentialValues.gerritAuthMode === 'ssh' ? 'ssh' : 'http'
+}
+
+function isVisibleCredentialField(
+  serviceId: string,
+  fieldId: string,
+  credentialValues: Record<string, string> = {}
+) {
+  if (serviceId !== 'gerrit') {
+    return true
+  }
+
+  if (fieldId === 'gerritAuthMode') {
+    return true
+  }
+
+  const authMode = getGerritAuthMode(credentialValues)
+
+  if (authMode === 'ssh') {
+    return fieldId.startsWith('gerritSsh')
+  }
+
+  return fieldId === 'gerritUrl' || fieldId.startsWith('gerritHttp')
+}
+
 function buildOnboardingUseCaseOption(
   useCaseName: string,
   useCase: UseCaseConfig,
@@ -365,6 +395,18 @@ const onboardingBaseSkillGroupDefinitions = [
       'en-US': 'Sync tasks, defects, and owners so AI can track execution progress.',
     },
     skill_ids: ['jira'],
+  },
+  {
+    id: 'code-management',
+    name: {
+      'zh-CN': '代码管理',
+      'en-US': 'Code Management',
+    },
+    description: {
+      'zh-CN': '同步代码评审、提交状态和变更记录，方便 AI 跟进研发协作。',
+      'en-US': 'Sync code reviews, submit status, and change history so AI can follow engineering collaboration.',
+    },
+    skill_ids: ['gerrit'],
   },
   {
     id: 'communication',
@@ -730,10 +772,14 @@ function buildCredentialFields(skillKey: string): WizardField[] {
 
   return Object.entries(skill.credentials).map(([credKey, cred]) => ({
     id: credKey,
-    type: cred.type === 'password' ? 'password' : 'text',
+    type: cred.type,
     label: toLocalizedText(cred.label),
-    placeholder: toLocalizedText(cred.placeholder),
+    placeholder: cred.placeholder ? toLocalizedText(cred.placeholder) : undefined,
     required: cred.required,
+    options: cred.options?.map((option) => ({
+      value: option.value,
+      label: toLocalizedText(option.label),
+    })),
   }))
 }
 
@@ -744,10 +790,13 @@ Object.keys(typedConfig.baseSkills).forEach((skillKey) => {
 
 function buildCredentialGroup(
   skillKey: string,
-  locale: Locale = 'zh-CN'
+  locale: Locale = 'zh-CN',
+  credentialValues: Record<string, string> = {}
 ): OnboardingCredentialGroup | null {
   const skill = typedConfig.baseSkills[skillKey]
-  const fields = credentialFieldCache[skillKey] ?? []
+  const fields = (credentialFieldCache[skillKey] ?? []).filter((field) =>
+    isVisibleCredentialField(skillKey, field.id, credentialValues)
+  )
 
   if (!skill || fields.length === 0) {
     return null
@@ -758,7 +807,10 @@ function buildCredentialGroup(
     service_name: readConfigText(skill.name, locale),
     service_description: readConfigText(skill.description, locale),
     fields,
-    required_field_ids: fields.filter((field) => field.required).map((field) => field.id),
+    required_field_ids: fields
+      .filter((field) => field.required)
+      .map((field) => field.id)
+      .filter((fieldId) => fieldId !== 'gerritAuthMode'),
   }
 }
 
@@ -768,16 +820,25 @@ export function getCredentialFields(baseSkills: string[]): WizardField[] {
 
 export function getCredentialGroups(
   baseSkills: string[],
-  locale: Locale = 'zh-CN'
+  locale: Locale = 'zh-CN',
+  credentialValues: Record<string, string> = {}
 ): OnboardingCredentialGroup[] {
   return Array.from(new Set(baseSkills))
-    .map((skillId) => buildCredentialGroup(skillId, locale))
+    .map((skillId) => buildCredentialGroup(skillId, locale, credentialValues))
     .filter((group): group is OnboardingCredentialGroup => group != null)
 }
 
-export function getRequiredCredentialFieldIds(serviceId: string): string[] {
+export function getRequiredCredentialFieldIds(
+  serviceId: string,
+  credentialValues: Record<string, string> = {}
+): string[] {
   return (credentialFieldCache[serviceId] ?? [])
-    .filter((field) => field.required)
+    .filter(
+      (field) =>
+        field.required &&
+        field.id !== 'gerritAuthMode' &&
+        isVisibleCredentialField(serviceId, field.id, credentialValues)
+    )
     .map((field) => field.id)
 }
 

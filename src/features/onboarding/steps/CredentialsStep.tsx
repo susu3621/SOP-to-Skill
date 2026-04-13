@@ -80,13 +80,27 @@ export function CredentialsStep({
               {group.fields.map((field) => (
                 <div className="field" key={field.id}>
                   <label htmlFor={field.id}>{field.label[locale] ?? field.label['zh-CN']}</label>
-                  <input
-                    id={field.id}
-                    type={field.type === 'password' ? 'password' : 'text'}
-                    value={credentialValues[field.id] ?? ''}
-                    placeholder={field.placeholder?.[locale] ?? field.placeholder?.['zh-CN'] ?? ''}
-                    onChange={(event) => onUpdateCredential(field.id, event.target.value)}
-                  />
+                  {field.type === 'single-select' ? (
+                    <select
+                      id={field.id}
+                      value={credentialValues[field.id] ?? field.options?.[0]?.value ?? ''}
+                      onChange={(event) => onUpdateCredential(field.id, event.target.value)}
+                    >
+                      {(field.options ?? []).map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label[locale] ?? option.label['zh-CN']}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      id={field.id}
+                      type={field.type === 'password' ? 'password' : 'text'}
+                      value={credentialValues[field.id] ?? ''}
+                      placeholder={field.placeholder?.[locale] ?? field.placeholder?.['zh-CN'] ?? ''}
+                      onChange={(event) => onUpdateCredential(field.id, event.target.value)}
+                    />
+                  )}
                 </div>
               ))}
 

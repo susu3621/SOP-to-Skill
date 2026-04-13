@@ -58,6 +58,7 @@ export interface SkillInfo {
   name: Record<string, string>
   description?: Record<string, string>
   version: string
+  category?: string
   author?: string
   targets: string[]
   variables: VariableInfo[]

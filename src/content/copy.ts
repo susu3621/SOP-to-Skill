@@ -181,6 +181,10 @@ export const pageCopy = {
     'zh-CN': '版本',
     'en-US': 'Version',
   },
+  categoryLabel: {
+    'zh-CN': '类别',
+    'en-US': 'Category',
+  },
   authorLabel: {
     'zh-CN': '作者',
     'en-US': 'Author',

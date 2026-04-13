@@ -98,6 +98,13 @@ const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "CONFLUENCE_URL",
     "CONFLUENCE_USERNAME",
     "CONFLUENCE_PASSWORD",
+    "GERRIT_AUTH_MODE",
+    "GERRIT_URL",
+    "GERRIT_USERNAME",
+    "GERRIT_PASSWORD",
+    "GERRIT_SSH_HOST",
+    "GERRIT_SSH_PORT",
+    "GERRIT_SSH_USERNAME",
     "JIRA_URL",
     "JIRA_USERNAME",
     "JIRA_PASSWORD",
@@ -118,6 +125,10 @@ const ONBOARDING_CONNECTION_SERVICES: &[OnboardingConnectionServiceConfig] = &[
     OnboardingConnectionServiceConfig {
         service_id: "jira",
         required_field_ids: &["jiraUrl", "jiraUsername", "jiraPassword"],
+    },
+    OnboardingConnectionServiceConfig {
+        service_id: "gerrit",
+        required_field_ids: &[],
     },
     OnboardingConnectionServiceConfig {
         service_id: "mail",
@@ -241,6 +252,47 @@ fn build_connection_test_env_entries(
                 require_non_empty_credential_value(credential_values, "jiraPassword")?,
             ),
         ]),
+        "gerrit" => {
+            let auth_mode = credential_values
+                .get("gerritAuthMode")
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty())
+                .unwrap_or("http");
+
+            match auth_mode {
+                "http" => Ok(vec![
+                    ("GERRIT_AUTH_MODE".to_string(), "http".to_string()),
+                    (
+                        "GERRIT_URL".to_string(),
+                        require_non_empty_credential_value(credential_values, "gerritUrl")?,
+                    ),
+                    (
+                        "GERRIT_USERNAME".to_string(),
+                        require_non_empty_credential_value(credential_values, "gerritHttpUsername")?,
+                    ),
+                    (
+                        "GERRIT_PASSWORD".to_string(),
+                        require_non_empty_credential_value(credential_values, "gerritHttpPassword")?,
+                    ),
+                ]),
+                "ssh" => Ok(vec![
+                    ("GERRIT_AUTH_MODE".to_string(), "ssh".to_string()),
+                    (
+                        "GERRIT_SSH_HOST".to_string(),
+                        require_non_empty_credential_value(credential_values, "gerritSshHost")?,
+                    ),
+                    (
+                        "GERRIT_SSH_PORT".to_string(),
+                        require_non_empty_credential_value(credential_values, "gerritSshPort")?,
+                    ),
+                    (
+                        "GERRIT_SSH_USERNAME".to_string(),
+                        require_non_empty_credential_value(credential_values, "gerritSshUsername")?,
+                    ),
+                ]),
+                _ => Err(format!("Unsupported Gerrit auth mode: {}", auth_mode)),
+            }
+        }
         "mail" => {
             let username = require_non_empty_credential_value(credential_values, "mailUsername")?;
             let password = require_non_empty_credential_value(credential_values, "mailPassword")?;
@@ -375,6 +427,7 @@ fn sync_onboarding_credentials_to_home_env(state: &OnboardingState) -> Result<()
 fn service_label(service_id: &str) -> &str {
     match service_id {
         "confluence" => "Confluence",
+        "gerrit" => "Gerrit",
         "jira" => "Jira",
         "mail" => "Mail",
         _ => "Service",
@@ -920,6 +973,59 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_connection_test_builds_gerrit_http_env_entries() {
+        let entries = build_connection_test_env_entries(
+            "gerrit",
+            &HashMap::from([
+                ("gerritAuthMode".to_string(), "http".to_string()),
+                ("gerritUrl".to_string(), "https://gerrit.example.com".to_string()),
+                ("gerritHttpUsername".to_string(), "gerrit.user".to_string()),
+                ("gerritHttpPassword".to_string(), "gerrit-secret".to_string()),
+            ]),
+        )
+        .expect("gerrit http env entries");
+
+        assert!(entries.contains(&("GERRIT_AUTH_MODE".to_string(), "http".to_string())));
+        assert!(entries.contains(&(
+            "GERRIT_URL".to_string(),
+            "https://gerrit.example.com".to_string()
+        )));
+        assert!(entries.contains(&(
+            "GERRIT_USERNAME".to_string(),
+            "gerrit.user".to_string()
+        )));
+        assert!(entries.contains(&(
+            "GERRIT_PASSWORD".to_string(),
+            "gerrit-secret".to_string()
+        )));
+    }
+
+    #[test]
+    fn onboarding_connection_test_builds_gerrit_ssh_env_entries() {
+        let entries = build_connection_test_env_entries(
+            "gerrit",
+            &HashMap::from([
+                ("gerritAuthMode".to_string(), "ssh".to_string()),
+                ("gerritSshHost".to_string(), "gerrit.example.com".to_string()),
+                ("gerritSshPort".to_string(), "29418".to_string()),
+                ("gerritSshUsername".to_string(), "gerrit.user".to_string()),
+            ]),
+        )
+        .expect("gerrit ssh env entries");
+
+        assert!(entries.contains(&("GERRIT_AUTH_MODE".to_string(), "ssh".to_string())));
+        assert!(entries.contains(&(
+            "GERRIT_SSH_HOST".to_string(),
+            "gerrit.example.com".to_string()
+        )));
+        assert!(entries.contains(&("GERRIT_SSH_PORT".to_string(), "29418".to_string())));
+        assert!(entries.contains(&(
+            "GERRIT_SSH_USERNAME".to_string(),
+            "gerrit.user".to_string()
+        )));
+    }
+
+    #[test]
     fn onboarding_connection_test_rejects_missing_required_fields() {
         let error = build_connection_test_env_entries(
             "jira",
@@ -928,6 +1034,20 @@ mod tests {
         .expect_err("missing jira credentials should fail");
 
         assert!(error.contains("jiraUsername"));
+    }
+
+    #[test]
+    fn onboarding_connection_test_rejects_missing_gerrit_http_fields() {
+        let error = build_connection_test_env_entries(
+            "gerrit",
+            &HashMap::from([
+                ("gerritAuthMode".to_string(), "http".to_string()),
+                ("gerritUrl".to_string(), "https://gerrit.example.com".to_string()),
+            ]),
+        )
+        .expect_err("missing gerrit http fields should fail");
+
+        assert!(error.contains("gerritHttpUsername"));
     }
 
     #[test]
@@ -945,6 +1065,28 @@ mod tests {
         std::env::set_var("SKILL_CONFIGURATOR_SKILLS_DIR", &skills_dir);
 
         let resolved = resolve_connection_test_script_path("jira").expect("resolve jira script");
+
+        restore_env_var("SKILL_CONFIGURATOR_SKILLS_DIR", original_skills_dir);
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(resolved, script_path);
+    }
+
+    #[test]
+    fn onboarding_connection_test_resolves_gerrit_script_path_in_skills_dir() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("connection-gerrit-script-path-data");
+        let skills_dir = temp_dir("connection-gerrit-script-path-skills");
+        let script_path = skills_dir.join("gerrit").join("scripts").join("test_connection.py");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+        let original_skills_dir = std::env::var("SKILL_CONFIGURATOR_SKILLS_DIR").ok();
+
+        fs::create_dir_all(script_path.parent().expect("script dir")).expect("create script dir");
+        fs::write(&script_path, "print('ok')\n").expect("write script");
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        std::env::set_var("SKILL_CONFIGURATOR_SKILLS_DIR", &skills_dir);
+
+        let resolved = resolve_connection_test_script_path("gerrit").expect("resolve gerrit script");
 
         restore_env_var("SKILL_CONFIGURATOR_SKILLS_DIR", original_skills_dir);
         restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);

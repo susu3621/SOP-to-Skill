@@ -142,6 +142,8 @@ pub struct SkillTemplate {
     pub name: LocalizedText,
     #[serde(default)]
     pub description: Option<LocalizedText>,
+    #[serde(default)]
+    pub category: Option<String>,
     pub version: String,
     #[serde(default)]
     pub author: Option<String>,
@@ -170,6 +172,8 @@ pub struct SkillManifestEntry {
     pub version: String,
     #[serde(default)]
     pub targets: Vec<TargetAppId>,
+    #[serde(default)]
+    pub category: Option<String>,
     #[serde(rename = "contentHash")]
     pub content_hash: String,
 }
