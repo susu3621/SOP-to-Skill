@@ -1,5 +1,6 @@
 # Codex
 .agents/
+.superpowers/
 
 # Dependencies
 node_modules/
