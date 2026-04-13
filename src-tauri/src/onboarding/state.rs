@@ -239,6 +239,7 @@ mod tests {
                 ("confluencePassword".to_string(), "wiki-secret".to_string()),
                 ("sharedNote".to_string(), "keep-me".to_string()),
             ]),
+            linux_devices: vec![],
         };
 
         let pruned = prune_deselected_base_skill_credentials(
@@ -311,6 +312,7 @@ mod tests {
                 "test-project-manager-weekly-report".to_string(),
             ],
             credential_values: HashMap::new(),
+            linux_devices: vec![],
         };
 
         let resolved = resolve_selected_install_skill_ids(

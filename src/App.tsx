@@ -24,6 +24,8 @@ function getSkillCategoryLabel(category: string, locale: Locale) {
     case 'code-management':
     case 'version-management':
       return locale === 'zh-CN' ? '版本管理' : 'Version Management'
+    case 'host-ops':
+      return locale === 'zh-CN' ? '主机与运维' : 'Host & Operations'
     default:
       return category
   }

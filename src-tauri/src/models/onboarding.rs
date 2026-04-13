@@ -54,6 +54,19 @@ pub struct OnboardingUseCaseQuestion {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingLinuxDevice {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub host: String,
+    #[serde(default)]
+    pub username: String,
+    #[serde(default)]
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingState {
     #[serde(default)]
     pub selected_agent_ids: Vec<String>,
@@ -70,6 +83,8 @@ pub struct OnboardingState {
     pub selected_install_candidate_skill_ids: Vec<String>,
     #[serde(default)]
     pub credential_values: HashMap<String, String>,
+    #[serde(default)]
+    pub linux_devices: Vec<OnboardingLinuxDevice>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

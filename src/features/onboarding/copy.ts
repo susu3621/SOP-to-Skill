@@ -179,6 +179,54 @@ export const onboardingCopy = {
     'zh-CN': '只显示当前仍被选择的公司 IT 工具所需的凭证字段。保存后会立即同步这些配置。',
     'en-US': 'Only the credential fields for currently selected company IT tools are shown. Saving this module syncs the credentials immediately.',
   },
+  linuxDevicesBody: {
+    'zh-CN': '可录入多台 Linux 设备，每台设备单独填写名称、IP 和登录账号。',
+    'en-US': 'Add multiple Linux devices and keep a separate name, host, and login account for each one.',
+  },
+  linuxDeviceName: {
+    'zh-CN': '设备名称',
+    'en-US': 'Device name',
+  },
+  linuxDeviceNamePlaceholder: {
+    'zh-CN': '例如：Build Server',
+    'en-US': 'Example: Build Server',
+  },
+  linuxDeviceHost: {
+    'zh-CN': 'IP / 主机地址',
+    'en-US': 'IP / Host',
+  },
+  linuxDeviceHostPlaceholder: {
+    'zh-CN': '例如：192.168.9.20',
+    'en-US': 'Example: 192.168.9.20',
+  },
+  linuxDeviceUsername: {
+    'zh-CN': '用户名',
+    'en-US': 'Username',
+  },
+  linuxDeviceUsernamePlaceholder: {
+    'zh-CN': '例如：ops',
+    'en-US': 'Example: ops',
+  },
+  linuxDevicePassword: {
+    'zh-CN': '密码',
+    'en-US': 'Password',
+  },
+  linuxDevicePasswordPlaceholder: {
+    'zh-CN': '输入设备登录密码',
+    'en-US': 'Enter the device password',
+  },
+  linuxAddDevice: {
+    'zh-CN': '新增设备',
+    'en-US': 'Add device',
+  },
+  linuxRemoveDevice: {
+    'zh-CN': '删除设备',
+    'en-US': 'Remove device',
+  },
+  linuxDeviceListEmpty: {
+    'zh-CN': '当前还没有 Linux 设备，点击“新增设备”开始录入。',
+    'en-US': 'No Linux devices yet. Click “Add device” to start.',
+  },
   selectAgentApps: {
     'zh-CN': '选择 Agent 应用',
     'en-US': 'Choose AI apps',
@@ -226,6 +274,74 @@ export const onboardingCopy = {
   connectionTestManualTrigger: {
     'zh-CN': '手动测试',
     'en-US': 'Manual test',
+  },
+  environmentTitle: {
+    'zh-CN': '运行环境',
+    'en-US': 'Runtime environment',
+  },
+  environmentAutoHint: {
+    'zh-CN': '勾选基础技能后会自动检测本机环境。',
+    'en-US': 'The app automatically checks local runtime requirements after a base skill is selected.',
+  },
+  environmentIdle: {
+    'zh-CN': '未检测',
+    'en-US': 'Not checked',
+  },
+  environmentPending: {
+    'zh-CN': '检测中...',
+    'en-US': 'Checking...',
+  },
+  environmentReady: {
+    'zh-CN': '环境已就绪',
+    'en-US': 'Environment ready',
+  },
+  environmentMissing: {
+    'zh-CN': '缺少环境',
+    'en-US': 'Missing requirements',
+  },
+  environmentUnsupported: {
+    'zh-CN': '当前平台暂不支持自动安装',
+    'en-US': 'Automatic install is unavailable on this platform',
+  },
+  environmentError: {
+    'zh-CN': '环境检测失败',
+    'en-US': 'Environment check failed',
+  },
+  environmentAutomaticTrigger: {
+    'zh-CN': '自动检测',
+    'en-US': 'Automatic check',
+  },
+  environmentManualTrigger: {
+    'zh-CN': '手动检测',
+    'en-US': 'Manual check',
+  },
+  environmentInstallButton: {
+    'zh-CN': '自动安装缺失环境',
+    'en-US': 'Auto-install missing requirements',
+  },
+  environmentInstallRunning: {
+    'zh-CN': '安装中...',
+    'en-US': 'Installing...',
+  },
+  environmentInstallSuccess: {
+    'zh-CN': '环境安装完成',
+    'en-US': 'Environment installation complete',
+  },
+  environmentInstallError: {
+    'zh-CN': '环境安装失败',
+    'en-US': 'Environment installation failed',
+  },
+  environmentInstallLogs: {
+    'zh-CN': '安装日志',
+    'en-US': 'Install logs',
+  },
+  environmentRequirementReady: {
+    'zh-CN': '已就绪',
+    'en-US': 'Ready',
+  },
+  environmentRequirementMissing: {
+    'zh-CN': '缺失',
+    'en-US': 'Missing',
   },
   selectedAgentsTitle: {
     'zh-CN': '已选 Agent',

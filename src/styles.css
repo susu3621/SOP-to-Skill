@@ -1047,6 +1047,173 @@ textarea {
   gap: 10px;
 }
 
+.onboarding-credential-card {
+  display: grid;
+  gap: 16px;
+}
+
+.onboarding-credential-card__header {
+  display: grid;
+  gap: 6px;
+}
+
+.onboarding-credential-card__header h4 {
+  margin: 0;
+  font-size: 1.02rem;
+}
+
+.onboarding-credential-card__header p {
+  margin: 0;
+}
+
+.onboarding-credential-card__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+  gap: 16px;
+  align-items: start;
+}
+
+.onboarding-credential-card__credentials,
+.onboarding-credential-card__environment {
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.onboarding-credential-card__environment {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-linux-device-list {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-linux-device-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 250, 245, 0.82);
+}
+
+.onboarding-linux-device-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.onboarding-linux-device-card__title {
+  margin: 0;
+  font-weight: 700;
+  color: #163029;
+}
+
+.onboarding-linux-device-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.onboarding-credential-card__environment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.onboarding-credential-card__environment-header h5 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.onboarding-environment-list {
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-environment-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 250, 245, 0.72);
+}
+
+.onboarding-environment-list__title {
+  margin: 0;
+  font-weight: 700;
+  color: #163029;
+}
+
+.onboarding-environment-progress {
+  display: grid;
+  gap: 10px;
+}
+
+.onboarding-environment-progress__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.onboarding-environment-progress__meta p {
+  margin: 0;
+}
+
+.onboarding-environment-progress__track {
+  position: relative;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(22, 48, 41, 0.08);
+}
+
+.onboarding-environment-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #145e53 0%, #2e9d83 100%);
+}
+
+.onboarding-environment-logs {
+  display: grid;
+  gap: 8px;
+}
+
+.onboarding-environment-logs__title {
+  margin: 0;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #163029;
+}
+
+.onboarding-environment-logs__body {
+  display: grid;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(22, 48, 41, 0.04);
+}
+
+.onboarding-environment-logs__body p {
+  margin: 0;
+  font-family: 'SFMono-Regular', 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 0.79rem;
+  line-height: 1.45;
+}
+
 .onboarding-work-tabs {
   display: grid;
   gap: 16px;
@@ -1530,7 +1697,9 @@ textarea {
 
   .onboarding-entry-grid,
   .onboarding-entry-grid--nested,
-  .onboarding-module-grid {
+  .onboarding-module-grid,
+  .onboarding-credential-card__content,
+  .onboarding-linux-device-grid {
     grid-template-columns: 1fr;
   }
 

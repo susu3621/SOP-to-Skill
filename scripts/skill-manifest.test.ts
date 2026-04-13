@@ -205,7 +205,7 @@ describe('skill manifest validation', () => {
     })
   })
 
-  it('ships gerrit and svn under the version-management category in the repository manifest', () => {
+  it('ships gerrit, svn, and linux under the expected repository skill categories', () => {
     const { loadSkillManifest } = loadSkillManifestLib()
     const manifest = loadSkillManifest({ repoRoot: process.cwd() })
 
@@ -220,6 +220,11 @@ describe('skill manifest validation', () => {
           id: 'svn',
           path: 'skills/svn',
           category: 'version-management',
+        }),
+        expect.objectContaining({
+          id: 'linux',
+          path: 'skills/linux',
+          category: 'host-ops',
         }),
       ]),
     )

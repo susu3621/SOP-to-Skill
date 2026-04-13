@@ -36,12 +36,13 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyAgentApps.map((app) => app.label['zh-CN'])).not.toContain('Antigravity')
   })
 
-  it('exposes Confluence, Jira, Gerrit, SVN, and Tencent Exmail as base skills', () => {
+  it('exposes Confluence, Jira, Gerrit, SVN, Linux, and Tencent Exmail as base skills', () => {
     expect(Object.keys(sharedConfig.baseSkills)).toEqual([
       'confluence',
       'jira',
       'gerrit',
       'svn',
+      'linux',
       'mail',
     ])
     expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual([
@@ -49,6 +50,7 @@ describe('workbuddy agent apps', () => {
       'jira',
       'gerrit',
       'svn',
+      'linux',
       'mail',
     ])
     expect(workbuddyBaseSkills.map((skill) => skill.label['zh-CN'])).toEqual([
@@ -56,6 +58,7 @@ describe('workbuddy agent apps', () => {
       'Jira',
       'Gerrit',
       'SVN',
+      'Linux',
       '腾讯企业邮箱',
     ])
   })
@@ -65,12 +68,14 @@ describe('workbuddy agent apps', () => {
       'Wiki 系统',
       '问题管理系统',
       '版本管理',
+      '主机与运维',
       '通信系统',
     ])
     expect(onboardingBaseSkillGroups.map((group) => group.skills.map((skill) => skill.id))).toEqual([
       ['confluence'],
       ['jira'],
       ['gerrit', 'svn'],
+      ['linux'],
       ['mail'],
     ])
   })
@@ -96,8 +101,15 @@ describe('workbuddy agent apps', () => {
     ).toBe('同步版本库、提交历史和版本变更，方便 AI 读取和写入研发协作信息。')
   })
 
-  it('exposes Atlassian URLs, version-management credentials, and Tencent Exmail credential fields from shared config', () => {
-    const allCredentialFields = getCredentialFields(['confluence', 'jira', 'gerrit', 'svn', 'mail'])
+  it('exposes flat credential fields for existing tools while Linux stays as a structured device editor', () => {
+    const allCredentialFields = getCredentialFields([
+      'confluence',
+      'jira',
+      'gerrit',
+      'svn',
+      'linux',
+      'mail',
+    ])
 
     expect(allCredentialFields.map((field) => field.id)).toEqual([
       'confluenceUrl',
@@ -123,6 +135,7 @@ describe('workbuddy agent apps', () => {
     expect(sharedConfig.baseSkills.jira?.credentials).toHaveProperty('jiraUrl')
     expect(sharedConfig.baseSkills.gerrit?.credentials).toHaveProperty('gerritAuthMode')
     expect(sharedConfig.baseSkills.svn?.credentials).toHaveProperty('svnUrl')
+    expect(sharedConfig.baseSkills.linux?.credentials).toEqual({})
     expect(sharedConfig.baseSkills.mail?.name).toEqual({
       'zh-CN': '腾讯企业邮箱',
       'en-US': 'Tencent Exmail',
@@ -172,6 +185,15 @@ describe('workbuddy agent apps', () => {
       'svnPassword',
     ])
     expect(svnGroup?.required_field_ids).toEqual(['svnUrl', 'svnUsername', 'svnPassword'])
+  })
+
+  it('exposes Linux as a structured onboarding credential group without flat fields', () => {
+    const linuxGroup = getCredentialGroups(['linux'])[0]
+
+    expect(linuxGroup?.service_id).toBe('linux')
+    expect(linuxGroup?.service_name).toBe('Linux')
+    expect(linuxGroup?.fields).toEqual([])
+    expect(linuxGroup?.required_field_ids).toEqual([])
   })
 
   it('exposes project manager, quality manager, and IT manager in visible role selectors while keeping legacy role labels', () => {

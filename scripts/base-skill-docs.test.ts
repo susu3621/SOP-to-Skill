@@ -35,6 +35,10 @@ describe('base skill documentation contract', () => {
       expectedSnippets: ['svn', 'python3', 'SVN_URL'],
     },
     {
+      id: 'linux',
+      expectedSnippets: ['python3', 'paramiko', 'LINUX_DEVICES_JSON'],
+    },
+    {
       id: 'mail',
       expectedSnippets: ['python3', 'scripts/requirements.txt', 'MAIL_HOST'],
     },

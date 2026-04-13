@@ -174,6 +174,14 @@ export interface OnboardingAgentState {
   installed_skill_ids: string[]
 }
 
+export interface OnboardingLinuxDeviceRecord {
+  id: string
+  name: string
+  host: string
+  username: string
+  password: string
+}
+
 export interface OnboardingState {
   selected_agent_ids: string[]
   selected_role_id: string
@@ -183,6 +191,7 @@ export interface OnboardingState {
   selected_install_skill_ids_initialized: boolean
   selected_install_candidate_skill_ids: string[]
   credential_values: Record<string, string>
+  linux_devices: OnboardingLinuxDeviceRecord[]
 }
 
 export interface OnboardingInstallCandidateGroup {
@@ -222,10 +231,101 @@ export interface OnboardingConnectionTestState {
   request_id: number
 }
 
+export type OnboardingEnvironmentTrigger = 'manual' | 'automatic' | 'install'
+
+export type OnboardingEnvironmentCheckStatus =
+  | 'idle'
+  | 'pending'
+  | 'ready'
+  | 'missing'
+  | 'unsupported'
+  | 'error'
+
+export interface OnboardingEnvironmentCheckInput {
+  service_id: string
+  credential_values: Record<string, string>
+  trigger: OnboardingEnvironmentTrigger
+  tested_fingerprint: string
+}
+
+export interface OnboardingEnvironmentRequirement {
+  id: string
+  label: string
+  required: boolean
+  status: 'ready' | 'missing'
+  details: string
+}
+
+export interface OnboardingEnvironmentCheckResult {
+  service_id: string
+  platform: 'macos' | 'windows' | 'unsupported'
+  status: Exclude<OnboardingEnvironmentCheckStatus, 'idle' | 'pending'>
+  summary: string
+  details: string
+  requirements: OnboardingEnvironmentRequirement[]
+  missing_requirement_ids: string[]
+  install_supported: boolean
+  install_support_message: string
+  trigger: string
+  tested_fingerprint: string
+}
+
+export interface OnboardingEnvironmentCheckState {
+  status: OnboardingEnvironmentCheckStatus
+  summary: string | null
+  details: string | null
+  requirements: OnboardingEnvironmentRequirement[]
+  missing_requirement_ids: string[]
+  install_supported: boolean
+  install_support_message: string | null
+  last_trigger: OnboardingEnvironmentTrigger | null
+  tested_fingerprint: string | null
+  request_id: number
+}
+
+export interface OnboardingEnvironmentInstallInput {
+  install_id: string
+  service_id: string
+  credential_values: Record<string, string>
+}
+
+export interface OnboardingEnvironmentInstallResult {
+  install_id: string
+  service_id: string
+  success: boolean
+  summary: string
+  details: string
+  installed_requirement_ids: string[]
+}
+
+export interface OnboardingEnvironmentInstallProgressEvent {
+  install_id: string
+  service_id: string
+  status: 'running' | 'success' | 'error'
+  progress_percent: number
+  step: string
+  log_line: string | null
+}
+
+export type OnboardingEnvironmentInstallStatus = 'idle' | 'running' | 'success' | 'error'
+
+export interface OnboardingEnvironmentInstallState {
+  status: OnboardingEnvironmentInstallStatus
+  install_id: string | null
+  progress_percent: number
+  step: string | null
+  logs: string[]
+  summary: string | null
+  details: string | null
+  request_id: number
+}
+
 export interface OnboardingCredentialGroup {
   service_id: string
   service_name: string
   service_description: string
+  editor_type: 'fields' | 'linux-devices'
+  supports_connection_test: boolean
   fields: WizardField[]
   required_field_ids: string[]
 }

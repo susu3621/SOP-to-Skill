@@ -491,6 +491,18 @@ const onboardingBaseSkillGroupDefinitions = [
     skill_ids: ['gerrit', 'svn'],
   },
   {
+    id: 'host-ops',
+    name: {
+      'zh-CN': '主机与运维',
+      'en-US': 'Host & Operations',
+    },
+    description: {
+      'zh-CN': '维护 Linux 主机清单、远程连接和运维执行入口，方便 AI 读写服务器侧信息。',
+      'en-US': 'Manage Linux hosts, remote access, and operations entry points so AI can read and write server-side information.',
+    },
+    skill_ids: ['linux'],
+  },
+  {
     id: 'communication',
     name: {
       'zh-CN': '通信系统',
@@ -944,11 +956,27 @@ function buildCredentialGroup(
   credentialValues: Record<string, string> = {}
 ): OnboardingCredentialGroup | null {
   const skill = typedConfig.baseSkills[skillKey]
+  if (!skill) {
+    return null
+  }
+
+  if (skillKey === 'linux') {
+    return {
+      service_id: skillKey,
+      service_name: readConfigText(skill.name, locale),
+      service_description: readConfigText(skill.description, locale),
+      editor_type: 'linux-devices',
+      supports_connection_test: false,
+      fields: [],
+      required_field_ids: [],
+    }
+  }
+
   const fields = (credentialFieldCache[skillKey] ?? []).filter((field) =>
     isVisibleCredentialField(skillKey, field.id, credentialValues)
   )
 
-  if (!skill || fields.length === 0) {
+  if (fields.length === 0) {
     return null
   }
 
@@ -956,6 +984,8 @@ function buildCredentialGroup(
     service_id: skillKey,
     service_name: readConfigText(skill.name, locale),
     service_description: readConfigText(skill.description, locale),
+    editor_type: 'fields',
+    supports_connection_test: true,
     fields,
     required_field_ids: fields
       .filter((field) => field.required)

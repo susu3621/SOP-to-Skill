@@ -85,6 +85,7 @@ const fixtures = vi.hoisted(() => {
     selected_install_skill_ids_initialized: false,
     selected_install_candidate_skill_ids: [],
     credential_values: {},
+    linux_devices: [],
   }
 
   const onboardingPreview: OnboardingInstallPreview = {
@@ -237,6 +238,41 @@ vi.mock('@tauri-apps/api/core', () => ({
             tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
           },
         }
+      case 'check_onboarding_skill_environment':
+        return {
+          success: {
+            service_id: payload?.input?.service_id ?? 'jira',
+            platform: 'macos',
+            status: 'ready',
+            summary: '环境已就绪',
+            details: '',
+            requirements: [
+              {
+                id: 'python3',
+                label: 'Python 3',
+                required: true,
+                status: 'ready',
+                details: 'Python 3.12.0',
+              },
+            ],
+            missing_requirement_ids: [],
+            install_supported: true,
+            install_support_message: '可自动安装缺失环境',
+            trigger: payload?.input?.trigger ?? 'automatic',
+            tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
+          },
+        }
+      case 'install_onboarding_skill_environment':
+        return {
+          success: {
+            install_id: payload?.input?.install_id ?? 'install-jira',
+            service_id: payload?.input?.service_id ?? 'jira',
+            success: true,
+            summary: '环境安装完成',
+            details: '',
+            installed_requirement_ids: ['python3'],
+          },
+        }
       case 'get_onboarding_install_preview':
         return { success: fixtures.onboardingPreview }
       case 'stage_onboarding_generated_packages':
@@ -250,10 +286,14 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(async (_eventName: string, handler: (event: { payload: string }) => void) => {
-    fixtures.runtime.trayNavigateHandler = handler
+  listen: vi.fn(async (eventName: string, handler: (event: { payload: string }) => void) => {
+    if (eventName === 'tray-navigate') {
+      fixtures.runtime.trayNavigateHandler = handler
+    }
     return () => {
-      fixtures.runtime.trayNavigateHandler = null
+      if (eventName === 'tray-navigate') {
+        fixtures.runtime.trayNavigateHandler = null
+      }
     }
   }),
 }))

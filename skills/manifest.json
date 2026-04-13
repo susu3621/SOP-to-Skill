@@ -32,6 +32,14 @@
       "contentHash": "sha256:5197831b2ef548d1982e924ad97790dcb0d7f9ac36ceb58f215388741a7d5191"
     },
     {
+      "id": "linux",
+      "path": "skills/linux",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "category": "host-ops",
+      "contentHash": "sha256:c71033af85937cedaa6db3de335d183ef96dba94bbf771f0600feca83140e8cd"
+    },
+    {
       "id": "mail",
       "path": "skills/mail",
       "version": "1.0.2",

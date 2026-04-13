@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
 import {
   buildGeneratedSkillIdsForRoleUseCase,
   createCustomRoleUseCaseContent,
@@ -23,9 +24,18 @@ import type {
   OnboardingConnectionTestState,
   OnboardingConnectionTestTrigger,
   OnboardingCredentialGroup,
+  OnboardingEnvironmentCheckInput,
+  OnboardingEnvironmentCheckResult,
+  OnboardingEnvironmentCheckState,
+  OnboardingEnvironmentInstallInput,
+  OnboardingEnvironmentInstallProgressEvent,
+  OnboardingEnvironmentInstallResult,
+  OnboardingEnvironmentInstallState,
+  OnboardingEnvironmentTrigger,
   OnboardingEditableUseCaseRecord,
   OnboardingInstallCandidateGroup,
   OnboardingInstallPreview,
+  OnboardingLinuxDeviceRecord,
   OnboardingState,
   OnboardingUseCaseQuestionRecord,
   OnboardingUseCase,
@@ -72,6 +82,30 @@ function buildNextQuestionId(records: OnboardingUseCaseQuestionRecord[]) {
   return {
     id: candidate,
     index: suffix,
+  }
+}
+
+function buildNextLinuxDeviceId(records: OnboardingLinuxDeviceRecord[]) {
+  let suffix = records.length + 1
+  let candidate = `linux-device-${suffix}`
+
+  while (records.some((record) => record.id === candidate)) {
+    suffix += 1
+    candidate = `linux-device-${suffix}`
+  }
+
+  return candidate
+}
+
+function createEmptyLinuxDevice(
+  records: OnboardingLinuxDeviceRecord[] = []
+): OnboardingLinuxDeviceRecord {
+  return {
+    id: buildNextLinuxDeviceId(records),
+    name: '',
+    host: '',
+    username: '',
+    password: '',
   }
 }
 
@@ -230,6 +264,27 @@ function areSameStringRecords(left: Record<string, string>, right: Record<string
   )
 }
 
+function areSameLinuxDevices(
+  left: OnboardingLinuxDeviceRecord[],
+  right: OnboardingLinuxDeviceRecord[]
+) {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((device, index) => {
+    const matching = right[index]
+
+    return (
+      device.id === matching?.id &&
+      device.name === matching?.name &&
+      device.host === matching?.host &&
+      device.username === matching?.username &&
+      device.password === matching?.password
+    )
+  })
+}
+
 function areSameUseCaseRecord(
   left: OnboardingEditableUseCaseRecord | undefined,
   right: OnboardingEditableUseCaseRecord | undefined
@@ -287,6 +342,34 @@ function createIdleConnectionTestState(requestId = 0): OnboardingConnectionTestS
   }
 }
 
+function createIdleEnvironmentCheckState(requestId = 0): OnboardingEnvironmentCheckState {
+  return {
+    status: 'idle',
+    summary: null,
+    details: null,
+    requirements: [],
+    missing_requirement_ids: [],
+    install_supported: false,
+    install_support_message: null,
+    last_trigger: null,
+    tested_fingerprint: null,
+    request_id: requestId,
+  }
+}
+
+function createIdleEnvironmentInstallState(requestId = 0): OnboardingEnvironmentInstallState {
+  return {
+    status: 'idle',
+    install_id: null,
+    progress_percent: 0,
+    step: null,
+    logs: [],
+    summary: null,
+    details: null,
+    request_id: requestId,
+  }
+}
+
 function isCredentialGroupComplete(
   group: OnboardingCredentialGroup,
   credentialValues: Record<string, string>
@@ -311,6 +394,22 @@ function pickCredentialValuesForGroup(
   credentialValues: Record<string, string>
 ) {
   return Object.fromEntries(group.fields.map((field) => [field.id, credentialValues[field.id] ?? '']))
+}
+
+function buildEnvironmentFingerprint(
+  group: OnboardingCredentialGroup,
+  credentialValues: Record<string, string>
+) {
+  if (group.service_id === 'gerrit') {
+    return JSON.stringify({
+      service_id: group.service_id,
+      auth_mode: credentialValues.gerritAuthMode === 'ssh' ? 'ssh' : 'http',
+    })
+  }
+
+  return JSON.stringify({
+    service_id: group.service_id,
+  })
 }
 
 function isUseCaseConfigured(record: OnboardingEditableUseCaseRecord) {
@@ -404,6 +503,7 @@ function createEmptyState(): OnboardingState {
     selected_install_skill_ids_initialized: false,
     selected_install_candidate_skill_ids: [],
     credential_values: {},
+    linux_devices: [],
   }
 }
 
@@ -424,6 +524,15 @@ function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): Onboa
   const allowedCredentialFieldIds = new Set(
     getCredentialFields(selected_base_skill_ids).map((field) => field.id)
   )
+  const linux_devices = selected_base_skill_ids.includes('linux')
+    ? (state.linux_devices ?? []).map((device, index) => ({
+        id: device?.id?.trim() || `linux-device-${index + 1}`,
+        name: device?.name ?? '',
+        host: device?.host ?? '',
+        username: device?.username ?? '',
+        password: device?.password ?? '',
+      }))
+    : []
 
   return {
     ...state,
@@ -438,6 +547,7 @@ function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): Onboa
     credential_values: Object.fromEntries(
       Object.entries(state.credential_values).filter(([fieldId]) => allowedCredentialFieldIds.has(fieldId))
     ),
+    linux_devices,
   }
 }
 
@@ -454,7 +564,15 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   const [saveFeedbacks, setSaveFeedbacks] = useState<Record<string, SaveFeedback>>({})
   const [savingScope, setSavingScope] = useState<string | null>(null)
   const [connectionTests, setConnectionTests] = useState<Record<string, OnboardingConnectionTestState>>({})
+  const [environmentChecks, setEnvironmentChecks] = useState<
+    Record<string, OnboardingEnvironmentCheckState>
+  >({})
+  const [environmentInstalls, setEnvironmentInstalls] = useState<
+    Record<string, OnboardingEnvironmentInstallState>
+  >({})
   const connectionTestRequestIdsRef = useRef<Record<string, number>>({})
+  const environmentCheckRequestIdsRef = useRef<Record<string, number>>({})
+  const environmentInstallRequestIdsRef = useRef<Record<string, number>>({})
 
   const selectedUseCases = useMemo(
     () => buildSelectedUseCases(state.role_use_case_contents),
@@ -562,7 +680,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     const role = state.selected_role_id !== savedState.selected_role_id
     const baseSkills =
       !areSameStringSets(state.selected_base_skill_ids, savedState.selected_base_skill_ids) ||
-      !areSameStringRecords(state.credential_values, savedState.credential_values)
+      !areSameStringRecords(state.credential_values, savedState.credential_values) ||
+      !areSameLinuxDevices(state.linux_devices, savedState.linux_devices)
     const install =
       !areSameStringSets(state.selected_agent_ids, savedState.selected_agent_ids) ||
       !areSameStringSets(resolvedSelectedInstallSkillIds, savedResolvedSelectedInstallSkillIds)
@@ -733,6 +852,214 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     [runConnectionTest]
   )
 
+  const runEnvironmentCheck = useCallback(
+    async (
+      serviceId: string,
+      trigger: OnboardingEnvironmentTrigger,
+      options?: {
+        credentialValues?: Record<string, string>
+        group?: OnboardingCredentialGroup
+      }
+    ) => {
+      const group = options?.group ?? credentialGroupById.get(serviceId)
+      const credentialValues = options?.credentialValues ?? state.credential_values
+
+      if (!group) {
+        return
+      }
+
+      const requestId = (environmentCheckRequestIdsRef.current[serviceId] ?? 0) + 1
+      environmentCheckRequestIdsRef.current[serviceId] = requestId
+      const testedFingerprint = buildEnvironmentFingerprint(group, credentialValues)
+
+      setEnvironmentChecks((current) => ({
+        ...current,
+        [serviceId]: {
+          status: 'pending',
+          summary: getOnboardingCopy(locale, onboardingCopy.environmentPending),
+          details: null,
+          requirements: current[serviceId]?.requirements ?? [],
+          missing_requirement_ids: current[serviceId]?.missing_requirement_ids ?? [],
+          install_supported: current[serviceId]?.install_supported ?? false,
+          install_support_message: current[serviceId]?.install_support_message ?? null,
+          last_trigger: trigger,
+          tested_fingerprint: testedFingerprint,
+          request_id: requestId,
+        },
+      }))
+
+      try {
+        const result = await invoke<SkillResult<OnboardingEnvironmentCheckResult>>(
+          'check_onboarding_skill_environment',
+          {
+            input: {
+              service_id: serviceId,
+              credential_values: pickCredentialValuesForGroup(group, credentialValues),
+              trigger,
+              tested_fingerprint: testedFingerprint,
+            } satisfies OnboardingEnvironmentCheckInput,
+          }
+        )
+
+        setEnvironmentChecks((current) => {
+          if (current[serviceId]?.request_id !== requestId) {
+            return current
+          }
+
+          if (result.success) {
+            return {
+              ...current,
+              [serviceId]: {
+                status: result.success.status,
+                summary: result.success.summary,
+                details: result.success.details,
+                requirements: result.success.requirements,
+                missing_requirement_ids: result.success.missing_requirement_ids,
+                install_supported: result.success.install_supported,
+                install_support_message: result.success.install_support_message,
+                last_trigger: trigger,
+                tested_fingerprint: result.success.tested_fingerprint,
+                request_id: requestId,
+              },
+            }
+          }
+
+          return {
+            ...current,
+            [serviceId]: {
+              status: 'error',
+              summary: result.error ?? getOnboardingCopy(locale, onboardingCopy.environmentError),
+              details: null,
+              requirements: [],
+              missing_requirement_ids: [],
+              install_supported: false,
+              install_support_message: null,
+              last_trigger: trigger,
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      } catch (error) {
+        setEnvironmentChecks((current) => {
+          if (current[serviceId]?.request_id !== requestId) {
+            return current
+          }
+
+          return {
+            ...current,
+            [serviceId]: {
+              status: 'error',
+              summary: String(error),
+              details: null,
+              requirements: [],
+              missing_requirement_ids: [],
+              install_supported: false,
+              install_support_message: null,
+              last_trigger: trigger,
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      }
+    },
+    [credentialGroupById, locale, state.credential_values]
+  )
+
+  const installEnvironment = useCallback(
+    async (serviceId: string) => {
+      const group = credentialGroupById.get(serviceId)
+
+      if (!group) {
+        return
+      }
+
+      const requestId = (environmentInstallRequestIdsRef.current[serviceId] ?? 0) + 1
+      environmentInstallRequestIdsRef.current[serviceId] = requestId
+      const installId = `${serviceId}-${requestId}-${Date.now()}`
+
+      setEnvironmentInstalls((current) => ({
+        ...current,
+        [serviceId]: {
+          status: 'running',
+          install_id: installId,
+          progress_percent: 0,
+          step: getOnboardingCopy(locale, onboardingCopy.environmentInstallRunning),
+          logs: [],
+          summary: null,
+          details: null,
+          request_id: requestId,
+        },
+      }))
+
+      try {
+        const result = await invoke<SkillResult<OnboardingEnvironmentInstallResult>>(
+          'install_onboarding_skill_environment',
+          {
+            input: {
+              install_id: installId,
+              service_id: serviceId,
+              credential_values: pickCredentialValuesForGroup(group, state.credential_values),
+            } satisfies OnboardingEnvironmentInstallInput,
+          }
+        )
+
+        setEnvironmentInstalls((current) => {
+          if (current[serviceId]?.install_id !== installId) {
+            return current
+          }
+
+          if (result.success) {
+            return {
+              ...current,
+              [serviceId]: {
+                ...current[serviceId],
+                status: result.success.success ? 'success' : 'error',
+                progress_percent: current[serviceId]?.progress_percent ?? 100,
+                step: current[serviceId]?.step ?? result.success.summary,
+                summary: result.success.summary,
+                details: result.success.details,
+              },
+            }
+          }
+
+          return {
+            ...current,
+            [serviceId]: {
+              ...current[serviceId],
+              status: 'error',
+              summary: result.error ?? getOnboardingCopy(locale, onboardingCopy.environmentInstallError),
+              details: null,
+            },
+          }
+        })
+      } catch (error) {
+        setEnvironmentInstalls((current) => {
+          if (current[serviceId]?.install_id !== installId) {
+            return current
+          }
+
+          return {
+            ...current,
+            [serviceId]: {
+              ...current[serviceId],
+              status: 'error',
+              summary: String(error),
+              details: null,
+            },
+          }
+        })
+      } finally {
+        await runEnvironmentCheck(serviceId, 'automatic', {
+          credentialValues: state.credential_values,
+          group,
+        })
+      }
+    },
+    [credentialGroupById, locale, runEnvironmentCheck, state.credential_values]
+  )
+
   const runAutomaticConnectionTestsForState = useCallback(
     (persistedState: OnboardingState) => {
       const persistedGroups = getCredentialGroups(
@@ -743,7 +1070,11 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
 
       void Promise.allSettled(
         persistedGroups
-          .filter((group) => isCredentialGroupComplete(group, persistedState.credential_values))
+          .filter(
+            (group) =>
+              group.supports_connection_test &&
+              isCredentialGroupComplete(group, persistedState.credential_values)
+          )
           .map((group) =>
             runConnectionTest(group.service_id, 'automatic', {
               credentialValues: persistedState.credential_values,
@@ -793,6 +1124,38 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     setState((current) => normalizeState(current, locale))
     setSavedState((current) => normalizeState(current, locale))
   }, [locale])
+
+  useEffect(() => {
+    const unlisten = listen<OnboardingEnvironmentInstallProgressEvent>(
+      'onboarding-environment-install-progress',
+      (event) => {
+        const payload = event.payload
+
+        setEnvironmentInstalls((current) => {
+          const existing = current[payload.service_id]
+
+          if (!existing || existing.install_id !== payload.install_id) {
+            return current
+          }
+
+          return {
+            ...current,
+            [payload.service_id]: {
+              ...existing,
+              status: payload.status === 'error' ? 'error' : payload.status === 'success' ? 'success' : 'running',
+              progress_percent: payload.progress_percent,
+              step: payload.step,
+              logs: payload.log_line ? [...existing.logs, payload.log_line] : existing.logs,
+            },
+          }
+        })
+      }
+    )
+
+    return () => {
+      unlisten.then((fn) => fn())
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -883,6 +1246,58 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       return changed ? next : current
     })
   }, [credentialGroups, state.credential_values])
+
+  useEffect(() => {
+    const selectedServiceIds = new Set(credentialGroups.map((group) => group.service_id))
+
+    setEnvironmentChecks((current) => {
+      let changed = false
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([serviceId]) => {
+          const keep = selectedServiceIds.has(serviceId)
+          if (!keep) {
+            changed = true
+          }
+          return keep
+        })
+      )
+
+      return changed ? next : current
+    })
+
+    setEnvironmentInstalls((current) => {
+      let changed = false
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([serviceId]) => {
+          const keep = selectedServiceIds.has(serviceId)
+          if (!keep) {
+            changed = true
+          }
+          return keep
+        })
+      )
+
+      return changed ? next : current
+    })
+  }, [credentialGroups])
+
+  useEffect(() => {
+    credentialGroups.forEach((group) => {
+      const nextFingerprint = buildEnvironmentFingerprint(group, state.credential_values)
+      const existing = environmentChecks[group.service_id]
+      const shouldCheck =
+        !existing ||
+        existing.tested_fingerprint !== nextFingerprint ||
+        existing.status === 'idle'
+
+      if (shouldCheck) {
+        void runEnvironmentCheck(group.service_id, 'automatic', {
+          credentialValues: state.credential_values,
+          group,
+        })
+      }
+    })
+  }, [credentialGroups, environmentChecks, runEnvironmentCheck, state.credential_values])
 
   const persistState = useCallback(
     async (scope: string, nextState: OnboardingState) => {
@@ -1040,6 +1455,12 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
         const allowedCredentialFieldIds = new Set(
           getCredentialFields(nextBaseSkillIds).map((field) => field.id)
         )
+        const nextLinuxDevices =
+          skillId === 'linux' && !current.selected_base_skill_ids.includes('linux')
+            ? current.linux_devices.length > 0
+              ? current.linux_devices
+              : [createEmptyLinuxDevice(current.linux_devices)]
+            : current.linux_devices
 
         return {
           ...current,
@@ -1049,9 +1470,39 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
               allowedCredentialFieldIds.has(fieldId)
             )
           ),
+          linux_devices: nextLinuxDevices,
           ...nextSelection,
         }
       })
+    },
+    [updateState]
+  )
+
+  const addLinuxDevice = useCallback(() => {
+    updateState((current) => ({
+      ...current,
+      linux_devices: [...current.linux_devices, createEmptyLinuxDevice(current.linux_devices)],
+    }))
+  }, [updateState])
+
+  const updateLinuxDeviceField = useCallback(
+    (deviceId: string, field: keyof Omit<OnboardingLinuxDeviceRecord, 'id'>, value: string) => {
+      updateState((current) => ({
+        ...current,
+        linux_devices: current.linux_devices.map((device) =>
+          device.id === deviceId ? { ...device, [field]: value } : device
+        ),
+      }))
+    },
+    [updateState]
+  )
+
+  const removeLinuxDevice = useCallback(
+    (deviceId: string) => {
+      updateState((current) => ({
+        ...current,
+        linux_devices: current.linux_devices.filter((device) => device.id !== deviceId),
+      }))
     },
     [updateState]
   )
@@ -1332,10 +1783,13 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   return {
     completion,
     connectionTests,
+    environmentChecks,
+    environmentInstalls,
     credentialFields,
     credentialGroups,
     dirty,
     installCandidateGroups,
+    addLinuxDevice,
     loading,
     preview,
     previewError,
@@ -1350,10 +1804,13 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     syncing,
     syncResult,
     startSync,
+    removeLinuxDevice,
     toggleAgent,
     toggleBaseSkill,
     toggleInstallSkill,
     runManualConnectionTest,
+    installEnvironment,
+    updateLinuxDeviceField,
     updateCredentialValue,
     updateUseCaseDescription,
     updateUseCaseQuestionAnswer,

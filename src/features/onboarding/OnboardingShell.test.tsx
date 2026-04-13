@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { act } from 'react'
 import userEvent from '@testing-library/user-event'
 import App from '../../App'
@@ -90,6 +90,7 @@ const fixtures = vi.hoisted(() => {
     selected_install_skill_ids_initialized: false,
     selected_install_candidate_skill_ids: [],
     credential_values: {},
+    linux_devices: [],
   }
 
   const onboardingPreview: OnboardingInstallPreview = {
@@ -191,6 +192,43 @@ const mockControls = vi.hoisted(() => ({
     string,
     { success: boolean; summary: string; details: string }
   >,
+  environmentCheckResults: {} as Record<
+    string,
+    {
+      status: string
+      summary: string
+      details: string
+      requirements: Array<{
+        id: string
+        label: string
+        required: boolean
+        status: string
+        details: string | null
+      }>
+      missing_requirement_ids: string[]
+      install_supported: boolean
+      install_support_message: string
+    }
+  >,
+  environmentInstallResults: {} as Record<
+    string,
+    {
+      success: boolean
+      summary: string
+      details: string
+      installed_requirement_ids: string[]
+    }
+  >,
+  environmentInstallProgressEvents: {} as Record<
+    string,
+    Array<{
+      status: string
+      progress_percent: number
+      step: string
+      log_line: string | null
+    }>
+  >,
+  eventHandlers: new Map<string, (event: { payload: unknown }) => void>(),
 }))
 
 const invokeMock = vi.hoisted(() => vi.fn())
@@ -200,13 +238,24 @@ vi.mock('@tauri-apps/api/core', () => ({
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
-  listen: vi.fn(async () => () => {}),
+  listen: vi.fn(async (eventName: string, handler: (event: { payload: unknown }) => void) => {
+    mockControls.eventHandlers.set(eventName, handler)
+    return () => {
+      if (mockControls.eventHandlers.get(eventName) === handler) {
+        mockControls.eventHandlers.delete(eventName)
+      }
+    }
+  }),
 }))
 
 beforeEach(() => {
   mockControls.saveError = null
   mockControls.stateOverride = null
   mockControls.connectionTestResults = {}
+  mockControls.environmentCheckResults = {}
+  mockControls.environmentInstallResults = {}
+  mockControls.environmentInstallProgressEvents = {}
+  mockControls.eventHandlers.clear()
   invokeMock.mockReset()
   invokeMock.mockImplementation(async (command: string, payload?: any) => {
     const currentState = mockControls.stateOverride ?? fixtures.onboardingState
@@ -250,6 +299,82 @@ beforeEach(() => {
           },
         }
       }
+      case 'check_onboarding_skill_environment':
+        {
+          const serviceId = payload?.input?.service_id ?? 'jira'
+          const configuredResult = mockControls.environmentCheckResults[serviceId] ?? {
+            status: 'ready',
+            summary: '环境已就绪',
+            details: '',
+            requirements: [
+              {
+                id: 'python3',
+                label: 'Python 3',
+                required: true,
+                status: 'ready',
+                details: 'Python 3.12.0',
+              },
+            ],
+            missing_requirement_ids: [],
+            install_supported: true,
+            install_support_message: '可自动安装缺失环境',
+          }
+
+          return {
+            success: {
+              service_id: serviceId,
+              platform: 'macos',
+              status: configuredResult.status,
+              summary: configuredResult.summary,
+              details: configuredResult.details,
+              requirements: configuredResult.requirements,
+              missing_requirement_ids: configuredResult.missing_requirement_ids,
+              install_supported: configuredResult.install_supported,
+              install_support_message: configuredResult.install_support_message,
+              trigger: payload?.input?.trigger ?? 'automatic',
+              tested_fingerprint: payload?.input?.tested_fingerprint ?? 'fingerprint',
+            },
+          }
+        }
+      case 'install_onboarding_skill_environment':
+        {
+          const serviceId = payload?.input?.service_id ?? 'jira'
+          const installId = payload?.input?.install_id ?? `install-${serviceId}`
+          const listener = mockControls.eventHandlers.get('onboarding-environment-install-progress')
+          const progressEvents = mockControls.environmentInstallProgressEvents[serviceId] ?? []
+
+          for (const event of progressEvents) {
+            await Promise.resolve()
+            listener?.({
+              payload: {
+                install_id: installId,
+                service_id: serviceId,
+                status: event.status,
+                progress_percent: event.progress_percent,
+                step: event.step,
+                log_line: event.log_line,
+              },
+            })
+          }
+
+          const configuredResult = mockControls.environmentInstallResults[serviceId] ?? {
+            success: true,
+            summary: '安装完成',
+            details: '',
+            installed_requirement_ids: [],
+          }
+
+          return {
+            success: {
+              install_id: installId,
+              service_id: serviceId,
+              success: configuredResult.success,
+              summary: configuredResult.summary,
+              details: configuredResult.details,
+              installed_requirement_ids: configuredResult.installed_requirement_ids,
+            },
+          }
+        }
       case 'get_onboarding_install_preview':
         return { success: { ...fixtures.onboardingPreview, selected_install_skill_ids: currentState.selected_install_skill_ids, selected_agent_ids: currentState.selected_agent_ids } }
       case 'stage_onboarding_generated_packages':
@@ -272,6 +397,16 @@ function getCredentialSyncCalls() {
 
 function getConnectionTestCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'test_onboarding_connection')
+}
+
+function getEnvironmentCheckCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'check_onboarding_skill_environment')
+}
+
+function getEnvironmentInstallCalls() {
+  return invokeMock.mock.calls.filter(
+    ([command]) => command === 'install_onboarding_skill_environment'
+  )
 }
 
 function getSyncCalls() {
@@ -325,6 +460,7 @@ describe('OnboardingShell', () => {
       selected_install_skill_ids_initialized: false,
       selected_install_candidate_skill_ids: [],
       credential_values: {},
+      linux_devices: [],
     }
 
     render(<App />)
@@ -362,6 +498,7 @@ describe('OnboardingShell', () => {
       selected_install_skill_ids_initialized: false,
       selected_install_candidate_skill_ids: [],
       credential_values: {},
+      linux_devices: [],
     }
 
     const user = userEvent.setup()
@@ -613,11 +750,13 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('heading', { name: 'Wiki 系统' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '问题管理系统' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '版本管理' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '主机与运维' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '通信系统' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Jira' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Confluence' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Gerrit' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'SVN' })).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Linux' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: '腾讯企业邮箱' })).toBeInTheDocument()
     expect(screen.queryByText('二级入口说明')).not.toBeInTheDocument()
     expect(
@@ -739,6 +878,254 @@ describe('OnboardingShell', () => {
     expect(screen.getAllByText('Jira').length).toBeGreaterThan(0)
     expect(screen.getAllByText('Confluence').length).toBeGreaterThan(0)
     expect(screen.getAllByRole('button', { name: '测试连接' })).toHaveLength(2)
+  })
+
+  it('renders Linux as a multi-device editor and runs an automatic environment check after selection', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      selected_install_skill_ids: [],
+      credential_values: {},
+    }
+    mockControls.environmentCheckResults = {
+      linux: {
+        status: 'missing',
+        summary: '缺少环境：Python 3、Paramiko',
+        details: '未检测到 Paramiko',
+        requirements: [
+          {
+            id: 'python3',
+            label: 'Python 3',
+            required: true,
+            status: 'ready',
+            details: 'Python 3.12.0',
+          },
+          {
+            id: 'paramiko',
+            label: 'Paramiko',
+            required: true,
+            status: 'missing',
+            details: '未安装',
+          },
+        ],
+        missing_requirement_ids: ['paramiko'],
+        install_supported: true,
+        install_support_message: '可自动安装缺失环境',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Linux' }))
+
+    await waitFor(() => expect(getEnvironmentCheckCalls()).toHaveLength(1))
+
+    expect(screen.getByRole('button', { name: '新增设备' })).toBeInTheDocument()
+    expect(screen.getByLabelText('设备名称')).toBeInTheDocument()
+    expect(screen.getByLabelText('IP / 主机地址')).toBeInTheDocument()
+    expect(screen.getByLabelText('用户名')).toBeInTheDocument()
+    expect(screen.getByLabelText('密码')).toBeInTheDocument()
+    expect(screen.getByText('缺少环境：Python 3、Paramiko')).toBeInTheDocument()
+
+    const [, payload] = getEnvironmentCheckCalls()[0] as [
+      string,
+      { input: { service_id: string; trigger: string } },
+    ]
+    expect(payload.input.service_id).toBe('linux')
+    expect(payload.input.trigger).toBe('automatic')
+  })
+
+  it('persists Linux devices as structured records when saving base skills', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      selected_install_skill_ids: [],
+      credential_values: {},
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Linux' }))
+    await user.clear(screen.getByLabelText('设备名称'))
+    await user.type(screen.getByLabelText('设备名称'), 'Build Server')
+    await user.clear(screen.getByLabelText('IP / 主机地址'))
+    await user.type(screen.getByLabelText('IP / 主机地址'), '192.168.9.20')
+    await user.clear(screen.getByLabelText('用户名'))
+    await user.type(screen.getByLabelText('用户名'), 'ops')
+    await user.clear(screen.getByLabelText('密码'))
+    await user.type(screen.getByLabelText('密码'), 'linux-secret')
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const [, payload] = getSetStateCalls()[0] as [
+      string,
+      {
+        state: {
+          selected_base_skill_ids: string[]
+          linux_devices?: Array<{
+            name: string
+            host: string
+            username: string
+            password: string
+          }>
+        }
+      },
+    ]
+
+    expect(payload.state.selected_base_skill_ids).toContain('linux')
+    expect(payload.state.linux_devices).toEqual([
+      expect.objectContaining({
+        name: 'Build Server',
+        host: '192.168.9.20',
+        username: 'ops',
+        password: 'linux-secret',
+      }),
+    ])
+  })
+
+  it('runs an automatic environment check when a base skill is selected and renders the environment panel beside credentials', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      selected_install_skill_ids: [],
+      credential_values: {},
+    }
+    mockControls.environmentCheckResults = {
+      jira: {
+        status: 'missing',
+        summary: '缺少环境：Python 3',
+        details: '未检测到 python3',
+        requirements: [
+          {
+            id: 'python3',
+            label: 'Python 3',
+            required: true,
+            status: 'missing',
+            details: '未安装',
+          },
+        ],
+        missing_requirement_ids: ['python3'],
+        install_supported: true,
+        install_support_message: '可自动安装缺失环境',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Jira' }))
+
+    await waitFor(() => expect(getEnvironmentCheckCalls()).toHaveLength(1))
+
+    const [, payload] = getEnvironmentCheckCalls()[0] as [
+      string,
+      { input: { service_id: string; trigger: string } },
+    ]
+    expect(payload.input.service_id).toBe('jira')
+    expect(payload.input.trigger).toBe('automatic')
+    expect(screen.getByText('运行环境')).toBeInTheDocument()
+    expect(screen.getByText('缺少环境：Python 3')).toBeInTheDocument()
+    expect(screen.getByText('未检测到 python3')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '自动安装缺失环境' })).toBeInTheDocument()
+  })
+
+  it('renders real-time install progress and logs in the environment panel', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['svn'],
+      selected_install_skill_ids: ['svn'],
+      credential_values: {
+        svnUrl: 'https://svn.example.com/repos/project',
+        svnUsername: 'svn.user',
+        svnPassword: 'svn-secret',
+      },
+    }
+    mockControls.environmentCheckResults = {
+      svn: {
+        status: 'missing',
+        summary: '缺少环境：Python 3、SVN',
+        details: '需要先安装运行环境',
+        requirements: [
+          {
+            id: 'python3',
+            label: 'Python 3',
+            required: true,
+            status: 'missing',
+            details: '未安装',
+          },
+          {
+            id: 'svn',
+            label: 'SVN',
+            required: true,
+            status: 'missing',
+            details: '未安装',
+          },
+        ],
+        missing_requirement_ids: ['python3', 'svn'],
+        install_supported: true,
+        install_support_message: '可自动安装缺失环境',
+      },
+    }
+    mockControls.environmentInstallProgressEvents = {
+      svn: [
+        {
+          status: 'running',
+          progress_percent: 40,
+          step: '正在安装 Python 3',
+          log_line: 'winget install Python.Python.3.12',
+        },
+        {
+          status: 'running',
+          progress_percent: 80,
+          step: '正在安装 SVN',
+          log_line: 'winget install Apache.Subversion',
+        },
+      ],
+    }
+    mockControls.environmentInstallResults = {
+      svn: {
+        success: true,
+        summary: '环境安装完成',
+        details: '',
+        installed_requirement_ids: ['python3', 'svn'],
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    expect(await screen.findByRole('button', { name: '自动安装缺失环境' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '自动安装缺失环境' }))
+
+    await waitFor(() => expect(getEnvironmentInstallCalls()).toHaveLength(1))
+    expect(await screen.findByText('正在安装 SVN')).toBeInTheDocument()
+    expect(screen.getByText('80%')).toBeInTheDocument()
+    expect(screen.getByText('winget install Python.Python.3.12')).toBeInTheDocument()
+    expect(screen.getByText('winget install Apache.Subversion')).toBeInTheDocument()
+    expect(screen.getByText('环境安装完成')).toBeInTheDocument()
   })
 
   it('runs automatic connection tests after saving completed credentials', async () => {

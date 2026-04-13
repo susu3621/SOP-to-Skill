@@ -67,6 +67,8 @@ pub fn run() {
             commands::onboarding::set_onboarding_state,
             commands::onboarding::sync_onboarding_credentials,
             commands::onboarding::test_onboarding_connection,
+            commands::onboarding::check_onboarding_skill_environment,
+            commands::onboarding::install_onboarding_skill_environment,
             commands::onboarding::get_onboarding_install_preview,
             commands::onboarding::stage_onboarding_generated_packages,
             commands::onboarding::sync_onboarding_installation,

@@ -408,6 +408,17 @@
         }
       }
     },
+    "linux": {
+      "name": {
+        "zh-CN": "Linux",
+        "en-US": "Linux"
+      },
+      "description": {
+        "zh-CN": "读取并写入 Linux 设备中的文件、配置和命令执行结果",
+        "en-US": "Read and write files, configuration, and command results on Linux devices."
+      },
+      "credentials": {}
+    },
     "mail": {
       "name": {
         "zh-CN": "腾讯企业邮箱",

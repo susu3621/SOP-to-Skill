@@ -530,7 +530,10 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     connectionTests,
     credentialGroups,
     dirty,
+    environmentChecks,
+    environmentInstalls,
     installCandidateGroups,
+    addLinuxDevice,
     loading,
     preview,
     previewError,
@@ -544,7 +547,9 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     syncing,
     syncResult,
     startSync,
+    removeLinuxDevice,
     runManualConnectionTest,
+    installEnvironment,
     toggleAgent,
     toggleBaseSkill,
     getUseCaseSaveScope,
@@ -553,6 +558,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     addUseCaseQuestion,
     removeUseCaseQuestion,
     updateCredentialValue,
+    updateLinuxDeviceField,
     updateUseCaseDescription,
     updateUseCaseQuestionAnswer,
     updateUseCaseQuestionLabel,
@@ -808,10 +814,17 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
               <CredentialsStep
                 locale={locale}
                 connectionTests={connectionTests}
+                environmentChecks={environmentChecks}
+                environmentInstalls={environmentInstalls}
                 credentialGroups={credentialGroups}
                 credentialValues={state.credential_values}
+                linuxDevices={state.linux_devices}
+                onAddLinuxDevice={addLinuxDevice}
+                onInstallEnvironment={installEnvironment}
+                onRemoveLinuxDevice={removeLinuxDevice}
                 onRunConnectionTest={runManualConnectionTest}
                 onUpdateCredential={updateCredentialValue}
+                onUpdateLinuxDeviceField={updateLinuxDeviceField}
               />
             </section>
             <div className="button-row">

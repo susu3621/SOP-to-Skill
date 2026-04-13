@@ -15,13 +15,18 @@ use crate::onboarding::{
 use crate::commands::skill::{self, SkillResult};
 use crate::template::{get_output_dir, get_skills_dir};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
+use std::io::{BufRead, BufReader};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::{Command, Output, Stdio};
+use std::sync::mpsc;
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::{AppHandle, Emitter};
 
 use super::parse_json_with_optional_utf8_bom;
 
@@ -79,6 +84,65 @@ pub struct OnboardingConnectionTestResult {
     pub tested_fingerprint: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingEnvironmentCheckInput {
+    pub service_id: String,
+    pub credential_values: HashMap<String, String>,
+    pub trigger: String,
+    pub tested_fingerprint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingEnvironmentRequirement {
+    pub id: String,
+    pub label: String,
+    pub required: bool,
+    pub status: String,
+    pub details: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingEnvironmentCheckResult {
+    pub service_id: String,
+    pub platform: String,
+    pub status: String,
+    pub summary: String,
+    pub details: String,
+    pub requirements: Vec<OnboardingEnvironmentRequirement>,
+    pub missing_requirement_ids: Vec<String>,
+    pub install_supported: bool,
+    pub install_support_message: String,
+    pub trigger: String,
+    pub tested_fingerprint: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingEnvironmentInstallInput {
+    pub install_id: String,
+    pub service_id: String,
+    pub credential_values: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingEnvironmentInstallResult {
+    pub install_id: String,
+    pub service_id: String,
+    pub success: bool,
+    pub summary: String,
+    pub details: String,
+    pub installed_requirement_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingEnvironmentInstallProgressEvent {
+    pub install_id: String,
+    pub service_id: String,
+    pub status: String,
+    pub progress_percent: u8,
+    pub step: String,
+    pub log_line: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
 struct ScriptConnectionTestResult {
     service_id: String,
@@ -91,6 +155,29 @@ struct ScriptConnectionTestResult {
 struct OnboardingConnectionServiceConfig {
     service_id: &'static str,
     required_field_ids: &'static [&'static str],
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OnboardingEnvironmentRequirementSpec {
+    id: String,
+    label: String,
+    required: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OnboardingEnvironmentInstallStep {
+    requirement_id: String,
+    label: String,
+    program: String,
+    args: Vec<String>,
+}
+
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OnboardingEnvironmentPlatform {
+    MacOS,
+    Windows,
+    Unsupported,
 }
 
 const HOME_ENV_FILE_NAME: &str = ".env";
@@ -111,6 +198,7 @@ const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "SVN_URL",
     "SVN_USERNAME",
     "SVN_PASSWORD",
+    "LINUX_DEVICES_JSON",
     "MAIL_HOST",
     "MAIL_PORT",
     "MAIL_USERNAME",
@@ -138,10 +226,610 @@ const ONBOARDING_CONNECTION_SERVICES: &[OnboardingConnectionServiceConfig] = &[
         required_field_ids: &["svnUrl", "svnUsername", "svnPassword"],
     },
     OnboardingConnectionServiceConfig {
+        service_id: "linux",
+        required_field_ids: &["linuxDeviceName", "linuxHost", "linuxUsername", "linuxPassword"],
+    },
+    OnboardingConnectionServiceConfig {
         service_id: "mail",
         required_field_ids: &["mailUsername", "mailPassword"],
     },
 ];
+
+impl OnboardingEnvironmentPlatform {
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::MacOS => "macos",
+            Self::Windows => "windows",
+            Self::Unsupported => "unsupported",
+        }
+    }
+}
+
+fn current_onboarding_environment_platform() -> OnboardingEnvironmentPlatform {
+    #[cfg(target_os = "macos")]
+    {
+        OnboardingEnvironmentPlatform::MacOS
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        OnboardingEnvironmentPlatform::Windows
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        OnboardingEnvironmentPlatform::Unsupported
+    }
+}
+
+fn build_onboarding_environment_requirements(
+    service_id: &str,
+    credential_values: &HashMap<String, String>,
+) -> Result<Vec<OnboardingEnvironmentRequirementSpec>, String> {
+    match service_id {
+        "confluence" | "jira" | "mail" => Ok(vec![OnboardingEnvironmentRequirementSpec {
+            id: "python3".to_string(),
+            label: "Python 3".to_string(),
+            required: true,
+        }]),
+        "svn" => Ok(vec![
+            OnboardingEnvironmentRequirementSpec {
+                id: "python3".to_string(),
+                label: "Python 3".to_string(),
+                required: true,
+            },
+            OnboardingEnvironmentRequirementSpec {
+                id: "svn".to_string(),
+                label: "SVN".to_string(),
+                required: true,
+            },
+        ]),
+        "linux" => Ok(vec![
+            OnboardingEnvironmentRequirementSpec {
+                id: "python3".to_string(),
+                label: "Python 3".to_string(),
+                required: true,
+            },
+            OnboardingEnvironmentRequirementSpec {
+                id: "paramiko".to_string(),
+                label: "Paramiko".to_string(),
+                required: true,
+            },
+        ]),
+        "gerrit" => {
+            let auth_mode = credential_values
+                .get("gerritAuthMode")
+                .map(|value| value.trim())
+                .filter(|value| !value.is_empty())
+                .unwrap_or("http");
+            let mut requirements = vec![
+                OnboardingEnvironmentRequirementSpec {
+                    id: "python3".to_string(),
+                    label: "Python 3".to_string(),
+                    required: true,
+                },
+                OnboardingEnvironmentRequirementSpec {
+                    id: "git".to_string(),
+                    label: "Git".to_string(),
+                    required: true,
+                },
+            ];
+
+            if auth_mode == "ssh" {
+                requirements.push(OnboardingEnvironmentRequirementSpec {
+                    id: "ssh".to_string(),
+                    label: "SSH".to_string(),
+                    required: true,
+                });
+            }
+
+            Ok(requirements)
+        }
+        _ => Err(format!("Unsupported onboarding service for environment checks: {}", service_id)),
+    }
+}
+
+fn build_onboarding_environment_install_steps(
+    platform: OnboardingEnvironmentPlatform,
+    missing_requirement_ids: &[String],
+) -> Result<Vec<OnboardingEnvironmentInstallStep>, String> {
+    let mut steps: Vec<OnboardingEnvironmentInstallStep> = Vec::new();
+    let mut added_requirements = HashSet::new();
+
+    for requirement_id in missing_requirement_ids {
+        if !added_requirements.insert(requirement_id.clone()) {
+            continue;
+        }
+
+        let step = match platform {
+            OnboardingEnvironmentPlatform::MacOS => match requirement_id.as_str() {
+                "python3" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "Python 3".to_string(),
+                    program: "brew".to_string(),
+                    args: vec!["install".to_string(), "python".to_string()],
+                },
+                "git" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "Git".to_string(),
+                    program: "brew".to_string(),
+                    args: vec!["install".to_string(), "git".to_string()],
+                },
+                "svn" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "SVN".to_string(),
+                    program: "brew".to_string(),
+                    args: vec!["install".to_string(), "subversion".to_string()],
+                },
+                "ssh" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "SSH".to_string(),
+                    program: "brew".to_string(),
+                    args: vec!["install".to_string(), "openssh".to_string()],
+                },
+                "paramiko" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "Paramiko".to_string(),
+                    program: "python3".to_string(),
+                    args: vec![
+                        "-m".to_string(),
+                        "pip".to_string(),
+                        "install".to_string(),
+                        "-r".to_string(),
+                        linux_requirements_path()?.display().to_string(),
+                    ],
+                },
+                _ => {
+                    return Err(format!(
+                        "Unsupported environment requirement for macOS install: {}",
+                        requirement_id
+                    ))
+                }
+            },
+            OnboardingEnvironmentPlatform::Windows => match requirement_id.as_str() {
+                "python3" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "Python 3".to_string(),
+                    program: "winget".to_string(),
+                    args: vec![
+                        "install".to_string(),
+                        "--id".to_string(),
+                        "Python.Python.3.12".to_string(),
+                        "-e".to_string(),
+                        "--accept-source-agreements".to_string(),
+                        "--accept-package-agreements".to_string(),
+                    ],
+                },
+                "git" | "ssh" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: if requirement_id == "ssh" {
+                        "SSH".to_string()
+                    } else {
+                        "Git".to_string()
+                    },
+                    program: "winget".to_string(),
+                    args: vec![
+                        "install".to_string(),
+                        "--id".to_string(),
+                        "Git.Git".to_string(),
+                        "-e".to_string(),
+                        "--accept-source-agreements".to_string(),
+                        "--accept-package-agreements".to_string(),
+                    ],
+                },
+                "svn" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "SVN".to_string(),
+                    program: "winget".to_string(),
+                    args: vec![
+                        "install".to_string(),
+                        "--id".to_string(),
+                        "Apache.Subversion".to_string(),
+                        "-e".to_string(),
+                        "--accept-source-agreements".to_string(),
+                        "--accept-package-agreements".to_string(),
+                    ],
+                },
+                "paramiko" => OnboardingEnvironmentInstallStep {
+                    requirement_id: requirement_id.clone(),
+                    label: "Paramiko".to_string(),
+                    program: "py".to_string(),
+                    args: vec![
+                        "-3".to_string(),
+                        "-m".to_string(),
+                        "pip".to_string(),
+                        "install".to_string(),
+                        "-r".to_string(),
+                        linux_requirements_path()?.display().to_string(),
+                    ],
+                },
+                _ => {
+                    return Err(format!(
+                        "Unsupported environment requirement for Windows install: {}",
+                        requirement_id
+                    ))
+                }
+            },
+            OnboardingEnvironmentPlatform::Unsupported => {
+                return Err("Automatic environment installation is only supported on macOS and Windows.".to_string())
+            }
+        };
+
+        let already_has_same_command = steps.iter().any(|existing| {
+            existing.program == step.program && existing.args == step.args
+        });
+
+        if !already_has_same_command {
+            steps.push(step);
+        }
+    }
+
+    Ok(steps)
+}
+
+fn probe_command_output(program: &str, args: &[&str]) -> Result<Output, std::io::Error> {
+    let mut command = Command::new(program);
+    command.args(args);
+    command.output()
+}
+
+fn probe_requirement(
+    requirement_id: &str,
+) -> Result<(String, String), String> {
+    let probe_candidates: Vec<(&str, Vec<&str>)> = match requirement_id {
+        "python3" => python_command_candidates()
+            .into_iter()
+            .map(|(program, base_args)| {
+                let mut args = base_args.to_vec();
+                args.push("--version");
+                (program, args)
+            })
+            .collect(),
+        "git" => vec![("git", vec!["--version"])],
+        "svn" => vec![("svn", vec!["--version", "--quiet"])],
+        "ssh" => vec![("ssh", vec!["-V"])],
+        "paramiko" => python_command_candidates()
+            .into_iter()
+            .map(|(program, base_args)| {
+                let mut args = base_args.to_vec();
+                args.push("-c");
+                args.push("import paramiko; print(paramiko.__version__)");
+                (program, args)
+            })
+            .collect(),
+        _ => return Err(format!("Unsupported environment requirement probe: {}", requirement_id)),
+    };
+
+    for (program, args) in probe_candidates {
+        match probe_command_output(program, &args) {
+            Ok(output) => {
+                let stdout = trim_process_output(&output.stdout);
+                let stderr = trim_process_output(&output.stderr);
+
+                if output.status.success() {
+                    let details = first_non_empty_line(&stdout)
+                        .or_else(|| first_non_empty_line(&stderr))
+                        .unwrap_or_else(|| format!("{} available", program));
+
+                    return Ok(("ready".to_string(), details));
+                }
+
+                let failure_detail = first_non_empty_line(&stderr)
+                    .or_else(|| first_non_empty_line(&stdout))
+                    .unwrap_or_else(|| format!("{} probe failed", program));
+
+                return Ok(("missing".to_string(), failure_detail));
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(format!(
+                    "Failed to probe {} using {}: {}",
+                    requirement_id, program, error
+                ))
+            }
+        }
+    }
+
+    Ok((
+        "missing".to_string(),
+        format!("{} not found in PATH", requirement_id),
+    ))
+}
+
+fn installer_support_message(
+    platform: OnboardingEnvironmentPlatform,
+    package_manager_available: bool,
+) -> String {
+    match platform {
+        OnboardingEnvironmentPlatform::MacOS => {
+            if package_manager_available {
+                "可通过 Homebrew 自动安装缺失环境。".to_string()
+            } else {
+                "未检测到 Homebrew，无法自动安装缺失环境。".to_string()
+            }
+        }
+        OnboardingEnvironmentPlatform::Windows => {
+            if package_manager_available {
+                "可通过 winget 自动安装缺失环境。".to_string()
+            } else {
+                "未检测到 winget，无法自动安装缺失环境。".to_string()
+            }
+        }
+        OnboardingEnvironmentPlatform::Unsupported => {
+            "当前仅支持 macOS 和 Windows 自动安装缺失环境。".to_string()
+        }
+    }
+}
+
+fn package_manager_available(platform: OnboardingEnvironmentPlatform) -> bool {
+    let probe = match platform {
+        OnboardingEnvironmentPlatform::MacOS => Some(("brew", vec!["--version"])),
+        OnboardingEnvironmentPlatform::Windows => Some(("winget", vec!["--version"])),
+        OnboardingEnvironmentPlatform::Unsupported => None,
+    };
+
+    probe
+        .map(|(program, args)| probe_command_output(program, &args).map(|output| output.status.success()).unwrap_or(false))
+        .unwrap_or(false)
+}
+
+fn run_onboarding_environment_check(
+    input: &OnboardingEnvironmentCheckInput,
+) -> Result<OnboardingEnvironmentCheckResult, String> {
+    let platform = current_onboarding_environment_platform();
+    let package_manager_ready = package_manager_available(platform);
+    let requirements = build_onboarding_environment_requirements(&input.service_id, &input.credential_values)?;
+    let mut rendered_requirements = Vec::new();
+    let mut missing_labels = Vec::new();
+    let mut missing_requirement_ids = Vec::new();
+    let mut detail_lines = Vec::new();
+
+    for requirement in requirements {
+        let (status, details) = probe_requirement(&requirement.id)?;
+        if status == "missing" {
+            missing_labels.push(requirement.label.clone());
+            missing_requirement_ids.push(requirement.id.clone());
+            detail_lines.push(format!("{}: {}", requirement.label, details));
+        }
+
+        rendered_requirements.push(OnboardingEnvironmentRequirement {
+            id: requirement.id,
+            label: requirement.label,
+            required: requirement.required,
+            status,
+            details,
+        });
+    }
+
+    let status = if missing_requirement_ids.is_empty() {
+        "ready".to_string()
+    } else {
+        "missing".to_string()
+    };
+
+    let summary = if missing_labels.is_empty() {
+        "环境已就绪".to_string()
+    } else {
+        format!("缺少环境：{}", missing_labels.join("、"))
+    };
+    let install_supported = !missing_requirement_ids.is_empty()
+        && matches!(
+            platform,
+            OnboardingEnvironmentPlatform::MacOS | OnboardingEnvironmentPlatform::Windows
+        )
+        && package_manager_ready;
+    let install_support_message = installer_support_message(platform, package_manager_ready);
+    let details = if detail_lines.is_empty() {
+        install_support_message.clone()
+    } else {
+        let mut lines = detail_lines;
+        lines.push(install_support_message.clone());
+        lines.join("\n")
+    };
+
+    Ok(OnboardingEnvironmentCheckResult {
+        service_id: input.service_id.clone(),
+        platform: platform.as_str().to_string(),
+        status,
+        summary,
+        details,
+        requirements: rendered_requirements,
+        missing_requirement_ids,
+        install_supported,
+        install_support_message,
+        trigger: input.trigger.clone(),
+        tested_fingerprint: input.tested_fingerprint.clone(),
+    })
+}
+
+fn emit_environment_install_progress(
+    app: &AppHandle,
+    payload: OnboardingEnvironmentInstallProgressEvent,
+) {
+    let _ = app.emit("onboarding-environment-install-progress", payload);
+}
+
+fn run_install_step(
+    app: &AppHandle,
+    install_id: &str,
+    service_id: &str,
+    step: &OnboardingEnvironmentInstallStep,
+    progress_percent: u8,
+    step_label: &str,
+) -> Result<(), String> {
+    let mut command = Command::new(&step.program);
+    command.args(&step.args);
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+
+    let mut child = command.spawn().map_err(|error| {
+        format!(
+            "Failed to start {} install command {}: {}",
+            step.label, step.program, error
+        )
+    })?;
+
+    emit_environment_install_progress(
+        app,
+        OnboardingEnvironmentInstallProgressEvent {
+            install_id: install_id.to_string(),
+            service_id: service_id.to_string(),
+            status: "running".to_string(),
+            progress_percent,
+            step: step_label.to_string(),
+            log_line: None,
+        },
+    );
+
+    let (tx, rx) = mpsc::channel::<String>();
+    let mut handles = Vec::new();
+
+    if let Some(stdout) = child.stdout.take() {
+        let tx = tx.clone();
+        handles.push(thread::spawn(move || {
+            for line in BufReader::new(stdout).lines().flatten() {
+                let trimmed = line.trim();
+                if !trimmed.is_empty() {
+                    let _ = tx.send(trimmed.to_string());
+                }
+            }
+        }));
+    }
+
+    if let Some(stderr) = child.stderr.take() {
+        let tx = tx.clone();
+        handles.push(thread::spawn(move || {
+            for line in BufReader::new(stderr).lines().flatten() {
+                let trimmed = line.trim();
+                if !trimmed.is_empty() {
+                    let _ = tx.send(trimmed.to_string());
+                }
+            }
+        }));
+    }
+
+    drop(tx);
+
+    for line in rx {
+        emit_environment_install_progress(
+            app,
+            OnboardingEnvironmentInstallProgressEvent {
+                install_id: install_id.to_string(),
+                service_id: service_id.to_string(),
+                status: "running".to_string(),
+                progress_percent,
+                step: step_label.to_string(),
+                log_line: Some(line),
+            },
+        );
+    }
+
+    let status = child
+        .wait()
+        .map_err(|error| format!("Failed to wait for {} install command: {}", step.label, error))?;
+
+    for handle in handles {
+        let _ = handle.join();
+    }
+
+    if !status.success() {
+        return Err(format!(
+            "{} install command failed with status {}",
+            step.label, status
+        ));
+    }
+
+    Ok(())
+}
+
+async fn run_onboarding_environment_install(
+    app: &AppHandle,
+    input: &OnboardingEnvironmentInstallInput,
+) -> Result<OnboardingEnvironmentInstallResult, String> {
+    let platform = current_onboarding_environment_platform();
+    let check_result = run_onboarding_environment_check(&OnboardingEnvironmentCheckInput {
+        service_id: input.service_id.clone(),
+        credential_values: input.credential_values.clone(),
+        trigger: "install".to_string(),
+        tested_fingerprint: input.install_id.clone(),
+    })?;
+
+    if check_result.missing_requirement_ids.is_empty() {
+        emit_environment_install_progress(
+            app,
+            OnboardingEnvironmentInstallProgressEvent {
+                install_id: input.install_id.clone(),
+                service_id: input.service_id.clone(),
+                status: "success".to_string(),
+                progress_percent: 100,
+                step: "环境已就绪".to_string(),
+                log_line: None,
+            },
+        );
+
+        return Ok(OnboardingEnvironmentInstallResult {
+            install_id: input.install_id.clone(),
+            service_id: input.service_id.clone(),
+            success: true,
+            summary: "环境已就绪，无需安装".to_string(),
+            details: check_result.details,
+            installed_requirement_ids: vec![],
+        });
+    }
+
+    if !check_result.install_supported {
+        return Err(check_result.install_support_message);
+    }
+
+    let steps = build_onboarding_environment_install_steps(platform, &check_result.missing_requirement_ids)?;
+    let total_steps = steps.len().max(1);
+
+    for (index, step) in steps.iter().enumerate() {
+        let progress_percent = ((index * 100) / total_steps) as u8;
+        let step_label = format!("正在安装 {}", step.label);
+        run_install_step(
+            app,
+            &input.install_id,
+            &input.service_id,
+            step,
+            progress_percent,
+            &step_label,
+        )?;
+
+        emit_environment_install_progress(
+            app,
+            OnboardingEnvironmentInstallProgressEvent {
+                install_id: input.install_id.clone(),
+                service_id: input.service_id.clone(),
+                status: "running".to_string(),
+                progress_percent: (((index + 1) * 100) / total_steps) as u8,
+                step: step_label,
+                log_line: None,
+            },
+        );
+    }
+
+    emit_environment_install_progress(
+        app,
+        OnboardingEnvironmentInstallProgressEvent {
+            install_id: input.install_id.clone(),
+            service_id: input.service_id.clone(),
+            status: "success".to_string(),
+            progress_percent: 100,
+            step: "环境安装完成".to_string(),
+            log_line: None,
+        },
+    );
+
+    Ok(OnboardingEnvironmentInstallResult {
+        install_id: input.install_id.clone(),
+        service_id: input.service_id.clone(),
+        success: true,
+        summary: "环境安装完成".to_string(),
+        details: check_result.install_support_message,
+        installed_requirement_ids: check_result.missing_requirement_ids,
+    })
+}
 
 fn get_onboarding_state_path() -> PathBuf {
     crate::template::get_config_path().with_file_name("onboarding-state.json")
@@ -196,6 +884,19 @@ fn get_onboarding_home_env_path() -> Result<PathBuf, String> {
         .map(|path| path.join(HOME_ENV_FILE_NAME))
         .or_else(|| dirs::home_dir().map(|path| path.join(HOME_ENV_FILE_NAME)))
         .ok_or_else(|| "Failed to resolve home directory for ~/.env".to_string())
+}
+
+fn linux_requirements_path() -> Result<PathBuf, String> {
+    let path = get_skills_dir().join("linux").join("scripts").join("requirements.txt");
+
+    if !path.is_file() {
+        return Err(format!(
+            "Linux requirements file not found: {}",
+            path.display()
+        ));
+    }
+
+    Ok(path)
 }
 
 fn require_non_empty_credential_value(
@@ -328,8 +1029,61 @@ fn build_connection_test_env_entries(
                 ("MAIL_USE_STARTTLS".to_string(), "false".to_string()),
             ])
         }
+        "linux" => Ok(vec![
+            (
+                "LINUX_DEVICE_NAME".to_string(),
+                require_non_empty_credential_value(credential_values, "linuxDeviceName")?,
+            ),
+            (
+                "LINUX_HOST".to_string(),
+                require_non_empty_credential_value(credential_values, "linuxHost")?,
+            ),
+            (
+                "LINUX_USERNAME".to_string(),
+                require_non_empty_credential_value(credential_values, "linuxUsername")?,
+            ),
+            (
+                "LINUX_PASSWORD".to_string(),
+                require_non_empty_credential_value(credential_values, "linuxPassword")?,
+            ),
+        ]),
         _ => Err(format!("Unsupported onboarding service: {}", service_id)),
     }
+}
+
+fn build_linux_devices_env_entry(state: &OnboardingState) -> Result<Option<(String, String)>, String> {
+    let devices = state
+        .linux_devices
+        .iter()
+        .filter(|device| {
+            [
+                device.name.as_str(),
+                device.host.as_str(),
+                device.username.as_str(),
+                device.password.as_str(),
+            ]
+            .iter()
+            .any(|value| !value.trim().is_empty())
+        })
+        .map(|device| {
+            json!({
+                "id": device.id,
+                "name": device.name.trim(),
+                "host": device.host.trim(),
+                "username": device.username.trim(),
+                "password": device.password,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    if devices.is_empty() {
+        return Ok(None);
+    }
+
+    let serialized = serde_json::to_string(&devices)
+        .map_err(|error| format!("Failed to serialize Linux devices: {}", error))?;
+
+    Ok(Some(("LINUX_DEVICES_JSON".to_string(), serialized)))
 }
 
 fn build_onboarding_home_env_entries(
@@ -338,6 +1092,13 @@ fn build_onboarding_home_env_entries(
     let mut entries = Vec::new();
 
     for base_skill_id in &state.selected_base_skill_ids {
+        if base_skill_id == "linux" {
+            if let Some(entry) = build_linux_devices_env_entry(state)? {
+                entries.push(entry);
+            }
+            continue;
+        }
+
         if get_onboarding_connection_service_config(base_skill_id).is_none() {
             continue;
         }
@@ -450,6 +1211,7 @@ fn service_label(service_id: &str) -> &str {
         "confluence" => "Confluence",
         "gerrit" => "Gerrit",
         "jira" => "Jira",
+        "linux" => "Linux",
         "svn" => "SVN",
         "mail" => "Mail",
         _ => "Service",
@@ -673,6 +1435,41 @@ pub fn test_onboarding_connection(
     match run_onboarding_connection_test(&input) {
         Ok(result) => SkillResult::Success { success: result },
         Err(error) => SkillResult::Error { error },
+    }
+}
+
+#[tauri::command]
+pub fn check_onboarding_skill_environment(
+    input: OnboardingEnvironmentCheckInput,
+) -> SkillResult<OnboardingEnvironmentCheckResult> {
+    match run_onboarding_environment_check(&input) {
+        Ok(result) => SkillResult::Success { success: result },
+        Err(error) => SkillResult::Error { error },
+    }
+}
+
+#[tauri::command]
+pub async fn install_onboarding_skill_environment(
+    app: AppHandle,
+    input: OnboardingEnvironmentInstallInput,
+) -> SkillResult<OnboardingEnvironmentInstallResult> {
+    match run_onboarding_environment_install(&app, &input).await {
+        Ok(result) => SkillResult::Success { success: result },
+        Err(error) => {
+            emit_environment_install_progress(
+                &app,
+                OnboardingEnvironmentInstallProgressEvent {
+                    install_id: input.install_id,
+                    service_id: input.service_id,
+                    status: "error".to_string(),
+                    progress_percent: 0,
+                    step: "环境安装失败".to_string(),
+                    log_line: Some(error.clone()),
+                },
+            );
+
+            SkillResult::Error { error }
+        }
     }
 }
 
@@ -910,12 +1707,14 @@ where
 mod tests {
     use super::{
         apply_onboarding_sync_plan, build_connection_test_env_entries,
-        build_onboarding_connection_test_result, build_onboarding_install_preview,
-        resolve_connection_test_script_path,
+        build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
+        build_onboarding_environment_requirements, build_onboarding_install_preview,
+        resolve_connection_test_script_path, OnboardingEnvironmentPlatform,
         OnboardingAgentSyncResult,
     };
     use crate::models::{
-        OnboardingAgentState, OnboardingRoleUseCaseContent, OnboardingState, OnboardingUseCase,
+        OnboardingAgentState, OnboardingLinuxDevice, OnboardingRoleUseCaseContent, OnboardingState,
+        OnboardingUseCase,
     };
     use crate::onboarding::state::default_selected_install_skill_ids;
     use super::OnboardingSyncCommandInput;
@@ -1045,6 +1844,108 @@ mod tests {
             "GERRIT_SSH_USERNAME".to_string(),
             "gerrit.user".to_string()
         )));
+    }
+
+    #[test]
+    fn onboarding_environment_builds_svn_requirements() {
+        let requirements =
+            build_onboarding_environment_requirements("svn", &HashMap::new()).expect("svn requirements");
+
+        let ids = requirements
+            .iter()
+            .map(|requirement| requirement.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(ids, vec!["python3", "svn"]);
+    }
+
+    #[test]
+    fn onboarding_environment_builds_gerrit_ssh_requirements() {
+        let requirements = build_onboarding_environment_requirements(
+            "gerrit",
+            &HashMap::from([("gerritAuthMode".to_string(), "ssh".to_string())]),
+        )
+        .expect("gerrit ssh requirements");
+
+        let ids = requirements
+            .iter()
+            .map(|requirement| requirement.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(ids, vec!["python3", "git", "ssh"]);
+    }
+
+    #[test]
+    fn onboarding_connection_test_builds_linux_env_entries() {
+        let entries = build_connection_test_env_entries(
+            "linux",
+            &HashMap::from([
+                ("linuxDeviceName".to_string(), "Build Server".to_string()),
+                ("linuxHost".to_string(), "192.168.9.20".to_string()),
+                ("linuxUsername".to_string(), "ops".to_string()),
+                ("linuxPassword".to_string(), "linux-secret".to_string()),
+            ]),
+        )
+        .expect("linux env entries");
+
+        assert!(entries.contains(&(
+            "LINUX_DEVICE_NAME".to_string(),
+            "Build Server".to_string()
+        )));
+        assert!(entries.contains(&(
+            "LINUX_HOST".to_string(),
+            "192.168.9.20".to_string()
+        )));
+        assert!(entries.contains(&("LINUX_USERNAME".to_string(), "ops".to_string())));
+        assert!(entries.contains(&(
+            "LINUX_PASSWORD".to_string(),
+            "linux-secret".to_string()
+        )));
+    }
+
+    #[test]
+    fn onboarding_environment_builds_linux_requirements() {
+        let requirements =
+            build_onboarding_environment_requirements("linux", &HashMap::new()).expect("linux requirements");
+
+        let ids = requirements
+            .iter()
+            .map(|requirement| requirement.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(ids, vec!["python3", "paramiko"]);
+    }
+
+    #[test]
+    fn onboarding_environment_builds_windows_install_steps_for_svn() {
+        let steps = build_onboarding_environment_install_steps(
+            OnboardingEnvironmentPlatform::Windows,
+            &["python3".to_string(), "svn".to_string()],
+        )
+        .expect("windows install steps");
+
+        assert_eq!(steps.len(), 2);
+        assert_eq!(steps[0].requirement_id, "python3");
+        assert_eq!(steps[0].program, "winget");
+        assert!(steps[0].args.contains(&"Python.Python.3.12".to_string()));
+        assert_eq!(steps[1].requirement_id, "svn");
+        assert_eq!(steps[1].program, "winget");
+        assert!(steps[1].args.contains(&"Apache.Subversion".to_string()));
+    }
+
+    #[test]
+    fn onboarding_environment_builds_macos_install_steps_for_gerrit_ssh() {
+        let steps = build_onboarding_environment_install_steps(
+            OnboardingEnvironmentPlatform::MacOS,
+            &["python3".to_string(), "git".to_string(), "ssh".to_string()],
+        )
+        .expect("macos install steps");
+
+        assert_eq!(steps.len(), 3);
+        assert_eq!(steps[0].program, "brew");
+        assert_eq!(steps[0].args, vec!["install".to_string(), "python".to_string()]);
+        assert_eq!(steps[1].args, vec!["install".to_string(), "git".to_string()]);
+        assert_eq!(steps[2].args, vec!["install".to_string(), "openssh".to_string()]);
     }
 
     #[test]
@@ -1285,6 +2186,7 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -1346,6 +2248,7 @@ mod tests {
                 "test-project-manager-weekly-report".to_string(),
             ],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -1401,6 +2304,7 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -1454,6 +2358,7 @@ mod tests {
                 "test-project-manager-weekly-report".to_string(),
             ],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -1511,6 +2416,7 @@ mod tests {
                 "test-project-manager-weekly-report".to_string(),
             ],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -1558,6 +2464,7 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let result = super::get_onboarding_install_preview(
@@ -1592,6 +2499,7 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let result = super::get_onboarding_install_preview(
@@ -1632,6 +2540,7 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
@@ -1668,6 +2577,7 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
+            linux_devices: vec![],
         };
 
         let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
@@ -1779,6 +2689,7 @@ mod tests {
                 ("mailUsername".to_string(), "pm@example.com".to_string()),
                 ("mailPassword".to_string(), "mail-secret".to_string()),
             ]),
+            linux_devices: vec![],
         };
 
         super::sync_onboarding_credentials_to_home_env(&state).expect("sync home env");
@@ -1829,6 +2740,7 @@ mod tests {
                 ("mailUsername".to_string(), "pm@example.com".to_string()),
                 ("mailPassword".to_string(), "mail-secret".to_string()),
             ]),
+            linux_devices: vec![],
         };
 
         super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
@@ -1849,6 +2761,48 @@ mod tests {
         assert!(content.contains("MAIL_USE_SSL=\"true\""));
         assert!(content.contains("MAIL_USE_STARTTLS=\"false\""));
         assert!(!content.contains("https://stale.example.com"));
+    }
+
+    #[test]
+    fn onboarding_sync_writes_linux_devices_to_home_env_file() {
+        let home_dir = temp_dir("home-env-linux");
+        let env_path = home_dir.join(".env");
+
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "it-manager".to_string(),
+            selected_base_skill_ids: vec!["linux".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
+            credential_values: HashMap::new(),
+            linux_devices: vec![
+                OnboardingLinuxDevice {
+                    id: "linux-device-1".to_string(),
+                    name: "Build Server".to_string(),
+                    host: "192.168.9.20".to_string(),
+                    username: "ops".to_string(),
+                    password: "linux-secret".to_string(),
+                },
+                OnboardingLinuxDevice {
+                    id: "linux-device-2".to_string(),
+                    name: "Deploy Host".to_string(),
+                    host: "192.168.9.21".to_string(),
+                    username: "deploy".to_string(),
+                    password: "deploy-secret".to_string(),
+                },
+            ],
+        };
+
+        super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
+
+        let content = fs::read_to_string(&env_path).expect("read env");
+        assert!(content.contains("LINUX_DEVICES_JSON="));
+        assert!(content.contains("Build Server"));
+        assert!(content.contains("192.168.9.20"));
+        assert!(content.contains("Deploy Host"));
+        assert!(content.contains("192.168.9.21"));
     }
 
     #[test]
@@ -1886,6 +2840,7 @@ mod tests {
                 ("jiraUsername".to_string(), "jira.user".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
             ]),
+            linux_devices: vec![],
         };
 
         super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
@@ -1931,6 +2886,7 @@ mod tests {
                 ("mailUsername".to_string(), "pm@example.com".to_string()),
                 ("mailPassword".to_string(), "mail-secret".to_string()),
             ]),
+            linux_devices: vec![],
         };
 
         let result = super::sync_onboarding_credentials(state);
@@ -1968,6 +2924,7 @@ mod tests {
                 ("jiraUsername".to_string(), "jira.user".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
             ]),
+            linux_devices: vec![],
         };
 
         let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
