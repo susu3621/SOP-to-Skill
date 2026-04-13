@@ -109,6 +109,23 @@
         "供应商质量问题跟踪"
       ]
     },
+    "it-manager": {
+      "name": {
+        "zh-CN": "IT经理",
+        "en-US": "IT Manager"
+      },
+      "description": {
+        "zh-CN": "更关注IT基础设施、系统运维和技术支持。",
+        "en-US": "Focuses on IT infrastructure, system operations, and technical support."
+      },
+      "useCases": [
+        "IT 服务台工单分析与周报",
+        "账号权限申请审核与开通跟踪",
+        "基础应用程序的安装",
+        "运维巡检异常汇总",
+        "项目立项配置建立"
+      ]
+    },
     "delivery-manager": {
       "name": {
         "zh-CN": "交付经理",
@@ -1251,6 +1268,481 @@
           "placeholder": {
             "zh-CN": "例如：供应商质量管理 SOP Wiki",
             "en-US": "Example: supplier quality management SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "IT 服务台工单分析与周报": {
+      "name": {
+        "zh-CN": "IT 服务台工单分析与周报",
+        "en-US": "IT Service Desk Ticket Analysis and Weekly Report"
+      },
+      "directory": "it-service-desk-report",
+      "description": {
+        "zh-CN": "汇总 IT 服务台工单、处理时效、重复问题和本周重点，形成标准化周报。",
+        "en-US": "Summarize IT service desk tickets, handling efficiency, recurring issues, and weekly highlights into a standardized report."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成固定节奏整理工单趋势和支持效率的助手。",
+          "en-US": "Best used as a Skill that tracks ticket trends and support efficiency on a fixed cadence."
+        },
+        {
+          "zh-CN": "建议写清周报结构、SLA 关注项、升级条件和需要抄送的对象。",
+          "en-US": "Clarify the report structure, SLA metrics, escalation criteria, and the audience."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本周时间范围、支持范围或重点系统。",
+        "en-US": "Input (information required every run): the weekly time window, support scope, or priority systems."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：服务台工单系统、值班记录、监控告警摘要、周会纪要。",
+        "en-US": "Examples: service desk system, on-duty logs, monitoring alert summaries, and weekly meeting notes."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按工单量、SLA 达成、重复问题、待升级事项四部分输出。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: organize the report into ticket volume, SLA attainment, recurring issues, and escalations.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总 IT 服务台工单、处理时效、重复问题和本周重点，形成标准化周报。\n\n适合配置成固定节奏整理工单趋势和支持效率的助手。\n\n建议写清周报结构、SLA 关注项、升级条件和需要抄送的对象。\n\n输入（每次执行都需要提供给Skill的信息）：本周时间范围、支持范围或重点系统。",
+        "en-US": "Summarize IT service desk tickets, handling efficiency, recurring issues, and weekly highlights into a standardized report.\n\nBest used as a Skill that tracks ticket trends and support efficiency on a fixed cadence.\n\nClarify the report structure, SLA metrics, escalation criteria, and the audience.\n\nInput (information required every run): the weekly time window, support scope, or priority systems."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "service-desk-ticket-source",
+          "label": {
+            "zh-CN": "从哪里获取服务台工单清单？",
+            "en-US": "Where can AI get the service desk ticket list?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：服务台系统查询链接",
+            "en-US": "Example: service desk query link"
+          },
+          "required": true
+        },
+        {
+          "id": "service-desk-progress-source",
+          "label": {
+            "zh-CN": "从哪里可以知道处理进展、SLA 和责任人？",
+            "en-US": "Where can AI find handling progress, SLA status, and owners?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：工单处理看板或值班跟进表",
+            "en-US": "Example: ticket handling board or on-duty follow-up tracker"
+          },
+          "required": true
+        },
+        {
+          "id": "service-desk-weekly-report-sop",
+          "label": {
+            "zh-CN": "从哪里获取 IT 服务台周报模板或 SOP？",
+            "en-US": "Where can AI find the IT service desk weekly report template or SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：IT 服务台周报模板 Wiki",
+            "en-US": "Example: IT service desk weekly report template wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "账号权限申请审核与开通跟踪": {
+      "name": {
+        "zh-CN": "账号权限申请审核与开通跟踪",
+        "en-US": "Account and Access Request Review and Provisioning Tracking"
+      },
+      "directory": "access-request-tracking",
+      "description": {
+        "zh-CN": "汇总账号开通、权限变更和离职回收申请，跟踪审批与执行状态。",
+        "en-US": "Consolidate account provisioning, access changes, and offboarding recovery requests, then track approval and execution status."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成统一整理账号权限申请和执行进展的助手。",
+          "en-US": "Best used as a Skill that organizes access requests and provisioning progress in one place."
+        },
+        {
+          "zh-CN": "建议写清权限矩阵、审批链、紧急申请规则和完成时限。",
+          "en-US": "Clarify the access matrix, approval flow, urgent-request rules, and completion deadlines."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次要处理的申请范围、时间范围或申请单号。",
+        "en-US": "Input (information required every run): the request scope, time window, or request ID for this run."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：OA 申请单、IAM 系统、离职流程单、权限矩阵文档。",
+        "en-US": "Examples: approval forms, IAM system, offboarding workflow, and access matrix docs."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：统一输出申请人、系统、权限范围、审批状态、执行状态和超时项。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: consistently output requester, system, scope, approval status, execution status, and overdue items.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总账号开通、权限变更和离职回收申请，跟踪审批与执行状态。\n\n适合配置成统一整理账号权限申请和执行进展的助手。\n\n建议写清权限矩阵、审批链、紧急申请规则和完成时限。\n\n输入（每次执行都需要提供给Skill的信息）：本次要处理的申请范围、时间范围或申请单号。",
+        "en-US": "Consolidate account provisioning, access changes, and offboarding recovery requests, then track approval and execution status.\n\nBest used as a Skill that organizes access requests and provisioning progress in one place.\n\nClarify the access matrix, approval flow, urgent-request rules, and completion deadlines.\n\nInput (information required every run): the request scope, time window, or request ID for this run."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "access-request-source",
+          "label": {
+            "zh-CN": "从哪里获取账号 / 权限申请？",
+            "en-US": "Where can AI get account or access requests?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：OA 申请单列表或 IAM 申请入口",
+            "en-US": "Example: approval form list or IAM request portal"
+          },
+          "required": true
+        },
+        {
+          "id": "access-matrix-source",
+          "label": {
+            "zh-CN": "从哪里可以知道岗位对应的权限矩阵和审批要求？",
+            "en-US": "Where can AI find the role-based access matrix and approval requirements?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：权限矩阵 Wiki 或审批制度文档",
+            "en-US": "Example: access matrix wiki or approval policy doc"
+          },
+          "required": true
+        },
+        {
+          "id": "access-provisioning-sop",
+          "label": {
+            "zh-CN": "从哪里获取账号开通、权限变更和离职回收的 SOP？",
+            "en-US": "Where can AI find the SOP for account provisioning, access changes, and offboarding recovery?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：账号生命周期管理 SOP Wiki",
+            "en-US": "Example: account lifecycle management SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "基础应用程序的安装": {
+      "name": {
+        "zh-CN": "基础应用程序的安装",
+        "en-US": "Basic Application Installation"
+      },
+      "directory": "basic-application-installation",
+      "description": {
+        "zh-CN": "根据公司标准，为新设备或新员工安装基础应用程序并核对版本与授权要求。",
+        "en-US": "Install baseline applications for new devices or employees according to company standards, including version and license checks."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成整理安装清单、安装顺序和验收要点的助手。",
+          "en-US": "Best used as a Skill that organizes installation lists, installation order, and acceptance checks."
+        },
+        {
+          "zh-CN": "建议写清标准软件清单、版本要求、授权方式和安装完成标准。",
+          "en-US": "Clarify the standard software list, version requirements, licensing method, and completion criteria."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：设备类型、员工岗位或本次安装范围。",
+        "en-US": "Input (information required every run): the device type, employee role, or installation scope for this run."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：标准软件清单、软件分发平台、镜像库、授权台账。",
+        "en-US": "Examples: standard software list, software distribution platform, image repository, and license tracker."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按软件名称、版本、下载入口、安装顺序、授权方式和验收结果输出。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: output software name, version, download source, installation order, licensing method, and acceptance result.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "根据公司标准，为新设备或新员工安装基础应用程序并核对版本与授权要求。\n\n适合配置成整理安装清单、安装顺序和验收要点的助手。\n\n建议写清标准软件清单、版本要求、授权方式和安装完成标准。\n\n输入（每次执行都需要提供给Skill的信息）：设备类型、员工岗位或本次安装范围。",
+        "en-US": "Install baseline applications for new devices or employees according to company standards, including version and license checks.\n\nBest used as a Skill that organizes installation lists, installation order, and acceptance checks.\n\nClarify the standard software list, version requirements, licensing method, and completion criteria.\n\nInput (information required every run): the device type, employee role, or installation scope for this run."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "standard-software-list",
+          "label": {
+            "zh-CN": "从哪里获取标准软件清单？",
+            "en-US": "Where can AI get the standard software list?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：标准办公环境软件清单 Wiki",
+            "en-US": "Example: standard workplace software list wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "installer-source",
+          "label": {
+            "zh-CN": "从哪里获取安装包、版本要求或下载入口？",
+            "en-US": "Where can AI find installers, version requirements, or download links?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：软件分发平台或镜像库链接",
+            "en-US": "Example: software distribution platform or image repository link"
+          },
+          "required": true
+        },
+        {
+          "id": "installation-sop",
+          "label": {
+            "zh-CN": "从哪里获取安装顺序、授权方式或验收 SOP？",
+            "en-US": "Where can AI find the installation order, licensing method, or acceptance SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：新电脑装机 SOP Wiki",
+            "en-US": "Example: new-computer setup SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "运维巡检异常汇总": {
+      "name": {
+        "zh-CN": "运维巡检异常汇总",
+        "en-US": "Operations Inspection Exception Summary"
+      },
+      "directory": "operations-inspection-summary",
+      "description": {
+        "zh-CN": "汇总服务器、网络、备份和监控中的巡检异常，突出风险和待处理项。",
+        "en-US": "Summarize inspection exceptions across servers, networks, backups, and monitoring, then highlight risks and pending actions."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成按固定周期整理巡检异常和处置建议的助手。",
+          "en-US": "Best used as a Skill that summarizes inspection exceptions and recommended actions on a fixed cadence."
+        },
+        {
+          "zh-CN": "建议写清巡检范围、严重级别、升级路径和例行处理规则。",
+          "en-US": "Clarify the inspection scope, severity levels, escalation path, and routine handling rules."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：巡检时间范围、系统范围或值班班次。",
+        "en-US": "Input (information required every run): the inspection time window, system scope, or support shift."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：巡检报告、监控告警平台、值班日志、备份检查记录。",
+        "en-US": "Examples: inspection reports, monitoring alerts, on-duty logs, and backup check records."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按异常项、影响范围、当前状态、责任人和建议动作输出，严重项单独标红。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: output exception item, impact scope, current status, owner, and recommended action, with severe issues highlighted separately.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总服务器、网络、备份和监控中的巡检异常，突出风险和待处理项。\n\n适合配置成按固定周期整理巡检异常和处置建议的助手。\n\n建议写清巡检范围、严重级别、升级路径和例行处理规则。\n\n输入（每次执行都需要提供给Skill的信息）：巡检时间范围、系统范围或值班班次。",
+        "en-US": "Summarize inspection exceptions across servers, networks, backups, and monitoring, then highlight risks and pending actions.\n\nBest used as a Skill that summarizes inspection exceptions and recommended actions on a fixed cadence.\n\nClarify the inspection scope, severity levels, escalation path, and routine handling rules.\n\nInput (information required every run): the inspection time window, system scope, or support shift."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "inspection-result-source",
+          "label": {
+            "zh-CN": "从哪里获取巡检结果或监控告警？",
+            "en-US": "Where can AI get inspection results or monitoring alerts?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：巡检报告目录或监控告警看板",
+            "en-US": "Example: inspection report directory or monitoring alert dashboard"
+          },
+          "required": true
+        },
+        {
+          "id": "affected-system-source",
+          "label": {
+            "zh-CN": "从哪里可以知道受影响的主机、系统或服务清单？",
+            "en-US": "Where can AI find the affected hosts, systems, or service list?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：CMDB、服务目录或资产台账",
+            "en-US": "Example: CMDB, service catalog, or asset tracker"
+          },
+          "required": true
+        },
+        {
+          "id": "inspection-sop",
+          "label": {
+            "zh-CN": "从哪里获取巡检模板或异常处理 SOP？",
+            "en-US": "Where can AI find the inspection template or exception-handling SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：运维巡检 SOP Wiki",
+            "en-US": "Example: operations inspection SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "项目立项配置建立": {
+      "name": {
+        "zh-CN": "项目立项配置建立",
+        "en-US": "Project Initiation Setup"
+      },
+      "directory": "project-kickoff-setup",
+      "description": {
+        "zh-CN": "根据项目立项信息，建立代码库、Wiki、权限组、工单空间和通知群等基础配置。",
+        "en-US": "Set up repositories, wiki spaces, permission groups, ticket spaces, and notification channels based on project initiation details."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成整理项目立项所需配置清单和开通步骤的助手。",
+          "en-US": "Best used as a Skill that organizes the setup checklist and provisioning steps for new projects."
+        },
+        {
+          "zh-CN": "建议写清哪些系统需要建立、命名规则、审批要求和完成判定标准。",
+          "en-US": "Clarify which systems must be provisioned, naming rules, approval requirements, and completion criteria."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：项目名称、项目编号或本次立项范围。",
+        "en-US": "Input (information required every run): the project name, project code, or setup scope for this run."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：立项申请单、项目模板、系统开通清单、命名规范文档。",
+        "en-US": "Examples: initiation request form, project template, system provisioning checklist, and naming convention docs."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按需建立的系统、命名规则、权限组、通知对象和完成状态输出。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: output required systems, naming rules, permission groups, notification targets, and completion status.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "根据项目立项信息，建立代码库、Wiki、权限组、工单空间和通知群等基础配置。\n\n适合配置成整理项目立项所需配置清单和开通步骤的助手。\n\n建议写清哪些系统需要建立、命名规则、审批要求和完成判定标准。\n\n输入（每次执行都需要提供给Skill的信息）：项目名称、项目编号或本次立项范围。",
+        "en-US": "Set up repositories, wiki spaces, permission groups, ticket spaces, and notification channels based on project initiation details.\n\nBest used as a Skill that organizes the setup checklist and provisioning steps for new projects.\n\nClarify which systems must be provisioned, naming rules, approval requirements, and completion criteria.\n\nInput (information required every run): the project name, project code, or setup scope for this run."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "project-request-source",
+          "label": {
+            "zh-CN": "从哪里获取项目立项或开项申请？",
+            "en-US": "Where can AI get the project initiation or kickoff request?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：项目立项单或 OA 申请链接",
+            "en-US": "Example: project initiation form or approval link"
+          },
+          "required": true
+        },
+        {
+          "id": "setup-scope-source",
+          "label": {
+            "zh-CN": "从哪里可以知道需要建立哪些系统、权限组或协作空间？",
+            "en-US": "Where can AI find which systems, permission groups, or collaboration spaces must be created?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：项目模板、开通清单或权限配置表",
+            "en-US": "Example: project template, provisioning checklist, or access configuration table"
+          },
+          "required": true
+        },
+        {
+          "id": "project-setup-sop",
+          "label": {
+            "zh-CN": "从哪里获取项目立项配置模板或 SOP？",
+            "en-US": "Where can AI find the project initiation setup template or SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：项目立项配置 SOP Wiki",
+            "en-US": "Example: project initiation setup SOP wiki"
           },
           "required": true
         },

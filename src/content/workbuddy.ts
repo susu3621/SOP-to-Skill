@@ -89,7 +89,7 @@ interface SharedConfig {
 }
 
 const typedConfig = config as SharedConfig
-const visibleRoleIds = ['project-manager', 'qa-manager'] as const
+const visibleRoleIds = ['project-manager', 'qa-manager', 'it-manager'] as const
 const supportedLocales: Locale[] = ['zh-CN', 'en-US']
 
 export const defaultOnboardingRoleId = visibleRoleIds[0]

@@ -129,17 +129,18 @@ describe('workbuddy agent apps', () => {
     ])
   })
 
-  it('exposes project manager and quality manager in visible role selectors while keeping legacy role labels', () => {
+  it('exposes project manager, quality manager, and IT manager in visible role selectors while keeping legacy role labels', () => {
     expect(Object.keys(sharedConfig.roles)).toEqual([
       'project-manager',
       'product-manager',
       'sales-manager',
       'qa-manager',
+      'it-manager',
       'delivery-manager',
       'rd-manager',
     ])
-    expect(workbuddyRoles.map((role) => role.value)).toEqual(['项目经理', '质量经理'])
-    expect(onboardingRoles.map((role) => role.id)).toEqual(['project-manager', 'qa-manager'])
+    expect(workbuddyRoles.map((role) => role.value)).toEqual(['项目经理', '质量经理', 'IT经理'])
+    expect(onboardingRoles.map((role) => role.id)).toEqual(['project-manager', 'qa-manager', 'it-manager'])
     expect(getRoleNameById('product-manager')).toBe('产品经理')
   })
 
@@ -162,6 +163,148 @@ describe('workbuddy agent apps', () => {
       '供应商质量问题跟踪',
     ])
     expect(qaDefaults.every((useCase) => useCase.description_locked)).toBe(true)
+  })
+
+  it('assigns five daily IT-management use cases to it-manager', () => {
+    expect(sharedConfig.roles['it-manager']?.useCases).toEqual([
+      'IT 服务台工单分析与周报',
+      '账号权限申请审核与开通跟踪',
+      '基础应用程序的安装',
+      '运维巡检异常汇总',
+      '项目立项配置建立',
+    ])
+
+    const itDefaults = createDefaultRoleUseCaseContents('it-manager')
+
+    expect(itDefaults.map((useCase) => useCase.use_case_name)).toEqual([
+      'IT 服务台工单分析与周报',
+      '账号权限申请审核与开通跟踪',
+      '基础应用程序的安装',
+      '运维巡检异常汇总',
+      '项目立项配置建立',
+    ])
+    expect(itDefaults.every((useCase) => useCase.description_locked)).toBe(true)
+  })
+
+  it('defines structured onboarding questions for the five IT-manager use cases', () => {
+    expect(getOnboardingUseCaseOptionById('it-service-desk-report')?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'service-desk-ticket-source',
+        label: '从哪里获取服务台工单清单？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'service-desk-progress-source',
+        label: '从哪里可以知道处理进展、SLA 和责任人？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'service-desk-weekly-report-sop',
+        label: '从哪里获取 IT 服务台周报模板或 SOP？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+
+    expect(getOnboardingUseCaseOptionById('access-request-tracking')?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'access-request-source',
+        label: '从哪里获取账号 / 权限申请？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'access-matrix-source',
+        label: '从哪里可以知道岗位对应的权限矩阵和审批要求？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'access-provisioning-sop',
+        label: '从哪里获取账号开通、权限变更和离职回收的 SOP？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+
+    expect(
+      getOnboardingUseCaseOptionById('basic-application-installation')?.structured_questions
+    ).toEqual([
+      expect.objectContaining({
+        id: 'standard-software-list',
+        label: '从哪里获取标准软件清单？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'installer-source',
+        label: '从哪里获取安装包、版本要求或下载入口？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'installation-sop',
+        label: '从哪里获取安装顺序、授权方式或验收 SOP？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+
+    expect(
+      getOnboardingUseCaseOptionById('operations-inspection-summary')?.structured_questions
+    ).toEqual([
+      expect.objectContaining({
+        id: 'inspection-result-source',
+        label: '从哪里获取巡检结果或监控告警？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'affected-system-source',
+        label: '从哪里可以知道受影响的主机、系统或服务清单？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'inspection-sop',
+        label: '从哪里获取巡检模板或异常处理 SOP？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+
+    expect(getOnboardingUseCaseOptionById('project-kickoff-setup')?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'project-request-source',
+        label: '从哪里获取项目立项或开项申请？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'setup-scope-source',
+        label: '从哪里可以知道需要建立哪些系统、权限组或协作空间？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'project-setup-sop',
+        label: '从哪里获取项目立项配置模板或 SOP？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
   })
 
   it('keeps only the retained project-manager use cases after pruning the removed scenarios', () => {
