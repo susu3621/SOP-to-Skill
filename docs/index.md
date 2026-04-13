@@ -227,6 +227,44 @@ flowchart LR
 <li>最后把协作最耗神的地方交出去，对于状态同步、进度说明、答疑回复这类高频动作，先让 AI 生成第一版。</li>
 </ul>
 
+## 当前版本已经支持什么
+
+如果你直接体验当前 `SOP to Skill v0.2.0`，能看到的能力不只是“一个概念”，而是一套已经能落地试点的角色和基础技能组合。
+
+<div class="card-grid">
+
+<div class="info-card">
+<strong>项目经理</strong>
+<span>支持需求评估、记录计划、项目周报、问题跟踪等日常高频工作配置。</span>
+</div>
+
+<div class="info-card">
+<strong>质量经理</strong>
+<span>支持质量异常闭环、客诉分析、变更质量影响检查、质量周报和供应商质量跟踪。</span>
+</div>
+
+<div class="info-card">
+<strong>IT 经理</strong>
+<span>支持服务台分析、权限开通跟踪、基础软件安装、运维巡检和项目立项配置建立。</span>
+</div>
+
+<div class="info-card">
+<strong>基础技能</strong>
+<span>当前内置 Jira、Confluence、Gerrit、SVN、Linux 和腾讯企业邮箱，可在引导流程里直接配置。</span>
+</div>
+
+<div class="info-card">
+<strong>环境检测</strong>
+<span>勾选基础技能后会自动检测运行环境，并在支持的场景里提示自动安装缺失环境。</span>
+</div>
+
+<div class="info-card">
+<strong>发布准备</strong>
+<span>桌面端已经支持导出日志、应用升级提示，以及带版本号的本地持久化迁移。</span>
+</div>
+
+</div>
+
 <span id="closing"></span>
 
 ## 未来拉开差距的，往往不是最忙的人

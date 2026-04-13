@@ -1,6 +1,7 @@
 // @vitest-environment node
 
 import { createRequire } from 'node:module'
+import path from 'node:path'
 
 const require = createRequire(import.meta.url)
 
@@ -128,8 +129,12 @@ describe('generateSkillArtifacts', () => {
     )
 
     expect(result.useCaseDir).toBe('project-manager-weekly-report')
-    expect(result.skillJsonPath).toBe('test-output/project-manager-weekly-report/skill.json')
-    expect(result.skillMdPath).toBe('test-output/project-manager-weekly-report/SKILL.md')
+    expect(result.skillJsonPath).toBe(
+      path.join('test-output', 'project-manager-weekly-report', 'skill.json'),
+    )
+    expect(result.skillMdPath).toBe(
+      path.join('test-output', 'project-manager-weekly-report', 'SKILL.md'),
+    )
   })
 
   it('generates matching production and test packages for the same role/use-case pair', () => {

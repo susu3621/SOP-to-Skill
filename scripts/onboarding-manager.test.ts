@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { createRequire } from 'node:module'
+import path from 'node:path'
 
 const require = createRequire(import.meta.url)
 
@@ -216,7 +217,9 @@ describe('onboarding manager helpers', () => {
     expect(collapseHomePath(getDefaultInstallRoot('workbuddy', homeDir), homeDir)).toBe(
       '~/.workbuddy/skills'
     )
-    expect(expandHomePath('~/.codex/skills', homeDir)).toBe('/tmp/test-home/.codex/skills')
+    expect(expandHomePath('~/.codex/skills', homeDir)).toBe(
+      path.join(homeDir, '.codex', 'skills')
+    )
 
     const snapshot = buildOverviewSnapshot(
       {

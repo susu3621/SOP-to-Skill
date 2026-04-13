@@ -5,6 +5,10 @@ import { createRequire } from 'node:module'
 
 const require = createRequire(import.meta.url)
 
+function toPortablePath(value: string) {
+  return value.replace(/\\/g, '/')
+}
+
 function loadBuildDesktopLocal() {
   return require('./lib/build-desktop-local.cjs') as {
     buildLocalArtifactLayout: (input: { platform: 'macos' | 'windows'; repoRoot: string }) => {
@@ -105,7 +109,7 @@ describe('local desktop build mode', () => {
           calls.push({ kind: 'build', value: repoRoot })
         },
         findInstaller() {
-          return '/repo/src-tauri/target/release/bundle/dmg/sop-to-skill_0.1.0_aarch64.dmg'
+          return '/repo/src-tauri/target/release/bundle/dmg/sop-to-skill_0.2.0_aarch64.dmg'
         },
         resetDir(dir: string) {
           calls.push({ kind: 'reset', value: dir })
@@ -116,15 +120,31 @@ describe('local desktop build mode', () => {
       },
     })
 
-    expect(calls).toEqual([
+    expect(
+      calls.map((entry) => ({
+        ...entry,
+        value: toPortablePath(entry.value),
+      })),
+    ).toEqual([
       { kind: 'tool', value: 'cargo' },
       { kind: 'prereq', value: 'macos' },
       { kind: 'build', value: '/repo' },
-      { kind: 'reset', value: '/repo/artifacts/desktop/local/macos' },
+      {
+        kind: 'reset',
+        value: toPortablePath(path.join('/repo', 'artifacts', 'desktop', 'local', 'macos')),
+      },
       {
         kind: 'copy',
-        value:
-          '/repo/src-tauri/target/release/bundle/dmg/sop-to-skill_0.1.0_aarch64.dmg -> /repo/artifacts/desktop/local/macos/sop-to-skill_0.1.0_aarch64.dmg',
+        value: `${toPortablePath('/repo/src-tauri/target/release/bundle/dmg/sop-to-skill_0.2.0_aarch64.dmg')} -> ${toPortablePath(
+          path.join(
+            '/repo',
+            'artifacts',
+            'desktop',
+            'local',
+            'macos',
+            'sop-to-skill_0.2.0_aarch64.dmg',
+          ),
+        )}`,
       },
     ])
   })

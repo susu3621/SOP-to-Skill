@@ -7,6 +7,10 @@ import { vi } from 'vitest'
 
 const require = createRequire(import.meta.url)
 
+function toPortablePath(value: string) {
+  return value.replace(/\\/g, '/')
+}
+
 afterEach(() => {
   vi.restoreAllMocks()
 })
@@ -403,11 +407,22 @@ describe('build desktop all workflow dispatch', () => {
       },
     })
 
-    expect(downloads).toEqual([
-      { artifactName: 'desktop-macos', outputDir: '/repo/artifacts/desktop/42/macos' },
-      { artifactName: 'desktop-windows', outputDir: '/repo/artifacts/desktop/42/windows' },
+    expect(
+      downloads.map((entry) => ({
+        ...entry,
+        outputDir: toPortablePath(entry.outputDir),
+      })),
+    ).toEqual([
+      {
+        artifactName: 'desktop-macos',
+        outputDir: toPortablePath(path.join('/repo', 'artifacts', 'desktop', '42', 'macos')),
+      },
+      {
+        artifactName: 'desktop-windows',
+        outputDir: toPortablePath(path.join('/repo', 'artifacts', 'desktop', '42', 'windows')),
+      },
     ])
-    expect(writes[0]?.path).toBe('/repo/artifacts/desktop/42/manifest.json')
+    expect(toPortablePath(writes[0]?.path ?? '')).toBe('/repo/artifacts/desktop/42/manifest.json')
   })
 
   it('uses the dispatched run url when gh returns one', async () => {

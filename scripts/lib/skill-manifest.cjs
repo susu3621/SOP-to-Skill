@@ -69,7 +69,10 @@ function computeSkillContentHash({ repoRoot, skillPath }) {
 
   for (const relativeFile of files) {
     hash.update(`file:${relativeFile}\n`)
-    hash.update(fs.readFileSync(path.join(absoluteSkillPath, relativeFile)))
+    const content = fs
+      .readFileSync(path.join(absoluteSkillPath, relativeFile), 'utf8')
+      .replace(/\r\n/g, '\n')
+    hash.update(content)
     hash.update('\n')
   }
 

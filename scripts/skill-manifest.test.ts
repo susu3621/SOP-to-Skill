@@ -91,6 +91,32 @@ describe('skill manifest validation', () => {
     ).toBe(cleanHash)
   })
 
+  it('treats CRLF and LF skill files as the same packaged content', () => {
+    const repoRoot = tempRepoRoot('line-endings')
+    writeSkill(repoRoot, 'jira', {
+      'SKILL.md': '# Jira\n',
+      'scripts/search_jira.py': "print('jira')\n",
+    })
+
+    const { computeSkillContentHash } = loadSkillManifestLib()
+    const lfHash = computeSkillContentHash({
+      repoRoot,
+      skillPath: 'skills/jira',
+    })
+
+    writeSkill(repoRoot, 'jira', {
+      'SKILL.md': '# Jira\r\n',
+      'scripts/search_jira.py': "print('jira')\r\n",
+    })
+
+    expect(
+      computeSkillContentHash({
+        repoRoot,
+        skillPath: 'skills/jira',
+      }),
+    ).toBe(lfHash)
+  })
+
   it('fails when the manifest hash does not match the packaged files', () => {
     const repoRoot = tempRepoRoot('hash-mismatch')
     writeSkill(repoRoot, 'jira', {

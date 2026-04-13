@@ -38,12 +38,20 @@
 
 The goal is not to make operations teams hand-write prompts or maintain raw config files. Instead, the app guides users through a setup flow that connects:
 
-- company IT tools such as `Jira`, `Confluence`, and `Tencent Exmail`
-- role-based work use cases
+- company IT tools such as `Jira`, `Confluence`, `Gerrit`, `SVN`, `Linux`, and `Tencent Exmail`
+- role-based work use cases for `Project Manager`, `QA Manager`, and `IT Manager`
 - SOP rules, information sources, and execution constraints
 - production and test skill packages for `Codex`, `Claude Code`, and `WorkBuddy`
 
 If the problem is "how do we turn the way our company already works into something AI can actually execute?", this repository is the implementation of that answer.
+
+## 🆕 v0.2.0 Highlights
+
+- Added `QA Manager` and `IT Manager` onboarding roles, each with five built-in daily work use cases.
+- Expanded built-in base skills to `Jira`, `Confluence`, `Gerrit`, `SVN`, `Linux`, and `Tencent Exmail`.
+- Added automatic connection tests and environment checks after users select base skills.
+- Added multi-device Linux onboarding input and guided environment installation support.
+- Added desktop log export and persisted storage version migration for safer upgrades.
 
 ## ✨ Core Capabilities
 
@@ -56,14 +64,16 @@ If the problem is "how do we turn the way our company already works into somethi
 ### 2. Role and use-case driven setup
 
 - Select work scope by role before editing any detailed instructions
+- Default visible roles now include `Project Manager`, `QA Manager`, and `IT Manager`
 - Maintain description, information sources, and execution rules per use case
 - Add custom use cases alongside built-in ones
 
 ### 3. Company infrastructure binding
 
-- Built-in infrastructure currently includes `Jira`, `Confluence`, and `Tencent Exmail`
+- Built-in infrastructure currently includes `Jira`, `Confluence`, `Gerrit`, `SVN`, `Linux`, and `Tencent Exmail`
 - Credentials are saved during onboarding and synced early so later steps can use them directly
 - Deselecting a tool removes its managed configuration as well
+- Filled credentials can trigger automatic connection tests, and Linux devices support multiple host records
 
 ### 4. Dual package generation and install preview
 
@@ -71,7 +81,13 @@ If the problem is "how do we turn the way our company already works into somethi
 - Shows install previews before syncing changes
 - Supports syncing the same managed skill set into multiple AI apps
 
-### 5. Bilingual desktop experience
+### 5. Environment checks, logs, and upgrade readiness
+
+- Base skills can trigger runtime environment detection and supported auto-install guidance
+- The top bar can export application logs for bug reports
+- Release builds include updater wiring and persisted storage migration support
+
+### 6. Bilingual desktop experience
 
 - The app supports both Chinese and English
 - The repository README is also available in both languages
@@ -147,6 +163,7 @@ Platform-specific prerequisites and build details are documented here:
 ## 📚 Related Docs
 
 - [中文 README](./README.md)
+- [Changelog](./CHANGELOG.md)
 - [Local Build Guide (English)](./LOCAL_BUILD.md)
 - [本地构建指南（中文）](./LOCAL_BUILD_CN.md)
 - [Docs landing content](./docs/index.md)

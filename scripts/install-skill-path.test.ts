@@ -6,6 +6,62 @@ import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
+function resolveWindowsBashCommand() {
+  const candidates = [
+    'C:\\Program Files\\Git\\bin\\bash.exe',
+    'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
+  ]
+  const gitLookup = execFileSync('where', ['git'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  })
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter(Boolean)
+
+  for (const gitPath of gitLookup) {
+    const gitDir = path.dirname(gitPath)
+    candidates.unshift(path.resolve(gitDir, '..', 'usr', 'bin', 'bash.exe'))
+    candidates.unshift(path.resolve(gitDir, '..', 'bin', 'bash.exe'))
+  }
+
+  const bashPath = candidates.find((candidate) => fs.existsSync(candidate))
+  if (!bashPath) {
+    throw new Error('Git Bash is required on Windows to execute install-skill.sh.')
+  }
+
+  return bashPath
+}
+
+function toRenderedPath(value: string) {
+  if (process.platform !== 'win32') {
+    return value
+  }
+
+  return value.replace(/\\/g, '/').replace(/^([A-Za-z]):\//, (_, driveLetter: string) => {
+    return `/${driveLetter.toLowerCase()}/`
+  })
+}
+
+function runShellScript(scriptPath: string, args: string[]) {
+  if (process.platform === 'win32') {
+    const toShellPath = (value: string) =>
+      value.replace(/\\/g, '/').replace(/^([A-Za-z]):\//, (_, driveLetter: string) => {
+        return `/${driveLetter.toLowerCase()}/`
+      })
+
+    return execFileSync(resolveWindowsBashCommand(), [toShellPath(scriptPath), ...args.map(toShellPath)], {
+      cwd: process.cwd(),
+      env: process.env,
+    })
+  }
+
+  return execFileSync(scriptPath, args, {
+    cwd: process.cwd(),
+    env: process.env,
+  })
+}
+
 describe('install-skill.sh custom target root', () => {
   let tempDir: string
 
@@ -22,22 +78,16 @@ describe('install-skill.sh custom target root', () => {
     const uninstallScript = path.resolve('scripts/uninstall-skill.sh')
     const customCodexRoot = path.join(tempDir, '.codex', 'skills')
 
-    execFileSync(installScript, ['jira', 'codex', customCodexRoot], {
-      cwd: process.cwd(),
-      env: process.env,
-    })
+    runShellScript(installScript, ['jira', 'codex', customCodexRoot])
 
     const installedSkillDir = path.join(customCodexRoot, 'jira')
     const installedSkillMd = fs.readFileSync(path.join(installedSkillDir, 'SKILL.md'), 'utf8')
 
     expect(fs.existsSync(installedSkillDir)).toBe(true)
-    expect(installedSkillMd).toContain(installedSkillDir)
-    expect(installedSkillMd).toContain(path.join(installedSkillDir, 'scripts'))
+    expect(installedSkillMd).toContain(toRenderedPath(installedSkillDir))
+    expect(installedSkillMd).toContain(toRenderedPath(path.join(installedSkillDir, 'scripts')))
 
-    execFileSync(uninstallScript, ['jira', 'codex', customCodexRoot], {
-      cwd: process.cwd(),
-      env: process.env,
-    })
+    runShellScript(uninstallScript, ['jira', 'codex', customCodexRoot])
 
     expect(fs.existsSync(installedSkillDir)).toBe(false)
   })
@@ -47,22 +97,16 @@ describe('install-skill.sh custom target root', () => {
     const uninstallScript = path.resolve('scripts/uninstall-skill.sh')
     const customWorkbuddyRoot = path.join(tempDir, '.workbuddy', 'skills')
 
-    execFileSync(installScript, ['mail', 'workbuddy', customWorkbuddyRoot], {
-      cwd: process.cwd(),
-      env: process.env,
-    })
+    runShellScript(installScript, ['mail', 'workbuddy', customWorkbuddyRoot])
 
     const installedSkillDir = path.join(customWorkbuddyRoot, 'mail')
     const installedSkillMd = fs.readFileSync(path.join(installedSkillDir, 'SKILL.md'), 'utf8')
 
     expect(fs.existsSync(installedSkillDir)).toBe(true)
-    expect(installedSkillMd).toContain(installedSkillDir)
-    expect(installedSkillMd).toContain(path.join(installedSkillDir, 'scripts'))
+    expect(installedSkillMd).toContain(toRenderedPath(installedSkillDir))
+    expect(installedSkillMd).toContain(toRenderedPath(path.join(installedSkillDir, 'scripts')))
 
-    execFileSync(uninstallScript, ['mail', 'workbuddy', customWorkbuddyRoot], {
-      cwd: process.cwd(),
-      env: process.env,
-    })
+    runShellScript(uninstallScript, ['mail', 'workbuddy', customWorkbuddyRoot])
 
     expect(fs.existsSync(installedSkillDir)).toBe(false)
   })
@@ -72,10 +116,7 @@ describe('install-skill.sh custom target root', () => {
     const customWorkbuddyRoot = path.join(tempDir, '.workbuddy', 'skills')
 
     expect(() => {
-      execFileSync(uninstallScript, ['confluence', 'workbuddy', customWorkbuddyRoot], {
-        cwd: process.cwd(),
-        env: process.env,
-      })
+      runShellScript(uninstallScript, ['confluence', 'workbuddy', customWorkbuddyRoot])
     }).not.toThrow()
   })
 })

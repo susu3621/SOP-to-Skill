@@ -174,8 +174,8 @@ const fixtures = vi.hoisted(() => {
   }
 
   const appUpdate = {
-    currentVersion: '0.1.0',
-    version: '0.2.0',
+    currentVersion: '0.2.0',
+    version: '0.2.1',
     body: 'Bug fixes and bundled skill updates.',
     date: '2026-04-02T00:00:00Z',
   }
@@ -446,7 +446,7 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     const installButton = await screen.findByRole('button', { name: /下载并安装更新/ })
-    expect(screen.getByText('发现新版本 v0.2.0')).toBeInTheDocument()
+    expect(screen.getByText('发现新版本 v0.2.1')).toBeInTheDocument()
 
     await user.click(installButton)
 

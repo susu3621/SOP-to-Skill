@@ -564,7 +564,7 @@ mod tests {
 
         let rendered = fs::read_to_string(output_dir.join("SKILL.md")).unwrap();
         assert!(rendered.contains("scripts/search_jira.py"));
-        assert!(rendered.contains(output_dir.to_string_lossy().as_ref()));
+        assert!(rendered.contains(path_for_template(&output_dir).as_str()));
         assert!(output_dir.join("scripts/search_jira.py").exists());
     }
 

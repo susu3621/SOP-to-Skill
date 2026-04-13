@@ -24,6 +24,34 @@ const colors = {
   reset: '\x1b[0m',
 };
 
+function resolveWindowsBashCommand() {
+  const candidates = [
+    'C:\\Program Files\\Git\\bin\\bash.exe',
+    'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
+  ];
+
+  const gitLookup = execFileSync('where', ['git'], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+  })
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  for (const gitPath of gitLookup) {
+    const gitDir = path.dirname(gitPath);
+    candidates.unshift(path.resolve(gitDir, '..', 'usr', 'bin', 'bash.exe'));
+    candidates.unshift(path.resolve(gitDir, '..', 'bin', 'bash.exe'));
+  }
+
+  const bashPath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (!bashPath) {
+    throw new Error('Git Bash is required on Windows to execute install-skill.sh.');
+  }
+
+  return bashPath;
+}
+
 function parseManagerArgs(args) {
   let forceReinstall = false;
   let help = false;
@@ -69,6 +97,7 @@ function collapseHomePath(inputPath, homeDir = requireHomeDirectory()) {
 
   const normalizedHomeDir = path.normalize(homeDir);
   const normalizedInputPath = path.normalize(inputPath);
+  const toDisplayPath = (value) => value.split(path.sep).join('/');
 
   if (normalizedInputPath === normalizedHomeDir) {
     return '~';
@@ -76,10 +105,11 @@ function collapseHomePath(inputPath, homeDir = requireHomeDirectory()) {
 
   const homePrefix = `${normalizedHomeDir}${path.sep}`;
   if (normalizedInputPath.startsWith(homePrefix)) {
-    return `~${normalizedInputPath.slice(normalizedHomeDir.length)}`;
+    const relativePath = normalizedInputPath.slice(normalizedHomeDir.length + 1);
+    return `~/${toDisplayPath(relativePath)}`;
   }
 
-  return inputPath;
+  return toDisplayPath(normalizedInputPath);
 }
 
 function expandHomePath(inputPath, homeDir = requireHomeDirectory()) {
@@ -516,7 +546,23 @@ function installGeneratedSkillPackage(sourceDir, installRoot, skillId) {
 
 function executeSkillScript(scriptName, args) {
   const scriptPath = path.resolve(__dirname, '..', scriptName);
-  execFileSync(scriptPath, args, {
+  const toShellPath = (value) => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    const slashNormalized = value.replace(/\\/g, '/');
+    return slashNormalized.replace(/^([A-Za-z]):\//, (_, driveLetter) => {
+      return `/${driveLetter.toLowerCase()}/`;
+    });
+  };
+  const command = process.platform === 'win32' ? resolveWindowsBashCommand() : scriptPath;
+  const commandArgs =
+    process.platform === 'win32'
+      ? [toShellPath(scriptPath), ...args.map((value) => toShellPath(value))]
+      : args;
+
+  execFileSync(command, commandArgs, {
     cwd: path.resolve(__dirname, '..', '..'),
     stdio: 'inherit',
   });

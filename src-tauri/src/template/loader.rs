@@ -137,15 +137,21 @@ fn resolve_bundled_skills_dir(resource_dir: &Path) -> Option<PathBuf> {
 fn resolve_resource_dir_from_executable(current_exe: &Path) -> Option<PathBuf> {
     let exe_dir = current_exe.parent()?;
 
-    #[cfg(target_os = "macos")]
-    {
+    let looks_like_macos_bundle = exe_dir
+        .file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(|value| value == "MacOS")
+        && exe_dir
+            .parent()
+            .and_then(|value| value.file_name())
+            .and_then(|value| value.to_str())
+            .is_some_and(|value| value == "Contents");
+
+    if looks_like_macos_bundle {
         return exe_dir.join("../Resources").canonicalize().ok();
     }
 
-    #[cfg(not(target_os = "macos"))]
-    {
-        Some(exe_dir.to_path_buf())
-    }
+    Some(exe_dir.to_path_buf())
 }
 
 fn resolve_bundled_skills_dir_from_executable(current_exe: &Path) -> Option<PathBuf> {
