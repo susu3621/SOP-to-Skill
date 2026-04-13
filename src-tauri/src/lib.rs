@@ -7,25 +7,65 @@ mod update;
 
 use commands::skill::SkillState;
 use tauri::Manager;
+use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use update::app::{updater_is_configured, PendingAppUpdate};
+
+struct LoggingState {
+    _guard: Option<tracing_appender::non_blocking::WorkerGuard>,
+}
+
+fn initialize_logging() -> LoggingState {
+    let _ = template::ensure_directories();
+
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let stdout_layer = fmt::layer().with_writer(std::io::stdout);
+    let log_path = template::get_logs_dir().join("app.log");
+
+    if let Some(parent_dir) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent_dir);
+    }
+
+    if std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&log_path)
+        .is_ok()
+    {
+        let file_appender = tracing_appender::rolling::never(template::get_logs_dir(), "app.log");
+        let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(stdout_layer)
+            .with(fmt::layer().with_ansi(false).with_writer(file_writer))
+            .init();
+
+        return LoggingState {
+            _guard: Some(guard),
+        };
+    }
+
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(stdout_layer)
+        .init();
+
+    LoggingState { _guard: None }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let context = tauri::generate_context!();
     let updater_enabled = updater_is_configured(context.config());
-
-    // Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .init();
+    let logging_state = initialize_logging();
+    tracing::info!("SOP to Skill desktop app starting");
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(logging_state)
         .manage(SkillState::default())
         .manage(PendingAppUpdate::default());
 
@@ -77,6 +117,7 @@ pub fn run() {
             commands::config::update_config,
             commands::config::get_data_directory,
             commands::config::open_data_directory,
+            commands::config::export_current_log,
             // Update commands
             update::app::check_app_update,
             update::app::install_app_update,

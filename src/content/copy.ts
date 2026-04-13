@@ -87,6 +87,22 @@ export const pageCopy = {
     'zh-CN': '检查更新',
     'en-US': 'Check updates',
   },
+  exportLogs: {
+    'zh-CN': '导出日志',
+    'en-US': 'Export logs',
+  },
+  exportingLogs: {
+    'zh-CN': '导出中...',
+    'en-US': 'Exporting...',
+  },
+  exportLogsSuccessPrefix: {
+    'zh-CN': '日志已导出：',
+    'en-US': 'Log exported: ',
+  },
+  exportLogsFailedPrefix: {
+    'zh-CN': '导出日志失败：',
+    'en-US': 'Failed to export logs: ',
+  },
   navOnboarding: {
     'zh-CN': '开始设置',
     'en-US': 'Start setup',

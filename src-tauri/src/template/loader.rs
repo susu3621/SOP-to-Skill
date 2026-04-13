@@ -210,6 +210,11 @@ pub fn get_cache_dir() -> PathBuf {
     get_data_root().join("cache")
 }
 
+/// Get the logs directory path
+pub fn get_logs_dir() -> PathBuf {
+    get_data_root().join("logs")
+}
+
 /// Get the config file path
 pub fn get_config_path() -> PathBuf {
     get_data_root().join("config.json")
@@ -221,6 +226,7 @@ pub fn ensure_directories() -> Result<(), SkillError> {
         get_skills_dir(),
         get_installed_dir(),
         get_cache_dir(),
+        get_logs_dir(),
     ];
 
     for dir in dirs_to_create {

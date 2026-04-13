@@ -28,7 +28,7 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
 
-use super::parse_json_with_optional_utf8_bom;
+use super::{migrate_storage_metadata, parse_json_with_optional_utf8_bom};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingInstallPreview {
@@ -1619,9 +1619,17 @@ pub async fn sync_onboarding_installation(
 pub fn load_onboarding_state() -> OnboardingState {
     let path = get_onboarding_state_path();
 
-    if let Ok(content) = fs::read_to_string(path) {
-        if let Ok(state) = parse_json_with_optional_utf8_bom(&content) {
-            return state;
+    if let Ok(content) = fs::read_to_string(&path) {
+        if let Ok(mut value) = parse_json_with_optional_utf8_bom::<serde_json::Value>(&content) {
+            let migrated = migrate_storage_metadata(&mut value);
+
+            if migrated {
+                let _ = persist_onboarding_state_value(&path, &value);
+            }
+
+            if let Ok(state) = serde_json::from_value(value) {
+                return state;
+            }
         }
     }
 
@@ -1629,10 +1637,18 @@ pub fn load_onboarding_state() -> OnboardingState {
 }
 
 pub fn save_onboarding_state(state: &OnboardingState) -> Result<(), String> {
-    let content = serde_json::to_string_pretty(state)
+    let path = get_onboarding_state_path();
+    let mut value = serde_json::to_value(state)
         .map_err(|error| format!("Failed to serialize onboarding state: {error}"))?;
-    fs::write(get_onboarding_state_path(), content)
-        .map_err(|error| format!("Failed to write onboarding state: {error}"))
+    migrate_storage_metadata(&mut value);
+    persist_onboarding_state_value(&path, &value)
+}
+
+fn persist_onboarding_state_value(path: &Path, value: &serde_json::Value) -> Result<(), String> {
+    let _ = crate::template::ensure_directories();
+    let content = serde_json::to_string_pretty(value)
+        .map_err(|error| format!("Failed to serialize onboarding state: {error}"))?;
+    fs::write(path, content).map_err(|error| format!("Failed to write onboarding state: {error}"))
 }
 
 pub fn build_onboarding_install_preview(
@@ -2644,6 +2660,86 @@ mod tests {
             loaded.credential_values.get("jiraUrl"),
             Some(&"https://jira.example.com".to_string())
         );
+    }
+
+    #[test]
+    fn onboarding_state_load_migrates_legacy_state_file_and_rewrites_metadata() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("onboarding-state-migration");
+        let state_path = data_dir.join("onboarding-state.json");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+
+        fs::write(
+            &state_path,
+            concat!(
+                "{",
+                "\"selected_agent_ids\":[\"workbuddy\"],",
+                "\"selected_role_id\":\"project-manager\",",
+                "\"selected_base_skill_ids\":[\"jira\"],",
+                "\"role_use_case_contents\":[],",
+                "\"selected_install_skill_ids\":[\"jira\"],",
+                "\"selected_install_skill_ids_initialized\":true,",
+                "\"selected_install_candidate_skill_ids\":[\"jira\"],",
+                "\"credential_values\":{\"jiraUrl\":\"https://jira.example.com\"},",
+                "\"linux_devices\":[]",
+                "}"
+            ),
+        )
+        .expect("write legacy onboarding state");
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        let loaded = super::load_onboarding_state();
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(loaded.selected_role_id, "project-manager".to_string());
+        assert_eq!(loaded.selected_base_skill_ids, vec!["jira".to_string()]);
+
+        let persisted = fs::read_to_string(&state_path).expect("read migrated onboarding state");
+        assert!(persisted.contains("\"storage_version\": 1"));
+        assert!(persisted.contains(&format!(
+            "\"last_migrated_app_version\": \"{}\"",
+            env!("CARGO_PKG_VERSION")
+        )));
+    }
+
+    #[test]
+    fn onboarding_state_load_refreshes_last_migrated_app_version_for_current_schema() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("onboarding-state-version-refresh");
+        let state_path = data_dir.join("onboarding-state.json");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+
+        fs::write(
+            &state_path,
+            concat!(
+                "{",
+                "\"storage_version\":1,",
+                "\"last_migrated_app_version\":\"0.0.1\",",
+                "\"selected_agent_ids\":[\"workbuddy\"],",
+                "\"selected_role_id\":\"project-manager\",",
+                "\"selected_base_skill_ids\":[\"jira\"],",
+                "\"role_use_case_contents\":[],",
+                "\"selected_install_skill_ids\":[\"jira\"],",
+                "\"selected_install_skill_ids_initialized\":true,",
+                "\"selected_install_candidate_skill_ids\":[\"jira\"],",
+                "\"credential_values\":{},",
+                "\"linux_devices\":[]",
+                "}"
+            ),
+        )
+        .expect("write stale onboarding version state");
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        let _ = super::load_onboarding_state();
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        let persisted = fs::read_to_string(&state_path).expect("read refreshed onboarding state");
+        assert!(persisted.contains("\"storage_version\": 1"));
+        assert!(persisted.contains(&format!(
+            "\"last_migrated_app_version\": \"{}\"",
+            env!("CARGO_PKG_VERSION")
+        )));
+        assert!(!persisted.contains("\"last_migrated_app_version\":\"0.0.1\""));
     }
 
     #[test]

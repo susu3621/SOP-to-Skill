@@ -9,6 +9,7 @@ import type {
   InstalledSkillInfo,
   InstallWizardState,
   Locale,
+  SkillResult,
   SkillInfo,
   ViewType,
 } from './types'
@@ -40,6 +41,11 @@ function App() {
   const [installResult, setInstallResult] = useState<{
     success?: boolean
     message?: string
+  } | null>(null)
+  const [exportingLogs, setExportingLogs] = useState(false)
+  const [logExportFeedback, setLogExportFeedback] = useState<{
+    kind: 'success' | 'error'
+    message: string
   } | null>(null)
 
   const {
@@ -182,6 +188,37 @@ function App() {
     )
   }, [])
 
+  const handleExportLogs = useCallback(async () => {
+    setExportingLogs(true)
+    setLogExportFeedback(null)
+
+    try {
+      const result = await invoke<SkillResult<string>>('export_current_log')
+
+      if (result.success) {
+        setLogExportFeedback({
+          kind: 'success',
+          message: `${getCopy(locale, pageCopy.exportLogsSuccessPrefix)}${result.success}`,
+        })
+        return
+      }
+
+      setLogExportFeedback({
+        kind: 'error',
+        message: `${getCopy(locale, pageCopy.exportLogsFailedPrefix)}${
+          result.error || getCopy(locale, pageCopy.installFailed)
+        }`,
+      })
+    } catch (error) {
+      setLogExportFeedback({
+        kind: 'error',
+        message: `${getCopy(locale, pageCopy.exportLogsFailedPrefix)}${String(error)}`,
+      })
+    } finally {
+      setExportingLogs(false)
+    }
+  }, [locale])
+
   return (
     <main className="shell">
       <div className="shell__inner">
@@ -192,54 +229,73 @@ function App() {
           </div>
           <div className="masthead__actions">
             <div className="masthead__utility">
-              <div className="masthead__update">
-                {hasUpdates && appUpdate ? (
-                  <>
-                    <button
-                      className="tag tag--button"
-                      type="button"
-                      onClick={() => {
-                        void installUpdate()
-                      }}
-                      disabled={installingUpdate}
-                    >
-                      {installingUpdate
-                        ? getCopy(locale, pageCopy.installingUpdate)
-                        : getCopy(locale, pageCopy.installUpdate)}
-                      <span className="update-badge">{getCopy(locale, pageCopy.updateAvailable)}</span>
+              <div className="masthead__utility-row">
+                <div className="masthead__update">
+                  {hasUpdates && appUpdate ? (
+                    <>
+                      <button
+                        className="tag tag--button"
+                        type="button"
+                        onClick={() => {
+                          void installUpdate()
+                        }}
+                        disabled={installingUpdate}
+                      >
+                        {installingUpdate
+                          ? getCopy(locale, pageCopy.installingUpdate)
+                          : getCopy(locale, pageCopy.installUpdate)}
+                        <span className="update-badge">{getCopy(locale, pageCopy.updateAvailable)}</span>
+                      </button>
+                      <p className="update-hint">
+                        {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
+                      </p>
+                    </>
+                  ) : (
+                    <button className="tag tag--button" type="button" onClick={checkUpdates}>
+                      {getCopy(locale, pageCopy.localeTag)}
                     </button>
-                    <p className="update-hint">
-                      {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
-                    </p>
-                  </>
-                ) : (
-                  <button className="tag tag--button" type="button" onClick={checkUpdates}>
-                    {getCopy(locale, pageCopy.localeTag)}
+                  )}
+                </div>
+                <button
+                  className="button--ghost"
+                  disabled={exportingLogs}
+                  type="button"
+                  onClick={() => {
+                    void handleExportLogs()
+                  }}
+                >
+                  {exportingLogs
+                    ? getCopy(locale, pageCopy.exportingLogs)
+                    : getCopy(locale, pageCopy.exportLogs)}
+                </button>
+                <div className="locale-switcher" role="group" aria-label="Locale switcher">
+                  <button
+                    className="button--ghost"
+                    type="button"
+                    aria-pressed={locale === 'zh-CN'}
+                    onClick={() => {
+                      void setLocale('zh-CN')
+                    }}
+                  >
+                    {getCopy(locale, pageCopy.localeZh)}
                   </button>
-                )}
+                  <button
+                    className="button--ghost"
+                    type="button"
+                    aria-pressed={locale === 'en-US'}
+                    onClick={() => {
+                      void setLocale('en-US')
+                    }}
+                  >
+                    {getCopy(locale, pageCopy.localeEn)}
+                  </button>
+                </div>
               </div>
-              <div className="locale-switcher" role="group" aria-label="Locale switcher">
-                <button
-                  className="button--ghost"
-                  type="button"
-                  aria-pressed={locale === 'zh-CN'}
-                  onClick={() => {
-                    void setLocale('zh-CN')
-                  }}
-                >
-                  {getCopy(locale, pageCopy.localeZh)}
-                </button>
-                <button
-                  className="button--ghost"
-                  type="button"
-                  aria-pressed={locale === 'en-US'}
-                  onClick={() => {
-                    void setLocale('en-US')
-                  }}
-                >
-                  {getCopy(locale, pageCopy.localeEn)}
-                </button>
-              </div>
+              {logExportFeedback ? (
+                <p className="masthead__utility-feedback" data-kind={logExportFeedback.kind}>
+                  {logExportFeedback.message}
+                </p>
+              ) : null}
             </div>
             <div className="header-nav">
               <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>

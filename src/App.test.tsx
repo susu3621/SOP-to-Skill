@@ -183,6 +183,10 @@ const fixtures = vi.hoisted(() => {
   const runtime = {
     appUpdate: null as null | typeof appUpdate,
     installAppUpdateCalls: 0,
+    exportCurrentLogCalls: 0,
+    exportCurrentLogResult: {
+      success: '/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log',
+    } as { success?: string; error?: string },
     preferredLocale: 'zh-CN' as 'zh-CN' | 'en-US',
     updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
     trayNavigateHandler: null as null | ((event: { payload: string }) => void),
@@ -212,6 +216,12 @@ vi.mock('@tauri-apps/api/core', () => ({
       case 'install_app_update':
         fixtures.runtime.installAppUpdateCalls += 1
         return true
+      case 'export_current_log':
+        fixtures.runtime.exportCurrentLogCalls += 1
+        if (fixtures.runtime.exportCurrentLogResult.error) {
+          return { error: fixtures.runtime.exportCurrentLogResult.error }
+        }
+        return { success: fixtures.runtime.exportCurrentLogResult.success }
       case 'get_config':
         return { success: { preferred_locale: fixtures.runtime.preferredLocale } }
       case 'update_config':
@@ -306,6 +316,10 @@ describe('onboarding shell smoke coverage', () => {
   beforeEach(() => {
     fixtures.runtime.appUpdate = null
     fixtures.runtime.installAppUpdateCalls = 0
+    fixtures.runtime.exportCurrentLogCalls = 0
+    fixtures.runtime.exportCurrentLogResult = {
+      success: '/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log',
+    }
     fixtures.runtime.preferredLocale = 'zh-CN'
     fixtures.runtime.updatedLocales = []
     fixtures.runtime.trayNavigateHandler = null
@@ -518,6 +532,48 @@ describe('onboarding shell smoke coverage', () => {
     expect(
       within(utility as HTMLElement).getByRole('button', { name: 'English' })
     ).toBeInTheDocument()
+  })
+
+  it('shows an export-log action in the header utility area', async () => {
+    render(<App />)
+
+    await waitForOnboardingHome()
+
+    const utility = document.querySelector('.masthead__utility')
+    expect(utility).not.toBeNull()
+    expect(
+      within(utility as HTMLElement).getByRole('button', { name: '导出日志' })
+    ).toBeInTheDocument()
+  })
+
+  it('exports the current log file from the header and shows success feedback', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await waitForOnboardingHome()
+    await user.click(screen.getByRole('button', { name: '导出日志' }))
+
+    expect(fixtures.runtime.exportCurrentLogCalls).toBe(1)
+    expect(
+      await screen.findByText(
+        '日志已导出：/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log'
+      )
+    ).toBeInTheDocument()
+  })
+
+  it('shows export-log errors in the header feedback area', async () => {
+    fixtures.runtime.exportCurrentLogResult = {
+      error: '当前没有可导出的日志文件。',
+    }
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    await waitForOnboardingHome()
+    await user.click(screen.getByRole('button', { name: '导出日志' }))
+
+    expect(fixtures.runtime.exportCurrentLogCalls).toBe(1)
+    expect(await screen.findByText('导出日志失败：当前没有可导出的日志文件。')).toBeInTheDocument()
   })
 
   it('shows the hidden sop-to-skill data directory path on the update page', async () => {

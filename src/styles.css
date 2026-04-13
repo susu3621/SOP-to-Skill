@@ -699,6 +699,12 @@ textarea {
 }
 
 .masthead__utility {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.masthead__utility-row {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -730,6 +736,22 @@ textarea {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.masthead__utility-feedback {
+  margin: 0;
+  max-width: 30rem;
+  font-size: 0.82rem;
+  text-align: right;
+  color: rgba(22, 48, 41, 0.82);
+}
+
+.masthead__utility-feedback[data-kind='error'] {
+  color: #9a3c2f;
+}
+
+.masthead__utility-feedback[data-kind='success'] {
+  color: #1e6b57;
 }
 
 .onboarding-shell {
@@ -1685,10 +1707,15 @@ textarea {
 
   .masthead__actions,
   .masthead__utility,
+  .masthead__utility-row,
   .locale-switcher,
   .header-nav {
     justify-items: stretch;
     justify-content: flex-start;
+  }
+
+  .masthead__utility-feedback {
+    text-align: left;
   }
 
   .onboarding-section__header {
