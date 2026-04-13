@@ -185,6 +185,22 @@ const fixtures = vi.hoisted(() => {
   }
 })
 
+type EnvironmentCheckFixture = {
+  status: string
+  summary: string
+  details: string
+  requirements: Array<{
+    id: string
+    label: string
+    required: boolean
+    status: string
+    details: string | null
+  }>
+  missing_requirement_ids: string[]
+  install_supported: boolean
+  install_support_message: string
+}
+
 const mockControls = vi.hoisted(() => ({
   saveError: null as string | null,
   stateOverride: null as OnboardingState | null,
@@ -192,24 +208,8 @@ const mockControls = vi.hoisted(() => ({
     string,
     { success: boolean; summary: string; details: string }
   >,
-  environmentCheckResults: {} as Record<
-    string,
-    {
-      status: string
-      summary: string
-      details: string
-      requirements: Array<{
-        id: string
-        label: string
-        required: boolean
-        status: string
-        details: string | null
-      }>
-      missing_requirement_ids: string[]
-      install_supported: boolean
-      install_support_message: string
-    }
-  >,
+  environmentCheckResults: {} as Record<string, EnvironmentCheckFixture>,
+  environmentCheckSequences: {} as Record<string, EnvironmentCheckFixture[]>,
   environmentInstallResults: {} as Record<
     string,
     {
@@ -253,6 +253,7 @@ beforeEach(() => {
   mockControls.stateOverride = null
   mockControls.connectionTestResults = {}
   mockControls.environmentCheckResults = {}
+  mockControls.environmentCheckSequences = {}
   mockControls.environmentInstallResults = {}
   mockControls.environmentInstallProgressEvents = {}
   mockControls.eventHandlers.clear()
@@ -302,23 +303,28 @@ beforeEach(() => {
       case 'check_onboarding_skill_environment':
         {
           const serviceId = payload?.input?.service_id ?? 'jira'
-          const configuredResult = mockControls.environmentCheckResults[serviceId] ?? {
-            status: 'ready',
-            summary: '环境已就绪',
-            details: '',
-            requirements: [
-              {
-                id: 'python3',
-                label: 'Python 3',
-                required: true,
-                status: 'ready',
-                details: 'Python 3.12.0',
-              },
-            ],
-            missing_requirement_ids: [],
-            install_supported: true,
-            install_support_message: '可自动安装缺失环境',
-          }
+          const sequence = mockControls.environmentCheckSequences[serviceId]
+          const configuredResult =
+            (sequence?.length
+              ? sequence.shift() ?? sequence[sequence.length - 1]
+              : undefined) ??
+            mockControls.environmentCheckResults[serviceId] ?? {
+              status: 'ready',
+              summary: '环境已就绪',
+              details: '',
+              requirements: [
+                {
+                  id: 'python3',
+                  label: 'Python 3',
+                  required: true,
+                  status: 'ready',
+                  details: 'Python 3.12.0',
+                },
+              ],
+              missing_requirement_ids: [],
+              install_supported: true,
+              install_support_message: '可自动安装缺失环境',
+            }
 
           return {
             success: {
@@ -1126,6 +1132,99 @@ describe('OnboardingShell', () => {
     expect(screen.getByText('winget install Python.Python.3.12')).toBeInTheDocument()
     expect(screen.getByText('winget install Apache.Subversion')).toBeInTheDocument()
     expect(screen.getByText('环境安装完成')).toBeInTheDocument()
+  })
+
+  it('re-runs the environment check after install and refreshes the panel to ready', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['svn'],
+      selected_install_skill_ids: ['svn'],
+      credential_values: {
+        svnUrl: 'https://svn.example.com/repos/project',
+        svnUsername: 'svn.user',
+        svnPassword: 'svn-secret',
+      },
+    }
+    mockControls.environmentCheckSequences = {
+      svn: [
+        {
+          status: 'missing',
+          summary: '缺少环境：Python 3、SVN',
+          details: '需要先安装运行环境',
+          requirements: [
+            {
+              id: 'python3',
+              label: 'Python 3',
+              required: true,
+              status: 'missing',
+              details: '未安装',
+            },
+            {
+              id: 'svn',
+              label: 'SVN',
+              required: true,
+              status: 'missing',
+              details: '未安装',
+            },
+          ],
+          missing_requirement_ids: ['python3', 'svn'],
+          install_supported: true,
+          install_support_message: '可自动安装缺失环境',
+        },
+        {
+          status: 'ready',
+          summary: '环境已就绪',
+          details: '可通过 winget 自动安装缺失环境。',
+          requirements: [
+            {
+              id: 'python3',
+              label: 'Python 3',
+              required: true,
+              status: 'ready',
+              details: 'Python 3.12.1',
+            },
+            {
+              id: 'svn',
+              label: 'SVN',
+              required: true,
+              status: 'ready',
+              details: 'svn, version 1.14.5',
+            },
+          ],
+          missing_requirement_ids: [],
+          install_supported: false,
+          install_support_message: '可通过 winget 自动安装缺失环境',
+        },
+      ],
+    }
+    mockControls.environmentInstallResults = {
+      svn: {
+        success: true,
+        summary: '环境已就绪',
+        details: '可通过 winget 自动安装缺失环境。',
+        installed_requirement_ids: ['python3', 'svn'],
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    expect(await screen.findByRole('button', { name: '自动安装缺失环境' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '自动安装缺失环境' }))
+
+    await waitFor(() => expect(getEnvironmentInstallCalls()).toHaveLength(1))
+    await waitFor(() => expect(getEnvironmentCheckCalls()).toHaveLength(2))
+    await waitFor(() => {
+      expect(screen.getAllByText('环境已就绪').length).toBeGreaterThan(0)
+    })
+    expect(screen.getByText('Python 3.12.1')).toBeInTheDocument()
+    expect(screen.getByText('svn, version 1.14.5')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '自动安装缺失环境' })).not.toBeInTheDocument()
   })
 
   it('runs automatic connection tests after saving completed credentials', async () => {

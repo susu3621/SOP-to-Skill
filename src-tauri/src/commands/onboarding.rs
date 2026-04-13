@@ -1,10 +1,12 @@
+use crate::commands::skill::{self, SkillResult};
 use crate::models::{
     GeneratedSkillIds, OnboardingAgentState, OnboardingAgentSyncPreview, OnboardingState,
     OnboardingSyncPlan, OnboardingUseCase,
 };
 use crate::onboarding::{
     generator::{
-        stage_generated_use_case_skill_packages, StageOnboardingPackageInput, StagedOnboardingPackages,
+        stage_generated_use_case_skill_packages, StageOnboardingPackageInput,
+        StagedOnboardingPackages,
     },
     state::{
         default_selected_install_skill_ids, generated_skill_ids_for_use_case,
@@ -12,15 +14,14 @@ use crate::onboarding::{
     },
     sync::build_selected_agent_install_sync_plans,
 };
-use crate::commands::skill::{self, SkillResult};
 use crate::template::{get_output_dir, get_skills_dir};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs;
-use std::io::{BufRead, BufReader};
 use std::io::ErrorKind;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::sync::mpsc;
@@ -227,7 +228,12 @@ const ONBOARDING_CONNECTION_SERVICES: &[OnboardingConnectionServiceConfig] = &[
     },
     OnboardingConnectionServiceConfig {
         service_id: "linux",
-        required_field_ids: &["linuxDeviceName", "linuxHost", "linuxUsername", "linuxPassword"],
+        required_field_ids: &[
+            "linuxDeviceName",
+            "linuxHost",
+            "linuxUsername",
+            "linuxPassword",
+        ],
     },
     OnboardingConnectionServiceConfig {
         service_id: "mail",
@@ -325,7 +331,10 @@ fn build_onboarding_environment_requirements(
 
             Ok(requirements)
         }
-        _ => Err(format!("Unsupported onboarding service for environment checks: {}", service_id)),
+        _ => Err(format!(
+            "Unsupported onboarding service for environment checks: {}",
+            service_id
+        )),
     }
 }
 
@@ -341,123 +350,125 @@ fn build_onboarding_environment_install_steps(
             continue;
         }
 
-        let step = match platform {
-            OnboardingEnvironmentPlatform::MacOS => match requirement_id.as_str() {
-                "python3" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "Python 3".to_string(),
-                    program: "brew".to_string(),
-                    args: vec!["install".to_string(), "python".to_string()],
-                },
-                "git" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "Git".to_string(),
-                    program: "brew".to_string(),
-                    args: vec!["install".to_string(), "git".to_string()],
-                },
-                "svn" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "SVN".to_string(),
-                    program: "brew".to_string(),
-                    args: vec!["install".to_string(), "subversion".to_string()],
-                },
-                "ssh" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "SSH".to_string(),
-                    program: "brew".to_string(),
-                    args: vec!["install".to_string(), "openssh".to_string()],
-                },
-                "paramiko" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "Paramiko".to_string(),
-                    program: "python3".to_string(),
-                    args: vec![
-                        "-m".to_string(),
-                        "pip".to_string(),
-                        "install".to_string(),
-                        "-r".to_string(),
-                        linux_requirements_path()?.display().to_string(),
-                    ],
-                },
-                _ => {
-                    return Err(format!(
-                        "Unsupported environment requirement for macOS install: {}",
-                        requirement_id
-                    ))
-                }
-            },
-            OnboardingEnvironmentPlatform::Windows => match requirement_id.as_str() {
-                "python3" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "Python 3".to_string(),
-                    program: "winget".to_string(),
-                    args: vec![
-                        "install".to_string(),
-                        "--id".to_string(),
-                        "Python.Python.3.12".to_string(),
-                        "-e".to_string(),
-                        "--accept-source-agreements".to_string(),
-                        "--accept-package-agreements".to_string(),
-                    ],
-                },
-                "git" | "ssh" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: if requirement_id == "ssh" {
-                        "SSH".to_string()
-                    } else {
-                        "Git".to_string()
+        let step =
+            match platform {
+                OnboardingEnvironmentPlatform::MacOS => match requirement_id.as_str() {
+                    "python3" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "Python 3".to_string(),
+                        program: "brew".to_string(),
+                        args: vec!["install".to_string(), "python".to_string()],
                     },
-                    program: "winget".to_string(),
-                    args: vec![
-                        "install".to_string(),
-                        "--id".to_string(),
-                        "Git.Git".to_string(),
-                        "-e".to_string(),
-                        "--accept-source-agreements".to_string(),
-                        "--accept-package-agreements".to_string(),
-                    ],
+                    "git" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "Git".to_string(),
+                        program: "brew".to_string(),
+                        args: vec!["install".to_string(), "git".to_string()],
+                    },
+                    "svn" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "SVN".to_string(),
+                        program: "brew".to_string(),
+                        args: vec!["install".to_string(), "subversion".to_string()],
+                    },
+                    "ssh" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "SSH".to_string(),
+                        program: "brew".to_string(),
+                        args: vec!["install".to_string(), "openssh".to_string()],
+                    },
+                    "paramiko" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "Paramiko".to_string(),
+                        program: "python3".to_string(),
+                        args: vec![
+                            "-m".to_string(),
+                            "pip".to_string(),
+                            "install".to_string(),
+                            "-r".to_string(),
+                            linux_requirements_path()?.display().to_string(),
+                        ],
+                    },
+                    _ => {
+                        return Err(format!(
+                            "Unsupported environment requirement for macOS install: {}",
+                            requirement_id
+                        ))
+                    }
                 },
-                "svn" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "SVN".to_string(),
-                    program: "winget".to_string(),
-                    args: vec![
-                        "install".to_string(),
-                        "--id".to_string(),
-                        "Apache.Subversion".to_string(),
-                        "-e".to_string(),
-                        "--accept-source-agreements".to_string(),
-                        "--accept-package-agreements".to_string(),
-                    ],
+                OnboardingEnvironmentPlatform::Windows => match requirement_id.as_str() {
+                    "python3" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "Python 3".to_string(),
+                        program: "winget".to_string(),
+                        args: vec![
+                            "install".to_string(),
+                            "--id".to_string(),
+                            "Python.Python.3.12".to_string(),
+                            "-e".to_string(),
+                            "--accept-source-agreements".to_string(),
+                            "--accept-package-agreements".to_string(),
+                        ],
+                    },
+                    "git" | "ssh" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: if requirement_id == "ssh" {
+                            "SSH".to_string()
+                        } else {
+                            "Git".to_string()
+                        },
+                        program: "winget".to_string(),
+                        args: vec![
+                            "install".to_string(),
+                            "--id".to_string(),
+                            "Git.Git".to_string(),
+                            "-e".to_string(),
+                            "--accept-source-agreements".to_string(),
+                            "--accept-package-agreements".to_string(),
+                        ],
+                    },
+                    "svn" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "SVN".to_string(),
+                        program: "winget".to_string(),
+                        args: vec![
+                            "install".to_string(),
+                            "--id".to_string(),
+                            "Apache.Subversion".to_string(),
+                            "-e".to_string(),
+                            "--accept-source-agreements".to_string(),
+                            "--accept-package-agreements".to_string(),
+                        ],
+                    },
+                    "paramiko" => OnboardingEnvironmentInstallStep {
+                        requirement_id: requirement_id.clone(),
+                        label: "Paramiko".to_string(),
+                        program: "py".to_string(),
+                        args: vec![
+                            "-3".to_string(),
+                            "-m".to_string(),
+                            "pip".to_string(),
+                            "install".to_string(),
+                            "-r".to_string(),
+                            linux_requirements_path()?.display().to_string(),
+                        ],
+                    },
+                    _ => {
+                        return Err(format!(
+                            "Unsupported environment requirement for Windows install: {}",
+                            requirement_id
+                        ))
+                    }
                 },
-                "paramiko" => OnboardingEnvironmentInstallStep {
-                    requirement_id: requirement_id.clone(),
-                    label: "Paramiko".to_string(),
-                    program: "py".to_string(),
-                    args: vec![
-                        "-3".to_string(),
-                        "-m".to_string(),
-                        "pip".to_string(),
-                        "install".to_string(),
-                        "-r".to_string(),
-                        linux_requirements_path()?.display().to_string(),
-                    ],
-                },
-                _ => {
-                    return Err(format!(
-                        "Unsupported environment requirement for Windows install: {}",
-                        requirement_id
-                    ))
-                }
-            },
-            OnboardingEnvironmentPlatform::Unsupported => {
-                return Err("Automatic environment installation is only supported on macOS and Windows.".to_string())
-            }
-        };
+                OnboardingEnvironmentPlatform::Unsupported => return Err(
+                    "Automatic environment installation is only supported on macOS and Windows."
+                        .to_string(),
+                ),
+            };
 
-        let already_has_same_command = steps.iter().any(|existing| {
-            existing.program == step.program && existing.args == step.args
-        });
+        let already_has_same_command = steps
+            .iter()
+            .any(|existing| existing.program == step.program && existing.args == step.args);
 
         if !already_has_same_command {
             steps.push(step);
@@ -467,15 +478,102 @@ fn build_onboarding_environment_install_steps(
     Ok(steps)
 }
 
+#[cfg_attr(not(windows), allow(dead_code))]
+fn merge_windows_search_path_values<'a, I>(values: I) -> String
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut merged = Vec::new();
+    let mut seen = HashSet::new();
+
+    for value in values {
+        for segment in value.split(';') {
+            let trimmed = segment.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let normalized = trimmed.to_ascii_lowercase();
+            if seen.insert(normalized) {
+                merged.push(trimmed.to_string());
+            }
+        }
+    }
+
+    merged.join(";")
+}
+
 fn probe_command_output(program: &str, args: &[&str]) -> Result<Output, std::io::Error> {
     let mut command = Command::new(program);
     command.args(args);
     command.output()
 }
 
-fn probe_requirement(
-    requirement_id: &str,
-) -> Result<(String, String), String> {
+#[cfg(windows)]
+fn read_windows_environment_variable(name: &str, target: &str) -> Result<String, String> {
+    let script = format!("[Environment]::GetEnvironmentVariable('{name}','{target}')");
+    let args = vec!["-NoProfile", "-NonInteractive", "-Command", script.as_str()];
+    let output = probe_command_output("powershell", &args).map_err(|error| {
+        format!(
+            "Failed to read Windows environment variable {} from {} scope: {}",
+            name, target, error
+        )
+    })?;
+
+    if !output.status.success() {
+        let stderr = trim_process_output(&output.stderr);
+        return Err(format!(
+            "Failed to read Windows environment variable {} from {} scope: {}",
+            name,
+            target,
+            if stderr.is_empty() {
+                output.status.to_string()
+            } else {
+                stderr
+            }
+        ));
+    }
+
+    Ok(trim_process_output(&output.stdout))
+}
+
+#[cfg(windows)]
+fn refresh_windows_process_environment() -> Result<(), String> {
+    let current_path = std::env::var("PATH").unwrap_or_default();
+    let machine_path = read_windows_environment_variable("Path", "Machine")?;
+    let user_path = read_windows_environment_variable("Path", "User")?;
+    let merged_path = merge_windows_search_path_values([
+        current_path.as_str(),
+        machine_path.as_str(),
+        user_path.as_str(),
+    ]);
+
+    if !merged_path.is_empty() {
+        std::env::set_var("PATH", merged_path);
+    }
+
+    let current_pathext = std::env::var("PATHEXT").unwrap_or_default();
+    let machine_pathext = read_windows_environment_variable("PATHEXT", "Machine")?;
+    let user_pathext = read_windows_environment_variable("PATHEXT", "User")?;
+    let merged_pathext = merge_windows_search_path_values([
+        current_pathext.as_str(),
+        machine_pathext.as_str(),
+        user_pathext.as_str(),
+    ]);
+
+    if !merged_pathext.is_empty() {
+        std::env::set_var("PATHEXT", merged_pathext);
+    }
+
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn refresh_windows_process_environment() -> Result<(), String> {
+    Ok(())
+}
+
+fn probe_requirement(requirement_id: &str) -> Result<(String, String), String> {
     let probe_candidates: Vec<(&str, Vec<&str>)> = match requirement_id {
         "python3" => python_command_candidates()
             .into_iter()
@@ -497,7 +595,12 @@ fn probe_requirement(
                 (program, args)
             })
             .collect(),
-        _ => return Err(format!("Unsupported environment requirement probe: {}", requirement_id)),
+        _ => {
+            return Err(format!(
+                "Unsupported environment requirement probe: {}",
+                requirement_id
+            ))
+        }
     };
 
     for (program, args) in probe_candidates {
@@ -569,7 +672,11 @@ fn package_manager_available(platform: OnboardingEnvironmentPlatform) -> bool {
     };
 
     probe
-        .map(|(program, args)| probe_command_output(program, &args).map(|output| output.status.success()).unwrap_or(false))
+        .map(|(program, args)| {
+            probe_command_output(program, &args)
+                .map(|output| output.status.success())
+                .unwrap_or(false)
+        })
         .unwrap_or(false)
 }
 
@@ -578,7 +685,8 @@ fn run_onboarding_environment_check(
 ) -> Result<OnboardingEnvironmentCheckResult, String> {
     let platform = current_onboarding_environment_platform();
     let package_manager_ready = package_manager_available(platform);
-    let requirements = build_onboarding_environment_requirements(&input.service_id, &input.credential_values)?;
+    let requirements =
+        build_onboarding_environment_requirements(&input.service_id, &input.credential_values)?;
     let mut rendered_requirements = Vec::new();
     let mut missing_labels = Vec::new();
     let mut missing_requirement_ids = Vec::new();
@@ -724,9 +832,12 @@ fn run_install_step(
         );
     }
 
-    let status = child
-        .wait()
-        .map_err(|error| format!("Failed to wait for {} install command: {}", step.label, error))?;
+    let status = child.wait().map_err(|error| {
+        format!(
+            "Failed to wait for {} install command: {}",
+            step.label, error
+        )
+    })?;
 
     for handle in handles {
         let _ = handle.join();
@@ -781,7 +892,10 @@ async fn run_onboarding_environment_install(
         return Err(check_result.install_support_message);
     }
 
-    let steps = build_onboarding_environment_install_steps(platform, &check_result.missing_requirement_ids)?;
+    let steps = build_onboarding_environment_install_steps(
+        platform,
+        &check_result.missing_requirement_ids,
+    )?;
     let total_steps = steps.len().max(1);
 
     for (index, step) in steps.iter().enumerate() {
@@ -809,14 +923,38 @@ async fn run_onboarding_environment_install(
         );
     }
 
+    if platform == OnboardingEnvironmentPlatform::Windows {
+        emit_environment_install_progress(
+            app,
+            OnboardingEnvironmentInstallProgressEvent {
+                install_id: input.install_id.clone(),
+                service_id: input.service_id.clone(),
+                status: "running".to_string(),
+                progress_percent: 100,
+                step: "正在刷新环境状态".to_string(),
+                log_line: None,
+            },
+        );
+
+        refresh_windows_process_environment()?;
+    }
+
+    let final_check = run_onboarding_environment_check(&OnboardingEnvironmentCheckInput {
+        service_id: input.service_id.clone(),
+        credential_values: input.credential_values.clone(),
+        trigger: "install".to_string(),
+        tested_fingerprint: input.install_id.clone(),
+    })?;
+    let success = final_check.missing_requirement_ids.is_empty();
+
     emit_environment_install_progress(
         app,
         OnboardingEnvironmentInstallProgressEvent {
             install_id: input.install_id.clone(),
             service_id: input.service_id.clone(),
-            status: "success".to_string(),
+            status: if success { "success" } else { "error" }.to_string(),
             progress_percent: 100,
-            step: "环境安装完成".to_string(),
+            step: final_check.summary.clone(),
             log_line: None,
         },
     );
@@ -824,9 +962,9 @@ async fn run_onboarding_environment_install(
     Ok(OnboardingEnvironmentInstallResult {
         install_id: input.install_id.clone(),
         service_id: input.service_id.clone(),
-        success: true,
-        summary: "环境安装完成".to_string(),
-        details: check_result.install_support_message,
+        success,
+        summary: final_check.summary,
+        details: final_check.details,
         installed_requirement_ids: check_result.missing_requirement_ids,
     })
 }
@@ -841,7 +979,10 @@ fn build_staged_package_lookup(
     let mut lookup = HashMap::new();
 
     for staged in staged_packages {
-        lookup.insert(staged.production.skill_id.clone(), staged.production.source_dir.clone());
+        lookup.insert(
+            staged.production.skill_id.clone(),
+            staged.production.source_dir.clone(),
+        );
         lookup.insert(staged.test.skill_id.clone(), staged.test.source_dir.clone());
     }
 
@@ -878,7 +1019,9 @@ fn validate_selected_agent_ids(
 
 fn get_onboarding_home_env_path() -> Result<PathBuf, String> {
     let data_root = crate::template::get_data_root();
-    let home_dir = data_root.parent().filter(|path| !path.as_os_str().is_empty());
+    let home_dir = data_root
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty());
 
     home_dir
         .map(|path| path.join(HOME_ENV_FILE_NAME))
@@ -887,7 +1030,10 @@ fn get_onboarding_home_env_path() -> Result<PathBuf, String> {
 }
 
 fn linux_requirements_path() -> Result<PathBuf, String> {
-    let path = get_skills_dir().join("linux").join("scripts").join("requirements.txt");
+    let path = get_skills_dir()
+        .join("linux")
+        .join("scripts")
+        .join("requirements.txt");
 
     if !path.is_file() {
         return Err(format!(
@@ -976,11 +1122,17 @@ fn build_connection_test_env_entries(
                     ),
                     (
                         "GERRIT_USERNAME".to_string(),
-                        require_non_empty_credential_value(credential_values, "gerritHttpUsername")?,
+                        require_non_empty_credential_value(
+                            credential_values,
+                            "gerritHttpUsername",
+                        )?,
                     ),
                     (
                         "GERRIT_PASSWORD".to_string(),
-                        require_non_empty_credential_value(credential_values, "gerritHttpPassword")?,
+                        require_non_empty_credential_value(
+                            credential_values,
+                            "gerritHttpPassword",
+                        )?,
                     ),
                 ]),
                 "ssh" => Ok(vec![
@@ -1051,7 +1203,9 @@ fn build_connection_test_env_entries(
     }
 }
 
-fn build_linux_devices_env_entry(state: &OnboardingState) -> Result<Option<(String, String)>, String> {
+fn build_linux_devices_env_entry(
+    state: &OnboardingState,
+) -> Result<Option<(String, String)>, String> {
     let devices = state
         .linux_devices
         .iter()
@@ -1190,7 +1344,8 @@ fn write_managed_home_env_entries(
         rendered.push('\n');
     }
 
-    fs::write(env_path, rendered).map_err(|error| format!("Failed to write {:?}: {}", env_path, error))
+    fs::write(env_path, rendered)
+        .map_err(|error| format!("Failed to write {:?}: {}", env_path, error))
 }
 
 fn sync_onboarding_credentials_to_env_path(
@@ -1223,7 +1378,11 @@ fn trim_process_output(bytes: &[u8]) -> String {
 }
 
 fn first_non_empty_line(value: &str) -> Option<String> {
-    value.lines().map(str::trim).find(|line| !line.is_empty()).map(str::to_string)
+    value
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(str::to_string)
 }
 
 fn build_connection_test_details(stdout: &str, stderr: &str) -> String {
@@ -1319,8 +1478,12 @@ fn write_connection_test_env_file(
         unique
     ));
 
-    fs::write(&env_path, build_connection_test_env_file_content(entries))
-        .map_err(|error| format!("Failed to write connection test env {:?}: {}", env_path, error))?;
+    fs::write(&env_path, build_connection_test_env_file_content(entries)).map_err(|error| {
+        format!(
+            "Failed to write connection test env {:?}: {}",
+            env_path, error
+        )
+    })?;
 
     Ok(env_path)
 }
@@ -1386,13 +1549,17 @@ fn execute_connection_test_script(script_path: &Path, env_path: &Path) -> Result
         }
     }
 
-    Err("Python runtime not found. Install python3 or python to run bundled connection tests.".to_string())
+    Err(
+        "Python runtime not found. Install python3 or python to run bundled connection tests."
+            .to_string(),
+    )
 }
 
 fn run_onboarding_connection_test(
     input: &OnboardingConnectionTestInput,
 ) -> Result<OnboardingConnectionTestResult, String> {
-    let env_entries = build_connection_test_env_entries(&input.service_id, &input.credential_values)?;
+    let env_entries =
+        build_connection_test_env_entries(&input.service_id, &input.credential_values)?;
     let script_path = resolve_connection_test_script_path(&input.service_id)?;
     let env_path = write_connection_test_env_file(&input.service_id, &env_entries)?;
 
@@ -1409,7 +1576,9 @@ fn run_onboarding_connection_test(
 
 #[tauri::command]
 pub fn get_onboarding_state() -> SkillResult<OnboardingState> {
-    SkillResult::Success { success: load_onboarding_state() }
+    SkillResult::Success {
+        success: load_onboarding_state(),
+    }
 }
 
 #[tauri::command]
@@ -1483,11 +1652,9 @@ pub fn get_onboarding_install_preview(
         return SkillResult::Error { error };
     }
 
-    SkillResult::Success { success: build_onboarding_install_preview(
-        &state,
-        &selected_use_cases,
-        &agents,
-    ) }
+    SkillResult::Success {
+        success: build_onboarding_install_preview(&state, &selected_use_cases, &agents),
+    }
 }
 
 #[tauri::command]
@@ -1506,7 +1673,8 @@ pub fn stage_onboarding_generated_packages(
 pub async fn sync_onboarding_installation(
     input: OnboardingSyncCommandInput,
 ) -> SkillResult<OnboardingBatchSyncResult> {
-    if let Err(error) = validate_selected_agent_ids(&input.agents, &input.state.selected_agent_ids) {
+    if let Err(error) = validate_selected_agent_ids(&input.agents, &input.state.selected_agent_ids)
+    {
         return SkillResult::Error { error };
     }
 
@@ -1514,11 +1682,8 @@ pub async fn sync_onboarding_installation(
         return SkillResult::Error { error };
     }
 
-    let preview = build_onboarding_install_preview(
-        &input.state,
-        &input.selected_use_cases,
-        &input.agents,
-    );
+    let preview =
+        build_onboarding_install_preview(&input.state, &input.selected_use_cases, &input.agents);
     let staged_package_lookup = build_staged_package_lookup(&input.staged_packages);
     let mut agent_results = Vec::new();
 
@@ -1664,7 +1829,9 @@ pub fn build_onboarding_install_preview(
                 .iter()
                 .any(|role_id| role_id == &state.selected_role_id)
         })
-        .map(|use_case| generated_skill_ids_for_use_case(&state.selected_role_id, &use_case.directory))
+        .map(|use_case| {
+            generated_skill_ids_for_use_case(&state.selected_role_id, &use_case.directory)
+        })
         .collect::<Vec<_>>();
 
     let managed_skill_ids = default_selected_install_skill_ids(
@@ -1721,19 +1888,19 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::OnboardingSyncCommandInput;
     use super::{
         apply_onboarding_sync_plan, build_connection_test_env_entries,
         build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
         build_onboarding_environment_requirements, build_onboarding_install_preview,
-        resolve_connection_test_script_path, OnboardingEnvironmentPlatform,
-        OnboardingAgentSyncResult,
+        merge_windows_search_path_values, resolve_connection_test_script_path,
+        OnboardingAgentSyncResult, OnboardingEnvironmentPlatform,
     };
     use crate::models::{
         OnboardingAgentState, OnboardingLinuxDevice, OnboardingRoleUseCaseContent, OnboardingState,
         OnboardingUseCase,
     };
     use crate::onboarding::state::default_selected_install_skill_ids;
-    use super::OnboardingSyncCommandInput;
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
@@ -1790,6 +1957,41 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_windows_environment_refresh_merges_path_segments_without_duplicates() {
+        let merged = merge_windows_search_path_values([
+            r"C:\Windows\System32;C:\Program Files\Git\cmd",
+            r"c:\program files\git\cmd;C:\Users\sujun\AppData\Local\Programs\Python\Python312",
+            r"C:\Users\sujun\AppData\Local\Programs\Python\Launcher",
+        ]);
+
+        assert_eq!(
+            merged,
+            [
+                r"C:\Windows\System32",
+                r"C:\Program Files\Git\cmd",
+                r"C:\Users\sujun\AppData\Local\Programs\Python\Python312",
+                r"C:\Users\sujun\AppData\Local\Programs\Python\Launcher",
+            ]
+            .join(";")
+        );
+    }
+
+    #[test]
+    fn onboarding_windows_environment_refresh_skips_empty_entries() {
+        let merged = merge_windows_search_path_values([
+            "",
+            r"C:\Tools;;C:\Windows\System32;",
+            " ; ; ",
+            r"C:\Tools\bin",
+        ]);
+
+        assert_eq!(
+            merged,
+            [r"C:\Tools", r"C:\Windows\System32", r"C:\Tools\bin"].join(";")
+        );
+    }
+
+    #[test]
     fn onboarding_connection_test_builds_mail_env_entries() {
         let entries = build_connection_test_env_entries(
             "mail",
@@ -1815,9 +2017,15 @@ mod tests {
             "gerrit",
             &HashMap::from([
                 ("gerritAuthMode".to_string(), "http".to_string()),
-                ("gerritUrl".to_string(), "https://gerrit.example.com".to_string()),
+                (
+                    "gerritUrl".to_string(),
+                    "https://gerrit.example.com".to_string(),
+                ),
                 ("gerritHttpUsername".to_string(), "gerrit.user".to_string()),
-                ("gerritHttpPassword".to_string(), "gerrit-secret".to_string()),
+                (
+                    "gerritHttpPassword".to_string(),
+                    "gerrit-secret".to_string(),
+                ),
             ]),
         )
         .expect("gerrit http env entries");
@@ -1827,14 +2035,8 @@ mod tests {
             "GERRIT_URL".to_string(),
             "https://gerrit.example.com".to_string()
         )));
-        assert!(entries.contains(&(
-            "GERRIT_USERNAME".to_string(),
-            "gerrit.user".to_string()
-        )));
-        assert!(entries.contains(&(
-            "GERRIT_PASSWORD".to_string(),
-            "gerrit-secret".to_string()
-        )));
+        assert!(entries.contains(&("GERRIT_USERNAME".to_string(), "gerrit.user".to_string())));
+        assert!(entries.contains(&("GERRIT_PASSWORD".to_string(), "gerrit-secret".to_string())));
     }
 
     #[test]
@@ -1843,7 +2045,10 @@ mod tests {
             "gerrit",
             &HashMap::from([
                 ("gerritAuthMode".to_string(), "ssh".to_string()),
-                ("gerritSshHost".to_string(), "gerrit.example.com".to_string()),
+                (
+                    "gerritSshHost".to_string(),
+                    "gerrit.example.com".to_string(),
+                ),
                 ("gerritSshPort".to_string(), "29418".to_string()),
                 ("gerritSshUsername".to_string(), "gerrit.user".to_string()),
             ]),
@@ -1856,16 +2061,13 @@ mod tests {
             "gerrit.example.com".to_string()
         )));
         assert!(entries.contains(&("GERRIT_SSH_PORT".to_string(), "29418".to_string())));
-        assert!(entries.contains(&(
-            "GERRIT_SSH_USERNAME".to_string(),
-            "gerrit.user".to_string()
-        )));
+        assert!(entries.contains(&("GERRIT_SSH_USERNAME".to_string(), "gerrit.user".to_string())));
     }
 
     #[test]
     fn onboarding_environment_builds_svn_requirements() {
-        let requirements =
-            build_onboarding_environment_requirements("svn", &HashMap::new()).expect("svn requirements");
+        let requirements = build_onboarding_environment_requirements("svn", &HashMap::new())
+            .expect("svn requirements");
 
         let ids = requirements
             .iter()
@@ -1904,25 +2106,16 @@ mod tests {
         )
         .expect("linux env entries");
 
-        assert!(entries.contains(&(
-            "LINUX_DEVICE_NAME".to_string(),
-            "Build Server".to_string()
-        )));
-        assert!(entries.contains(&(
-            "LINUX_HOST".to_string(),
-            "192.168.9.20".to_string()
-        )));
+        assert!(entries.contains(&("LINUX_DEVICE_NAME".to_string(), "Build Server".to_string())));
+        assert!(entries.contains(&("LINUX_HOST".to_string(), "192.168.9.20".to_string())));
         assert!(entries.contains(&("LINUX_USERNAME".to_string(), "ops".to_string())));
-        assert!(entries.contains(&(
-            "LINUX_PASSWORD".to_string(),
-            "linux-secret".to_string()
-        )));
+        assert!(entries.contains(&("LINUX_PASSWORD".to_string(), "linux-secret".to_string())));
     }
 
     #[test]
     fn onboarding_environment_builds_linux_requirements() {
-        let requirements =
-            build_onboarding_environment_requirements("linux", &HashMap::new()).expect("linux requirements");
+        let requirements = build_onboarding_environment_requirements("linux", &HashMap::new())
+            .expect("linux requirements");
 
         let ids = requirements
             .iter()
@@ -1959,9 +2152,18 @@ mod tests {
 
         assert_eq!(steps.len(), 3);
         assert_eq!(steps[0].program, "brew");
-        assert_eq!(steps[0].args, vec!["install".to_string(), "python".to_string()]);
-        assert_eq!(steps[1].args, vec!["install".to_string(), "git".to_string()]);
-        assert_eq!(steps[2].args, vec!["install".to_string(), "openssh".to_string()]);
+        assert_eq!(
+            steps[0].args,
+            vec!["install".to_string(), "python".to_string()]
+        );
+        assert_eq!(
+            steps[1].args,
+            vec!["install".to_string(), "git".to_string()]
+        );
+        assert_eq!(
+            steps[2].args,
+            vec!["install".to_string(), "openssh".to_string()]
+        );
     }
 
     #[test]
@@ -1969,7 +2171,10 @@ mod tests {
         let entries = build_connection_test_env_entries(
             "svn",
             &HashMap::from([
-                ("svnUrl".to_string(), "https://svn.example.com/repo".to_string()),
+                (
+                    "svnUrl".to_string(),
+                    "https://svn.example.com/repo".to_string(),
+                ),
                 ("svnUsername".to_string(), "svn.user".to_string()),
                 ("svnPassword".to_string(), "svn-secret".to_string()),
             ]),
@@ -1988,7 +2193,10 @@ mod tests {
     fn onboarding_connection_test_rejects_missing_required_fields() {
         let error = build_connection_test_env_entries(
             "jira",
-            &HashMap::from([("jiraUrl".to_string(), "https://jira.example.com".to_string())]),
+            &HashMap::from([(
+                "jiraUrl".to_string(),
+                "https://jira.example.com".to_string(),
+            )]),
         )
         .expect_err("missing jira credentials should fail");
 
@@ -2001,7 +2209,10 @@ mod tests {
             "gerrit",
             &HashMap::from([
                 ("gerritAuthMode".to_string(), "http".to_string()),
-                ("gerritUrl".to_string(), "https://gerrit.example.com".to_string()),
+                (
+                    "gerritUrl".to_string(),
+                    "https://gerrit.example.com".to_string(),
+                ),
             ]),
         )
         .expect_err("missing gerrit http fields should fail");
@@ -2013,7 +2224,10 @@ mod tests {
     fn onboarding_connection_test_rejects_missing_svn_fields() {
         let error = build_connection_test_env_entries(
             "svn",
-            &HashMap::from([("svnUrl".to_string(), "https://svn.example.com/repo".to_string())]),
+            &HashMap::from([(
+                "svnUrl".to_string(),
+                "https://svn.example.com/repo".to_string(),
+            )]),
         )
         .expect_err("missing svn credentials should fail");
 
@@ -2025,7 +2239,10 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let data_dir = temp_dir("connection-script-path-data");
         let skills_dir = temp_dir("connection-script-path-skills");
-        let script_path = skills_dir.join("jira").join("scripts").join("test_connection.py");
+        let script_path = skills_dir
+            .join("jira")
+            .join("scripts")
+            .join("test_connection.py");
         let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
         let original_skills_dir = std::env::var("SKILL_CONFIGURATOR_SKILLS_DIR").ok();
 
@@ -2047,7 +2264,10 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let data_dir = temp_dir("connection-gerrit-script-path-data");
         let skills_dir = temp_dir("connection-gerrit-script-path-skills");
-        let script_path = skills_dir.join("gerrit").join("scripts").join("test_connection.py");
+        let script_path = skills_dir
+            .join("gerrit")
+            .join("scripts")
+            .join("test_connection.py");
         let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
         let original_skills_dir = std::env::var("SKILL_CONFIGURATOR_SKILLS_DIR").ok();
 
@@ -2056,7 +2276,8 @@ mod tests {
         std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
         std::env::set_var("SKILL_CONFIGURATOR_SKILLS_DIR", &skills_dir);
 
-        let resolved = resolve_connection_test_script_path("gerrit").expect("resolve gerrit script");
+        let resolved =
+            resolve_connection_test_script_path("gerrit").expect("resolve gerrit script");
 
         restore_env_var("SKILL_CONFIGURATOR_SKILLS_DIR", original_skills_dir);
         restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
@@ -2069,7 +2290,10 @@ mod tests {
         let _guard = env_lock().lock().unwrap();
         let data_dir = temp_dir("connection-svn-script-path-data");
         let skills_dir = temp_dir("connection-svn-script-path-skills");
-        let script_path = skills_dir.join("svn").join("scripts").join("test_connection.py");
+        let script_path = skills_dir
+            .join("svn")
+            .join("scripts")
+            .join("test_connection.py");
         let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
         let original_skills_dir = std::env::var("SKILL_CONFIGURATOR_SKILLS_DIR").ok();
 
@@ -2241,7 +2465,8 @@ mod tests {
     }
 
     #[test]
-    fn onboarding_preview_returns_full_install_candidate_set_and_keeps_explicit_empty_selection_empty() {
+    fn onboarding_preview_returns_full_install_candidate_set_and_keeps_explicit_empty_selection_empty(
+    ) {
         let state = OnboardingState {
             selected_agent_ids: vec!["codex".to_string()],
             selected_role_id: "project-manager".to_string(),
@@ -2348,7 +2573,8 @@ mod tests {
     }
 
     #[test]
-    fn onboarding_preview_prunes_stale_generated_ids_without_forcing_current_generated_ids_back_in() {
+    fn onboarding_preview_prunes_stale_generated_ids_without_forcing_current_generated_ids_back_in()
+    {
         let state = OnboardingState {
             selected_agent_ids: vec!["codex".to_string()],
             selected_role_id: "sales-manager".to_string(),
@@ -2505,7 +2731,8 @@ mod tests {
     }
 
     #[test]
-    fn onboarding_preview_rejects_selected_agent_ids_even_when_the_payload_includes_unsupported_targets() {
+    fn onboarding_preview_rejects_selected_agent_ids_even_when_the_payload_includes_unsupported_targets(
+    ) {
         let state = OnboardingState {
             selected_agent_ids: vec!["staging".to_string()],
             selected_role_id: "project-manager".to_string(),
@@ -2583,7 +2810,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn onboarding_sync_rejects_selected_agent_ids_even_when_the_payload_includes_unsupported_targets() {
+    async fn onboarding_sync_rejects_selected_agent_ids_even_when_the_payload_includes_unsupported_targets(
+    ) {
         let state = OnboardingState {
             selected_agent_ids: vec!["staging".to_string()],
             selected_role_id: "project-manager".to_string(),
@@ -2776,10 +3004,16 @@ mod tests {
                 "mail".to_string(),
             ],
             credential_values: HashMap::from([
-                ("confluenceUrl".to_string(), "https://wiki.example.com".to_string()),
+                (
+                    "confluenceUrl".to_string(),
+                    "https://wiki.example.com".to_string(),
+                ),
                 ("confluenceUsername".to_string(), "wiki.user".to_string()),
                 ("confluencePassword".to_string(), "wiki-secret".to_string()),
-                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                (
+                    "jiraUrl".to_string(),
+                    "https://jira.example.com".to_string(),
+                ),
                 ("jiraUsername".to_string(), "jira.user".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
                 ("mailUsername".to_string(), "pm@example.com".to_string()),
@@ -2827,10 +3061,16 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: HashMap::from([
-                ("confluenceUrl".to_string(), "https://wiki.example.com".to_string()),
+                (
+                    "confluenceUrl".to_string(),
+                    "https://wiki.example.com".to_string(),
+                ),
                 ("confluenceUsername".to_string(), "wiki.user".to_string()),
                 ("confluencePassword".to_string(), "wiki-secret".to_string()),
-                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                (
+                    "jiraUrl".to_string(),
+                    "https://jira.example.com".to_string(),
+                ),
                 ("jiraUsername".to_string(), "jira.user".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
                 ("mailUsername".to_string(), "pm@example.com".to_string()),
@@ -2932,7 +3172,10 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: HashMap::from([
-                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                (
+                    "jiraUrl".to_string(),
+                    "https://jira.example.com".to_string(),
+                ),
                 ("jiraUsername".to_string(), "jira.user".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
             ]),
@@ -2954,8 +3197,8 @@ mod tests {
     }
 
     #[test]
-    fn onboarding_credentials_sync_command_writes_selected_base_skill_credentials_to_home_env_file(
-    ) {
+    fn onboarding_credentials_sync_command_writes_selected_base_skill_credentials_to_home_env_file()
+    {
         let _guard = env_lock().lock().unwrap();
         let actual_home = temp_dir("home-env-command-home");
         let data_dir = actual_home.join(".sop-to-skill");
@@ -2976,7 +3219,10 @@ mod tests {
             selected_install_skill_ids_initialized: false,
             selected_install_candidate_skill_ids: vec![],
             credential_values: HashMap::from([
-                ("jiraUrl".to_string(), "https://jira.example.com".to_string()),
+                (
+                    "jiraUrl".to_string(),
+                    "https://jira.example.com".to_string(),
+                ),
                 ("jiraUsername".to_string(), "jira.user".to_string()),
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
                 ("mailUsername".to_string(), "pm@example.com".to_string()),
@@ -3074,7 +3320,10 @@ mod tests {
             }
         });
 
-        assert_eq!(result.selected_agent_ids, vec!["codex".to_string(), "workbuddy".to_string()]);
+        assert_eq!(
+            result.selected_agent_ids,
+            vec!["codex".to_string(), "workbuddy".to_string()]
+        );
         assert_eq!(result.agent_results.len(), 2);
         assert_eq!(
             result.agent_results,
