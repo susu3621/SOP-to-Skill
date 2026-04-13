@@ -102,8 +102,11 @@
         "en-US": "Focuses on quality risks, testing closure, and process discipline."
       },
       "useCases": [
-        "记录日志",
-        "记录计划"
+        "质量异常汇总与闭环跟进",
+        "客诉售后问题分析与回复草稿",
+        "变更评审里的质量影响检查",
+        "质量周报",
+        "供应商质量问题跟踪"
       ]
     },
     "delivery-manager": {
@@ -789,6 +792,481 @@
         "zh-CN": "",
         "en-US": ""
       }
+    },
+    "质量异常汇总与闭环跟进": {
+      "name": {
+        "zh-CN": "质量异常汇总与闭环跟进",
+        "en-US": "Quality Issue Summary And Closure"
+      },
+      "directory": "quality-issue-closure",
+      "description": {
+        "zh-CN": "汇总质量异常、明确责任人与截止时间，并持续跟进直到闭环。",
+        "en-US": "Summarize quality issues, confirm owners and due dates, then keep tracking until closure."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成每日或每周整理质量异常台账并推动闭环的助手。",
+          "en-US": "Best used as a Skill that maintains the quality issue tracker and drives closure on a daily or weekly cadence."
+        },
+        {
+          "zh-CN": "建议写清异常分级规则、超期升级条件、责任人口径和闭环标准。",
+          "en-US": "Clarify issue severity rules, overdue escalation criteria, owner conventions, and closure standards."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次需要跟进的时间范围、产品线或异常范围。",
+        "en-US": "Input (information required every run): the time window, product line, or issue scope to track in this run."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：质量异常台账、检验记录、测试报告、不合格品记录、周会纪要。",
+        "en-US": "Examples: quality issue tracker, inspection logs, test reports, nonconformance records, and weekly meeting notes."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按严重度、责任人、当前状态和预计完成时间统一输出，超期项自动标记升级。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: output severity, owner, current status, and expected completion date consistently, and flag overdue items for escalation.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总质量异常、明确责任人与截止时间，并持续跟进直到闭环。\n\n适合配置成每日或每周整理质量异常台账并推动闭环的助手。\n\n建议写清异常分级规则、超期升级条件、责任人口径和闭环标准。\n\n输入（每次执行都需要提供给Skill的信息）：本次需要跟进的时间范围、产品线或异常范围。",
+        "en-US": "Summarize quality issues, confirm owners and due dates, then keep tracking until closure.\n\nBest used as a Skill that maintains the quality issue tracker and drives closure on a daily or weekly cadence.\n\nClarify issue severity rules, overdue escalation criteria, owner conventions, and closure standards.\n\nInput (information required every run): the time window, product line, or issue scope to track in this run."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "issue-list-source",
+          "label": {
+            "zh-CN": "从哪里获取质量异常清单？",
+            "en-US": "Where can AI get the list of quality issues?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：质量异常台账 Wiki 或 Jira 过滤器",
+            "en-US": "Example: quality issue tracker wiki page or Jira filter"
+          },
+          "required": true
+        },
+        {
+          "id": "issue-progress-source",
+          "label": {
+            "zh-CN": "从哪里可以知道每条异常的处理进展和责任人？",
+            "en-US": "Where can AI find the progress and owner for each issue?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：整改跟踪表或责任人看板",
+            "en-US": "Example: corrective action tracker or owner board"
+          },
+          "required": true
+        },
+        {
+          "id": "issue-closure-sop",
+          "label": {
+            "zh-CN": "从哪里获取异常分级和闭环标准？",
+            "en-US": "Where can AI find issue severity and closure standards?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：质量异常处理 SOP Wiki",
+            "en-US": "Example: quality issue handling SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "客诉售后问题分析与回复草稿": {
+      "name": {
+        "zh-CN": "客诉售后问题分析与回复草稿",
+        "en-US": "Customer Complaint Analysis And Reply Draft"
+      },
+      "directory": "customer-complaint-reply-draft",
+      "description": {
+        "zh-CN": "基于客诉和售后问题记录，整理原因分析、处理进展和对外回复草稿。",
+        "en-US": "Use complaint and after-sales records to prepare root-cause analysis, progress summaries, and an external reply draft."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成质量经理准备客诉分析和回复草稿的助手。",
+          "en-US": "Best used as a Skill that helps quality managers prepare complaint analysis and response drafts."
+        },
+        {
+          "zh-CN": "建议写清对外回复口径、敏感信息边界、审批人和历史案例引用规则。",
+          "en-US": "Clarify the external communication tone, sensitive-information boundaries, approvers, and historical-case citation rules."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次需要处理的客户问题或售后事件。",
+        "en-US": "Input (information required every run): the customer issue or after-sales case that needs handling."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：客诉单、售后服务记录、8D 报告、历史回复邮件、问题分析会议纪要。",
+        "en-US": "Examples: complaint tickets, after-sales service records, 8D reports, historical reply emails, and issue analysis meeting notes."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：先说明问题现象和当前结论，再给出已采取动作、后续计划和对外回复草稿。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: summarize the issue and current conclusion first, then provide actions taken, next steps, and an external reply draft.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "基于客诉和售后问题记录，整理原因分析、处理进展和对外回复草稿。\n\n适合配置成质量经理准备客诉分析和回复草稿的助手。\n\n建议写清对外回复口径、敏感信息边界、审批人和历史案例引用规则。\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的客户问题或售后事件。",
+        "en-US": "Use complaint and after-sales records to prepare root-cause analysis, progress summaries, and an external reply draft.\n\nBest used as a Skill that helps quality managers prepare complaint analysis and response drafts.\n\nClarify the external communication tone, sensitive-information boundaries, approvers, and historical-case citation rules.\n\nInput (information required every run): the customer issue or after-sales case that needs handling."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "complaint-source",
+          "label": {
+            "zh-CN": "从哪里获取客诉 / 售后问题的原始记录？",
+            "en-US": "Where can AI get the original complaint or after-sales records?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：客诉系统列表或售后工单链接",
+            "en-US": "Example: complaint system list or after-sales ticket link"
+          },
+          "required": true
+        },
+        {
+          "id": "historical-reference-source",
+          "label": {
+            "zh-CN": "从哪里可以知道历史同类问题和标准回复口径？",
+            "en-US": "Where can AI find similar historical cases and approved reply guidance?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：历史 8D 案例库或回复模板库",
+            "en-US": "Example: historical 8D case library or reply template library"
+          },
+          "required": true
+        },
+        {
+          "id": "reply-sop-source",
+          "label": {
+            "zh-CN": "从哪里获取对外回复模板或 SOP？",
+            "en-US": "Where can AI find the external reply template or SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：客户回复模板 Wiki",
+            "en-US": "Example: customer reply template wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "变更评审里的质量影响检查": {
+      "name": {
+        "zh-CN": "变更评审里的质量影响检查",
+        "en-US": "Quality Impact Check In Change Review"
+      },
+      "directory": "change-review-quality-impact",
+      "description": {
+        "zh-CN": "在变更评审时检查变更对质量要求、检验方案和放行条件的影响。",
+        "en-US": "Check how a proposed change affects quality requirements, inspection methods, and release conditions."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成变更评审前的质量影响检查助手。",
+          "en-US": "Best used as a Skill that reviews quality impact before a change review meeting."
+        },
+        {
+          "zh-CN": "建议写清需要覆盖的质量维度、必须引用的标准文件，以及什么情况必须升级评审。",
+          "en-US": "Clarify which quality dimensions must be covered, which standards must be referenced, and when escalation is required."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次待评审的变更申请或版本范围。",
+        "en-US": "Input (information required every run): the change request or release scope under review."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：变更申请单、图纸/BOM 版本记录、控制计划、检验规范、风险分析文档。",
+        "en-US": "Examples: change request forms, drawing or BOM revision logs, control plans, inspection specifications, and risk analysis documents."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：先识别变更范围，再检查是否影响检验项目、放行标准、过程能力和客户要求，最后输出风险点和建议动作。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: identify the change scope first, then check impacts on inspection items, release standards, process capability, and customer requirements, and finally output risks and recommended actions.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "在变更评审时检查变更对质量要求、检验方案和放行条件的影响。\n\n适合配置成变更评审前的质量影响检查助手。\n\n建议写清需要覆盖的质量维度、必须引用的标准文件，以及什么情况必须升级评审。\n\n输入（每次执行都需要提供给Skill的信息）：本次待评审的变更申请或版本范围。",
+        "en-US": "Check how a proposed change affects quality requirements, inspection methods, and release conditions.\n\nBest used as a Skill that reviews quality impact before a change review meeting.\n\nClarify which quality dimensions must be covered, which standards must be referenced, and when escalation is required.\n\nInput (information required every run): the change request or release scope under review."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "change-request-source",
+          "label": {
+            "zh-CN": "从哪里获取待评审的变更申请？",
+            "en-US": "Where can AI get the change request under review?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：ECR/ECO 系统链接",
+            "en-US": "Example: ECR or ECO system link"
+          },
+          "required": true
+        },
+        {
+          "id": "quality-requirement-source",
+          "label": {
+            "zh-CN": "从哪里可以知道该变更关联的产品 / 工艺 / 检验要求？",
+            "en-US": "Where can AI find the related product, process, or inspection requirements?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：控制计划、检验规范或图纸目录",
+            "en-US": "Example: control plan, inspection spec, or drawing directory"
+          },
+          "required": true
+        },
+        {
+          "id": "change-review-sop",
+          "label": {
+            "zh-CN": "从哪里获取变更评审模板或质量评审 SOP？",
+            "en-US": "Where can AI find the change review template or quality review SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：变更评审 SOP Wiki",
+            "en-US": "Example: change review SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "质量周报": {
+      "name": {
+        "zh-CN": "质量周报",
+        "en-US": "Quality Weekly Report"
+      },
+      "directory": "quality-weekly-report",
+      "description": {
+        "zh-CN": "汇总本周质量异常、风险、整改进展和重点事项，形成标准化质量周报。",
+        "en-US": "Summarize quality issues, risks, corrective-action progress, and highlights into a standardized weekly report."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成固定节奏产出质量周报的助手。",
+          "en-US": "Best used as a Skill that produces a weekly quality report on a fixed cadence."
+        },
+        {
+          "zh-CN": "建议写清周报结构、关注指标、升级条件和需要抄送的对象。",
+          "en-US": "Clarify the report structure, monitored metrics, escalation criteria, and the audience."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本周时间范围、产品线或工厂范围。",
+        "en-US": "Input (information required every run): the weekly time window, product line, or plant scope."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：异常台账、客诉记录、供应商问题清单、CAPA 跟踪表、周会纪要。",
+        "en-US": "Examples: issue tracker, complaint records, supplier issue list, CAPA tracker, and weekly meeting notes."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：按质量异常、风险趋势、整改进展和下周重点四部分输出，重大风险单独高亮。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: organize the report into quality issues, risk trends, corrective-action progress, and next-week priorities, with major risks highlighted separately.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "汇总本周质量异常、风险、整改进展和重点事项，形成标准化质量周报。\n\n适合配置成固定节奏产出质量周报的助手。\n\n建议写清周报结构、关注指标、升级条件和需要抄送的对象。\n\n输入（每次执行都需要提供给Skill的信息）：本周时间范围、产品线或工厂范围。",
+        "en-US": "Summarize quality issues, risks, corrective-action progress, and highlights into a standardized weekly report.\n\nBest used as a Skill that produces a weekly quality report on a fixed cadence.\n\nClarify the report structure, monitored metrics, escalation criteria, and the audience.\n\nInput (information required every run): the weekly time window, product line, or plant scope."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "quality-issue-source",
+          "label": {
+            "zh-CN": "从哪里获取本周质量问题 / 异常清单？",
+            "en-US": "Where can AI get this week's quality issue list?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：质量异常周报过滤器或台账链接",
+            "en-US": "Example: weekly quality issue filter or tracker link"
+          },
+          "required": true
+        },
+        {
+          "id": "quality-progress-source",
+          "label": {
+            "zh-CN": "从哪里可以知道整改进展和风险状态？",
+            "en-US": "Where can AI find corrective-action progress and risk status?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：CAPA 跟踪表或风险台账",
+            "en-US": "Example: CAPA tracker or risk log"
+          },
+          "required": true
+        },
+        {
+          "id": "quality-weekly-report-sop",
+          "label": {
+            "zh-CN": "从哪里获取质量周报模板或 SOP？",
+            "en-US": "Where can AI find the quality weekly report template or SOP?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：质量周报模板 Wiki",
+            "en-US": "Example: quality weekly report template wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "供应商质量问题跟踪": {
+      "name": {
+        "zh-CN": "供应商质量问题跟踪",
+        "en-US": "Supplier Quality Issue Tracking"
+      },
+      "directory": "supplier-quality-tracking",
+      "description": {
+        "zh-CN": "跟踪供应商质量异常、整改进展和重复发生风险，推动问题闭环。",
+        "en-US": "Track supplier quality issues, corrective-action progress, and recurrence risk until closure."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成供应商质量问题台账和跟催助手。",
+          "en-US": "Best used as a Skill that maintains the supplier quality issue tracker and follows up on actions."
+        },
+        {
+          "zh-CN": "建议写清供应商分级规则、升级路径、回复时限和关闭标准。",
+          "en-US": "Clarify supplier severity rules, escalation paths, response deadlines, and closure standards."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次需要跟踪的供应商、物料或时间范围。",
+        "en-US": "Input (information required every run): the supplier, material, or time window to track in this run."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：供应商异常台账、来料检验记录、8D 回复、供应商周报、采购跟踪表。",
+        "en-US": "Examples: supplier issue tracker, incoming inspection logs, 8D replies, supplier weekly reports, and purchasing trackers."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：统一输出问题描述、供应商责任窗口、整改状态、风险等级和预计关闭时间，重复发生项单独标记。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: output issue description, supplier owner window, corrective-action status, risk level, and target close date consistently, and flag recurrence separately.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "跟踪供应商质量异常、整改进展和重复发生风险，推动问题闭环。\n\n适合配置成供应商质量问题台账和跟催助手。\n\n建议写清供应商分级规则、升级路径、回复时限和关闭标准。\n\n输入（每次执行都需要提供给Skill的信息）：本次需要跟踪的供应商、物料或时间范围。",
+        "en-US": "Track supplier quality issues, corrective-action progress, and recurrence risk until closure.\n\nBest used as a Skill that maintains the supplier quality issue tracker and follows up on actions.\n\nClarify supplier severity rules, escalation paths, response deadlines, and closure standards.\n\nInput (information required every run): the supplier, material, or time window to track in this run."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "supplier-issue-source",
+          "label": {
+            "zh-CN": "从哪里获取供应商质量问题清单？",
+            "en-US": "Where can AI get the supplier quality issue list?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：供应商异常台账或 SRM 问题列表",
+            "en-US": "Example: supplier issue tracker or SRM issue list"
+          },
+          "required": true
+        },
+        {
+          "id": "supplier-progress-source",
+          "label": {
+            "zh-CN": "从哪里可以知道每个问题的处理进展和责任窗口？",
+            "en-US": "Where can AI find progress and owner windows for each supplier issue?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：8D 回复库或采购跟进表",
+            "en-US": "Example: 8D response library or purchasing follow-up tracker"
+          },
+          "required": true
+        },
+        {
+          "id": "supplier-closure-sop",
+          "label": {
+            "zh-CN": "从哪里获取供应商问题升级 / 关闭标准？",
+            "en-US": "Where can AI find supplier issue escalation and closure standards?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：供应商质量管理 SOP Wiki",
+            "en-US": "Example: supplier quality management SOP wiki"
+          },
+          "required": true
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
     }
   },
   "testDefaults": {

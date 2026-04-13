@@ -129,7 +129,7 @@ describe('workbuddy agent apps', () => {
     ])
   })
 
-  it('exposes only project manager in visible role selectors while keeping legacy role labels', () => {
+  it('exposes project manager and quality manager in visible role selectors while keeping legacy role labels', () => {
     expect(Object.keys(sharedConfig.roles)).toEqual([
       'project-manager',
       'product-manager',
@@ -138,9 +138,30 @@ describe('workbuddy agent apps', () => {
       'delivery-manager',
       'rd-manager',
     ])
-    expect(workbuddyRoles.map((role) => role.value)).toEqual(['项目经理'])
-    expect(onboardingRoles.map((role) => role.id)).toEqual(['project-manager'])
+    expect(workbuddyRoles.map((role) => role.value)).toEqual(['项目经理', '质量经理'])
+    expect(onboardingRoles.map((role) => role.id)).toEqual(['project-manager', 'qa-manager'])
     expect(getRoleNameById('product-manager')).toBe('产品经理')
+  })
+
+  it('assigns five daily quality-management use cases to qa-manager', () => {
+    expect(sharedConfig.roles['qa-manager']?.useCases).toEqual([
+      '质量异常汇总与闭环跟进',
+      '客诉售后问题分析与回复草稿',
+      '变更评审里的质量影响检查',
+      '质量周报',
+      '供应商质量问题跟踪',
+    ])
+
+    const qaDefaults = createDefaultRoleUseCaseContents('qa-manager')
+
+    expect(qaDefaults.map((useCase) => useCase.use_case_name)).toEqual([
+      '质量异常汇总与闭环跟进',
+      '客诉售后问题分析与回复草稿',
+      '变更评审里的质量影响检查',
+      '质量周报',
+      '供应商质量问题跟踪',
+    ])
+    expect(qaDefaults.every((useCase) => useCase.description_locked)).toBe(true)
   })
 
   it('keeps only the retained project-manager use cases after pruning the removed scenarios', () => {
