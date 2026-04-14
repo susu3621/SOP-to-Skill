@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { startTransition, useEffect, useMemo, useState } from 'react'
 import { AgentSelectionStep } from './steps/AgentSelectionStep'
 import { CompletionStep } from './steps/CompletionStep'
 import { CredentialsStep } from './steps/CredentialsStep'
@@ -532,6 +532,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     dirty,
     environmentChecks,
     environmentInstalls,
+    hasPendingEnvironmentChecks,
     installCandidateGroups,
     addLinuxDevice,
     loading,
@@ -575,11 +576,13 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
   const onboardingHomeEntries = useMemo(() => getOnboardingHomeEntries(locale), [locale])
 
   const openView = (nextView: OnboardingView) => {
-    setView(nextView)
+    startTransition(() => {
+      setView(nextView)
 
-    if (nextView === 'useCases') {
-      setActiveUseCaseTab('role')
-    }
+      if (nextView === 'useCases') {
+        setActiveUseCaseTab('role')
+      }
+    })
   }
 
   useEffect(() => {
@@ -701,6 +704,11 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
               <p className="panel__body">
                 {getOnboardingCopy(locale, onboardingCopy.homeBody)}
               </p>
+              {hasPendingEnvironmentChecks && (
+                <p className="muted">
+                  {getOnboardingCopy(locale, onboardingCopy.environmentPendingHint)}
+                </p>
+              )}
             </div>
             <button className="button--ghost" type="button" onClick={onOpenInstalled}>
               {`${getOnboardingCopy(locale, onboardingCopy.installedCount)} (${installedSkills.length})`}

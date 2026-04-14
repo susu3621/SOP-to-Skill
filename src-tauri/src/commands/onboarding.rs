@@ -434,7 +434,7 @@ fn build_onboarding_environment_install_steps(
                         args: vec![
                             "install".to_string(),
                             "--id".to_string(),
-                            "Apache.Subversion".to_string(),
+                            "Slik.Subversion".to_string(),
                             "-e".to_string(),
                             "--accept-source-agreements".to_string(),
                             "--accept-package-agreements".to_string(),
@@ -829,6 +829,63 @@ fn resolve_install_step_command(
     })
 }
 
+const WINDOWS_PARAMIKO_MIRROR_INDEX_URL: &str = "https://mirrors.aliyun.com/pypi/simple/";
+const WINDOWS_PARAMIKO_MIRROR_HOST: &str = "mirrors.aliyun.com";
+
+fn build_windows_paramiko_mirror_install_args(base_args: &[String]) -> Vec<String> {
+    let mut args = Vec::with_capacity(base_args.len() + 5);
+    let mut inserted = false;
+
+    for arg in base_args {
+        args.push(arg.clone());
+
+        if !inserted && arg == "install" {
+            args.extend([
+                "--disable-pip-version-check".to_string(),
+                "-i".to_string(),
+                WINDOWS_PARAMIKO_MIRROR_INDEX_URL.to_string(),
+                "--trusted-host".to_string(),
+                WINDOWS_PARAMIKO_MIRROR_HOST.to_string(),
+            ]);
+            inserted = true;
+        }
+    }
+
+    if !inserted {
+        args.extend([
+            "--disable-pip-version-check".to_string(),
+            "-i".to_string(),
+            WINDOWS_PARAMIKO_MIRROR_INDEX_URL.to_string(),
+            "--trusted-host".to_string(),
+            WINDOWS_PARAMIKO_MIRROR_HOST.to_string(),
+        ]);
+    }
+
+    args
+}
+
+fn should_retry_windows_paramiko_install_with_mirror(output_lines: &[String]) -> bool {
+    let joined_output = output_lines.join("\n").to_ascii_lowercase();
+    let mentions_pypi = joined_output.contains("pypi.org")
+        || joined_output.contains("/simple/paramiko/")
+        || joined_output.contains("httpsconnectionpool(host='pypi.org'");
+    let mentions_tls_failure = joined_output.contains("ssl")
+        || joined_output.contains("tls")
+        || joined_output.contains("schannel")
+        || joined_output.contains("unexpected_eof_while_reading")
+        || joined_output.contains("problem confirming the ssl certificate")
+        || joined_output.contains("failed to receive handshake");
+
+    mentions_pypi && mentions_tls_failure
+}
+
+fn build_windows_paramiko_mirror_install_command(command: &CommandSpec) -> CommandSpec {
+    CommandSpec {
+        program: command.program.clone(),
+        args: build_windows_paramiko_mirror_install_args(&command.args),
+    }
+}
+
 #[cfg(windows)]
 fn read_windows_environment_variable(name: &str, target: &str) -> Result<String, String> {
     let script = format!("[Environment]::GetEnvironmentVariable('{name}','{target}')");
@@ -1018,26 +1075,30 @@ fn emit_environment_install_progress(
     let _ = app.emit("onboarding-environment-install-progress", payload);
 }
 
-fn run_install_step(
+struct InstallCommandExecution {
+    status: std::process::ExitStatus,
+    output_lines: Vec<String>,
+}
+
+fn run_install_command(
     app: &AppHandle,
     install_id: &str,
     service_id: &str,
-    step: &OnboardingEnvironmentInstallStep,
-    progress_percent: u8,
     step_label: &str,
-    platform: OnboardingEnvironmentPlatform,
-) -> Result<(), String> {
-    let resolved_step = resolve_install_step_command(step, platform)?;
-    let mut command = Command::new(&resolved_step.program);
+    step_label_for_errors: &str,
+    command_spec: &CommandSpec,
+    progress_percent: u8,
+) -> Result<InstallCommandExecution, String> {
+    let mut command = Command::new(&command_spec.program);
     configure_onboarding_command(&mut command);
-    command.args(&resolved_step.args);
+    command.args(&command_spec.args);
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
 
     let mut child = command.spawn().map_err(|error| {
         format!(
             "Failed to start {} install command {}: {}",
-            step.label, resolved_step.program, error
+            step_label_for_errors, command_spec.program, error
         )
     })?;
 
@@ -1082,7 +1143,10 @@ fn run_install_step(
 
     drop(tx);
 
+    let mut output_lines = Vec::new();
+
     for line in rx {
+        output_lines.push(line.clone());
         emit_environment_install_progress(
             app,
             OnboardingEnvironmentInstallProgressEvent {
@@ -1099,7 +1163,7 @@ fn run_install_step(
     let status = child.wait().map_err(|error| {
         format!(
             "Failed to wait for {} install command: {}",
-            step.label, error
+            step_label_for_errors, error
         )
     })?;
 
@@ -1107,14 +1171,77 @@ fn run_install_step(
         let _ = handle.join();
     }
 
-    if !status.success() {
+    Ok(InstallCommandExecution {
+        status,
+        output_lines,
+    })
+}
+
+fn run_install_step(
+    app: &AppHandle,
+    install_id: &str,
+    service_id: &str,
+    step: &OnboardingEnvironmentInstallStep,
+    progress_percent: u8,
+    step_label: &str,
+    platform: OnboardingEnvironmentPlatform,
+) -> Result<(), String> {
+    let resolved_step = resolve_install_step_command(step, platform)?;
+    let execution = run_install_command(
+        app,
+        install_id,
+        service_id,
+        step_label,
+        &step.label,
+        &resolved_step,
+        progress_percent,
+    )?;
+
+    if execution.status.success() {
+        return Ok(());
+    }
+
+    if platform == OnboardingEnvironmentPlatform::Windows
+        && step.requirement_id == "paramiko"
+        && should_retry_windows_paramiko_install_with_mirror(&execution.output_lines)
+    {
+        emit_environment_install_progress(
+            app,
+            OnboardingEnvironmentInstallProgressEvent {
+                install_id: install_id.to_string(),
+                service_id: service_id.to_string(),
+                status: "running".to_string(),
+                progress_percent,
+                step: step_label.to_string(),
+                log_line: Some("PyPI 下载失败，正在切换阿里云镜像重试 Paramiko 安装。".to_string()),
+            },
+        );
+
+        let mirror_command = build_windows_paramiko_mirror_install_command(&resolved_step);
+        let mirror_execution = run_install_command(
+            app,
+            install_id,
+            service_id,
+            step_label,
+            &step.label,
+            &mirror_command,
+            progress_percent,
+        )?;
+
+        if mirror_execution.status.success() {
+            return Ok(());
+        }
+
         return Err(format!(
             "{} install command failed with status {}",
-            step.label, status
+            step.label, mirror_execution.status
         ));
     }
 
-    Ok(())
+    Err(format!(
+        "{} install command failed with status {}",
+        step.label, execution.status
+    ))
 }
 
 async fn run_onboarding_environment_install(
@@ -2139,11 +2266,13 @@ mod tests {
     use super::{
         apply_onboarding_sync_plan, build_connection_test_env_entries,
         build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
+        build_windows_paramiko_mirror_install_args,
         build_onboarding_environment_requirements, build_onboarding_install_preview,
         command_output_with_search_path, merge_unix_search_path_values,
         merge_windows_search_path_values, probe_requirement_with_runner,
         resolve_connection_test_script_path, resolve_install_step_command_with_runner,
-        resolve_process_search_path_from_values, trim_process_output, OnboardingAgentSyncResult,
+        resolve_process_search_path_from_values, should_retry_windows_paramiko_install_with_mirror,
+        trim_process_output, OnboardingAgentSyncResult,
         OnboardingEnvironmentInstallStep, OnboardingEnvironmentPlatform,
     };
     use crate::models::{
@@ -2374,6 +2503,49 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_windows_paramiko_install_builds_aliyun_mirror_retry_args() {
+        let args = build_windows_paramiko_mirror_install_args(&[
+            "-m".to_string(),
+            "pip".to_string(),
+            "install".to_string(),
+            "-r".to_string(),
+            r"C:\tmp\requirements.txt".to_string(),
+        ]);
+
+        assert_eq!(
+            args,
+            vec![
+                "-m".to_string(),
+                "pip".to_string(),
+                "install".to_string(),
+                "--disable-pip-version-check".to_string(),
+                "-i".to_string(),
+                "https://mirrors.aliyun.com/pypi/simple/".to_string(),
+                "--trusted-host".to_string(),
+                "mirrors.aliyun.com".to_string(),
+                "-r".to_string(),
+                r"C:\tmp\requirements.txt".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn onboarding_windows_paramiko_install_retries_with_mirror_for_tls_failures() {
+        assert!(should_retry_windows_paramiko_install_with_mirror(&[
+            "WARNING: Retrying after connection broken by 'SSLError(SSLEOFError(8, '[SSL: UNEXPECTED_EOF_WHILE_READING] EOF occurred in violation of protocol (_ssl.c:1010)'))': /simple/paramiko/".to_string(),
+            "Could not fetch URL https://pypi.org/simple/paramiko/: There was a problem confirming the ssl certificate".to_string(),
+        ]));
+    }
+
+    #[test]
+    fn onboarding_windows_paramiko_install_does_not_retry_with_mirror_for_generic_failures() {
+        assert!(!should_retry_windows_paramiko_install_with_mirror(&[
+            "ERROR: subprocess-exited-with-error".to_string(),
+            "error: Microsoft Visual C++ 14.0 or greater is required".to_string(),
+        ]));
+    }
+
+    #[test]
     fn onboarding_connection_test_builds_mail_env_entries() {
         let entries = build_connection_test_env_entries(
             "mail",
@@ -2521,7 +2693,7 @@ mod tests {
         assert!(steps[0].args.contains(&"Python.Python.3.12".to_string()));
         assert_eq!(steps[1].requirement_id, "svn");
         assert_eq!(steps[1].program, "winget");
-        assert!(steps[1].args.contains(&"Apache.Subversion".to_string()));
+        assert!(steps[1].args.contains(&"Slik.Subversion".to_string()));
     }
 
     #[test]

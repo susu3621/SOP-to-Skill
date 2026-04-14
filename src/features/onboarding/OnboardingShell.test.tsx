@@ -415,6 +415,10 @@ function getEnvironmentInstallCalls() {
   )
 }
 
+function getInstallPreviewCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'get_onboarding_install_preview')
+}
+
 function getSyncCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_installation')
 }
@@ -1202,7 +1206,7 @@ describe('OnboardingShell', () => {
           status: 'running',
           progress_percent: 80,
           step: '正在安装 SVN',
-          log_line: 'winget install Apache.Subversion',
+          log_line: 'winget install Slik.Subversion',
         },
       ],
     }
@@ -1231,7 +1235,7 @@ describe('OnboardingShell', () => {
     expect(await screen.findByText('正在安装 SVN')).toBeInTheDocument()
     expect(screen.getByText('80%')).toBeInTheDocument()
     expect(screen.getByText('winget install Python.Python.3.12')).toBeInTheDocument()
-    expect(screen.getByText('winget install Apache.Subversion')).toBeInTheDocument()
+    expect(screen.getByText('winget install Slik.Subversion')).toBeInTheDocument()
     expect(screen.getByText('环境安装完成')).toBeInTheDocument()
   })
 
@@ -1692,6 +1696,65 @@ describe('OnboardingShell', () => {
 
     expect(getSetStateCalls()).toHaveLength(1)
     expect(await screen.findByText('保存失败：网络异常')).toBeInTheDocument()
+  })
+
+  it('shows a home-level hint while background environment checks are pending', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['linux'],
+      selected_install_skill_ids: ['linux'],
+      credential_values: {},
+      linux_devices: [],
+    }
+
+    const defaultInvoke = invokeMock.getMockImplementation()
+
+    invokeMock.mockImplementation((command: string, payload?: any) => {
+      if (command === 'check_onboarding_skill_environment' && payload?.input?.service_id === 'linux') {
+        return new Promise(() => {})
+      }
+
+      return defaultInvoke?.(command, payload)
+    })
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    expect(await screen.findByText('正在检测所需环境，请稍候...')).toBeInTheDocument()
+  })
+
+  it('does not refresh the install preview when only credential values change', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['jira'],
+      selected_install_skill_ids: ['jira'],
+      credential_values: {
+        jiraUrl: 'https://jira.example.com',
+        jiraUsername: 'jira.user',
+        jiraPassword: 'jira-secret',
+      },
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await waitFor(() => expect(getInstallPreviewCalls().length).toBeGreaterThan(0))
+
+    invokeMock.mockClear()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    const jiraUrlField = await screen.findByLabelText('Jira URL')
+    await user.clear(jiraUrlField)
+    await user.type(jiraUrlField, 'https://jira.changed.example.com')
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(getInstallPreviewCalls()).toHaveLength(0)
   })
 
   it('saving base skill changes persists the selected company IT tools', async () => {

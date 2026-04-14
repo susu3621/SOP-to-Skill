@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import {
@@ -414,6 +414,13 @@ function buildCredentialFingerprint(
   )
 }
 
+function shouldRefreshEnvironmentCheck(
+  existing: OnboardingEnvironmentCheckState | undefined,
+  nextFingerprint: string
+) {
+  return !existing || existing.tested_fingerprint !== nextFingerprint || existing.status === 'idle'
+}
+
 function pickCredentialValuesForGroup(
   group: OnboardingCredentialGroup,
   credentialValues: Record<string, string>
@@ -634,6 +641,37 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     () => buildInstallCandidateGroups(state.selected_role_id, state.role_use_case_contents),
     [state.role_use_case_contents, state.selected_role_id]
   )
+  const previewRequestJson = useDeferredValue(
+    useMemo(
+      () =>
+        JSON.stringify({
+          state: {
+            selected_agent_ids: state.selected_agent_ids,
+            selected_role_id: state.selected_role_id,
+            selected_base_skill_ids: state.selected_base_skill_ids,
+            role_use_case_contents: state.role_use_case_contents,
+            selected_install_skill_ids: state.selected_install_skill_ids,
+            selected_install_skill_ids_initialized: state.selected_install_skill_ids_initialized,
+            selected_install_candidate_skill_ids: state.selected_install_candidate_skill_ids,
+            credential_values: {},
+            linux_devices: [],
+          } satisfies OnboardingState,
+          selectedUseCases,
+          agents: agentStates,
+        }),
+      [
+        agentStates,
+        selectedUseCases,
+        state.role_use_case_contents,
+        state.selected_agent_ids,
+        state.selected_base_skill_ids,
+        state.selected_install_candidate_skill_ids,
+        state.selected_install_skill_ids,
+        state.selected_install_skill_ids_initialized,
+        state.selected_role_id,
+      ]
+    )
+  )
   const credentialGroups = useMemo(
     () => getCredentialGroups(state.selected_base_skill_ids, locale, state.credential_values),
     [locale, state.credential_values, state.selected_base_skill_ids]
@@ -645,6 +683,10 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   const credentialGroupById = useMemo(
     () => new Map(credentialGroups.map((group) => [group.service_id, group] as const)),
     [credentialGroups]
+  )
+  const hasPendingEnvironmentChecks = useMemo(
+    () => Object.values(environmentChecks).some((check) => check.status === 'pending'),
+    [environmentChecks]
   )
   const preview = useMemo<OnboardingInstallPreview>(() => {
     const fallbackPreview: OnboardingInstallPreview = {
@@ -1180,14 +1222,16 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     let cancelled = false
 
     async function loadPreview() {
+      const request = JSON.parse(previewRequestJson) as {
+        state: OnboardingState
+        selectedUseCases: OnboardingUseCase[]
+        agents: OnboardingAgentState[]
+      }
+
       try {
         const result = await invoke<SkillResult<OnboardingInstallPreview>>(
           'get_onboarding_install_preview',
-          {
-            state,
-            selectedUseCases,
-            agents: agentStates,
-          }
+          request
         )
 
         if (!cancelled) {
@@ -1210,7 +1254,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     return () => {
       cancelled = true
     }
-  }, [agentStates, selectedUseCases, state])
+  }, [previewRequestJson])
 
   useEffect(() => {
     const selectedServiceIds = new Set(credentialGroups.map((group) => group.service_id))
@@ -1300,14 +1344,57 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     })
   }, [credentialGroups])
 
-  useLayoutEffect(() => {
+  useEffect(() => {
+    if (credentialGroups.length === 0) {
+      return undefined
+    }
+
+    setEnvironmentChecks((current) => {
+      let changed = false
+      const next = { ...current }
+
+      credentialGroups.forEach((group) => {
+        const nextFingerprint = buildEnvironmentFingerprint(group, state.credential_values)
+        const existing = current[group.service_id]
+
+        if (!shouldRefreshEnvironmentCheck(existing, nextFingerprint)) {
+          return
+        }
+
+        const nextState = createPendingEnvironmentCheckState(locale, {
+          previous: existing,
+          trigger: 'automatic',
+          testedFingerprint: nextFingerprint,
+        })
+
+        if (
+          existing?.status === nextState.status &&
+          existing?.summary === nextState.summary &&
+          existing?.last_trigger === nextState.last_trigger &&
+          existing?.tested_fingerprint === nextState.tested_fingerprint
+        ) {
+          return
+        }
+
+        next[group.service_id] = nextState
+        changed = true
+      })
+
+      return changed ? next : current
+    })
+
+    return undefined
+  }, [credentialGroups, locale, state.credential_values])
+
+  useEffect(() => {
+    if (credentialGroups.length === 0) {
+      return undefined
+    }
+
     credentialGroups.forEach((group) => {
       const nextFingerprint = buildEnvironmentFingerprint(group, state.credential_values)
       const existing = environmentChecks[group.service_id]
-      const shouldCheck =
-        !existing ||
-        existing.tested_fingerprint !== nextFingerprint ||
-        existing.status === 'idle'
+      const shouldCheck = shouldRefreshEnvironmentCheck(existing, nextFingerprint)
 
       if (shouldCheck) {
         void runEnvironmentCheck(group.service_id, 'automatic', {
@@ -1316,6 +1403,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
         })
       }
     })
+
+    return undefined
   }, [credentialGroups, environmentChecks, runEnvironmentCheck, state.credential_values])
 
   const persistState = useCallback(
@@ -1807,6 +1896,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     credentialFields,
     credentialGroups,
     dirty,
+    hasPendingEnvironmentChecks,
     installCandidateGroups,
     addLinuxDevice,
     loading,
