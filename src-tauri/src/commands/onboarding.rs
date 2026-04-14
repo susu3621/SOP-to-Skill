@@ -443,9 +443,8 @@ fn build_onboarding_environment_install_steps(
                     "paramiko" => OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "Paramiko".to_string(),
-                        program: "py".to_string(),
+                        program: "python".to_string(),
                         args: vec![
-                            "-3".to_string(),
                             "-m".to_string(),
                             "pip".to_string(),
                             "install".to_string(),
@@ -649,9 +648,185 @@ fn command_output_with_search_path(
     command.output()
 }
 
+fn command_output_with_search_path_owned(
+    program: &str,
+    args: &[String],
+    search_path: Option<&str>,
+) -> Result<Output, std::io::Error> {
+    let arg_refs = args.iter().map(String::as_str).collect::<Vec<_>>();
+    command_output_with_search_path(program, &arg_refs, search_path)
+}
+
 fn probe_command_output(program: &str, args: &[&str]) -> Result<Output, std::io::Error> {
     let search_path = resolve_process_search_path();
     command_output_with_search_path(program, args, search_path.as_deref())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CommandSpec {
+    program: String,
+    args: Vec<String>,
+}
+
+fn command_spec(program: &str, args: &[&str]) -> CommandSpec {
+    CommandSpec {
+        program: program.to_string(),
+        args: args.iter().map(|arg| arg.to_string()).collect(),
+    }
+}
+
+fn build_requirement_probe_candidates(requirement_id: &str) -> Result<Vec<CommandSpec>, String> {
+    match requirement_id {
+        "python3" => Ok(python_command_candidates()
+            .into_iter()
+            .map(|candidate| {
+                let mut args = candidate.args;
+                args.push("--version".to_string());
+                CommandSpec {
+                    program: candidate.program,
+                    args,
+                }
+            })
+            .collect()),
+        "git" => Ok(vec![command_spec("git", &["--version"])]),
+        "svn" => Ok(vec![command_spec("svn", &["--version", "--quiet"])]),
+        "ssh" => Ok(vec![command_spec("ssh", &["-V"])]),
+        "paramiko" => Ok(python_command_candidates()
+            .into_iter()
+            .map(|candidate| {
+                let mut args = candidate.args;
+                args.push("-c".to_string());
+                args.push("import paramiko; print(paramiko.__version__)".to_string());
+                CommandSpec {
+                    program: candidate.program,
+                    args,
+                }
+            })
+            .collect()),
+        _ => Err(format!(
+            "Unsupported environment requirement probe: {}",
+            requirement_id
+        )),
+    }
+}
+
+fn probe_requirement_with_runner<F>(
+    requirement_id: &str,
+    mut runner: F,
+) -> Result<(String, String), String>
+where
+    F: FnMut(&str, &[String]) -> Result<Output, std::io::Error>,
+{
+    let probe_candidates = build_requirement_probe_candidates(requirement_id)?;
+    let mut last_failure_detail: Option<String> = None;
+
+    for candidate in probe_candidates {
+        match runner(&candidate.program, &candidate.args) {
+            Ok(output) => {
+                let stdout = trim_process_output(&output.stdout);
+                let stderr = trim_process_output(&output.stderr);
+
+                if output.status.success() {
+                    let details = first_non_empty_line(&stdout)
+                        .or_else(|| first_non_empty_line(&stderr))
+                        .unwrap_or_else(|| format!("{} available", candidate.program));
+
+                    return Ok(("ready".to_string(), details));
+                }
+
+                last_failure_detail = first_non_empty_line(&stderr)
+                    .or_else(|| first_non_empty_line(&stdout))
+                    .or_else(|| Some(format!("{} probe failed", candidate.program)));
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(format!(
+                    "Failed to probe {} using {}: {}",
+                    requirement_id, candidate.program, error
+                ))
+            }
+        }
+    }
+
+    Ok((
+        "missing".to_string(),
+        last_failure_detail.unwrap_or_else(|| format!("{} not found in PATH", requirement_id)),
+    ))
+}
+
+fn resolve_available_python_command_with_runner<F>(mut runner: F) -> Result<CommandSpec, String>
+where
+    F: FnMut(&str, &[String]) -> Result<Output, std::io::Error>,
+{
+    let mut last_failure_detail: Option<String> = None;
+
+    for candidate in python_command_candidates() {
+        let mut probe_args = candidate.args.clone();
+        probe_args.push("--version".to_string());
+
+        match runner(&candidate.program, &probe_args) {
+            Ok(output) => {
+                if output.status.success() {
+                    return Ok(candidate);
+                }
+
+                let stdout = trim_process_output(&output.stdout);
+                let stderr = trim_process_output(&output.stderr);
+                last_failure_detail = first_non_empty_line(&stderr)
+                    .or_else(|| first_non_empty_line(&stdout))
+                    .or_else(|| Some(format!("{} probe failed", candidate.program)));
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(format!(
+                    "Failed to probe python runtime using {}: {}",
+                    candidate.program, error
+                ))
+            }
+        }
+    }
+
+    Err(last_failure_detail.unwrap_or_else(|| {
+        "Python runtime not found. Install python3 or python to run bundled connection tests."
+            .to_string()
+    }))
+}
+
+fn resolve_available_python_command() -> Result<CommandSpec, String> {
+    let search_path = resolve_process_search_path();
+    resolve_available_python_command_with_runner(|program, args| {
+        command_output_with_search_path_owned(program, args, search_path.as_deref())
+    })
+}
+
+fn resolve_install_step_command_with_runner<F>(
+    step: &OnboardingEnvironmentInstallStep,
+    platform: OnboardingEnvironmentPlatform,
+    runner: F,
+) -> Result<CommandSpec, String>
+where
+    F: FnMut(&str, &[String]) -> Result<Output, std::io::Error>,
+{
+    if platform == OnboardingEnvironmentPlatform::Windows && step.requirement_id == "paramiko" {
+        let mut command = resolve_available_python_command_with_runner(runner)?;
+        command.args.extend(step.args.clone());
+        return Ok(command);
+    }
+
+    Ok(CommandSpec {
+        program: step.program.clone(),
+        args: step.args.clone(),
+    })
+}
+
+fn resolve_install_step_command(
+    step: &OnboardingEnvironmentInstallStep,
+    platform: OnboardingEnvironmentPlatform,
+) -> Result<CommandSpec, String> {
+    let search_path = resolve_process_search_path();
+    resolve_install_step_command_with_runner(step, platform, |program, args| {
+        command_output_with_search_path_owned(program, args, search_path.as_deref())
+    })
 }
 
 #[cfg(windows)]
@@ -719,69 +894,10 @@ fn refresh_windows_process_environment() -> Result<(), String> {
 }
 
 fn probe_requirement(requirement_id: &str) -> Result<(String, String), String> {
-    let probe_candidates: Vec<(&str, Vec<&str>)> = match requirement_id {
-        "python3" => python_command_candidates()
-            .into_iter()
-            .map(|(program, base_args)| {
-                let mut args = base_args.to_vec();
-                args.push("--version");
-                (program, args)
-            })
-            .collect(),
-        "git" => vec![("git", vec!["--version"])],
-        "svn" => vec![("svn", vec!["--version", "--quiet"])],
-        "ssh" => vec![("ssh", vec!["-V"])],
-        "paramiko" => python_command_candidates()
-            .into_iter()
-            .map(|(program, base_args)| {
-                let mut args = base_args.to_vec();
-                args.push("-c");
-                args.push("import paramiko; print(paramiko.__version__)");
-                (program, args)
-            })
-            .collect(),
-        _ => {
-            return Err(format!(
-                "Unsupported environment requirement probe: {}",
-                requirement_id
-            ))
-        }
-    };
-
-    for (program, args) in probe_candidates {
-        match probe_command_output(program, &args) {
-            Ok(output) => {
-                let stdout = trim_process_output(&output.stdout);
-                let stderr = trim_process_output(&output.stderr);
-
-                if output.status.success() {
-                    let details = first_non_empty_line(&stdout)
-                        .or_else(|| first_non_empty_line(&stderr))
-                        .unwrap_or_else(|| format!("{} available", program));
-
-                    return Ok(("ready".to_string(), details));
-                }
-
-                let failure_detail = first_non_empty_line(&stderr)
-                    .or_else(|| first_non_empty_line(&stdout))
-                    .unwrap_or_else(|| format!("{} probe failed", program));
-
-                return Ok(("missing".to_string(), failure_detail));
-            }
-            Err(error) if error.kind() == ErrorKind::NotFound => continue,
-            Err(error) => {
-                return Err(format!(
-                    "Failed to probe {} using {}: {}",
-                    requirement_id, program, error
-                ))
-            }
-        }
-    }
-
-    Ok((
-        "missing".to_string(),
-        format!("{} not found in PATH", requirement_id),
-    ))
+    let search_path = resolve_process_search_path();
+    probe_requirement_with_runner(requirement_id, |program, args| {
+        command_output_with_search_path_owned(program, args, search_path.as_deref())
+    })
 }
 
 fn installer_support_message(
@@ -909,17 +1025,19 @@ fn run_install_step(
     step: &OnboardingEnvironmentInstallStep,
     progress_percent: u8,
     step_label: &str,
+    platform: OnboardingEnvironmentPlatform,
 ) -> Result<(), String> {
-    let mut command = Command::new(&step.program);
+    let resolved_step = resolve_install_step_command(step, platform)?;
+    let mut command = Command::new(&resolved_step.program);
     configure_onboarding_command(&mut command);
-    command.args(&step.args);
+    command.args(&resolved_step.args);
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
 
     let mut child = command.spawn().map_err(|error| {
         format!(
             "Failed to start {} install command {}: {}",
-            step.label, step.program, error
+            step.label, resolved_step.program, error
         )
     })?;
 
@@ -1054,7 +1172,12 @@ async fn run_onboarding_environment_install(
             step,
             progress_percent,
             &step_label,
+            platform,
         )?;
+
+        if platform == OnboardingEnvironmentPlatform::Windows {
+            refresh_windows_process_environment()?;
+        }
 
         emit_environment_install_progress(
             app,
@@ -1067,22 +1190,6 @@ async fn run_onboarding_environment_install(
                 log_line: None,
             },
         );
-    }
-
-    if platform == OnboardingEnvironmentPlatform::Windows {
-        emit_environment_install_progress(
-            app,
-            OnboardingEnvironmentInstallProgressEvent {
-                install_id: input.install_id.clone(),
-                service_id: input.service_id.clone(),
-                status: "running".to_string(),
-                progress_percent: 100,
-                step: "正在刷新环境状态".to_string(),
-                log_line: None,
-            },
-        );
-
-        refresh_windows_process_environment()?;
     }
 
     let final_check = run_onboarding_environment_check(&OnboardingEnvironmentCheckInput {
@@ -1655,51 +1762,41 @@ fn resolve_connection_test_script_path(service_id: &str) -> Result<PathBuf, Stri
     Ok(script_path)
 }
 
-fn python_command_candidates() -> Vec<(&'static str, &'static [&'static str])> {
+fn python_command_candidates() -> Vec<CommandSpec> {
     #[cfg(target_os = "windows")]
     {
-        vec![("py", &["-3"]), ("python", &[])]
+        vec![command_spec("py", &["-3"]), command_spec("python", &[])]
     }
 
     #[cfg(not(target_os = "windows"))]
     {
-        vec![("python3", &[]), ("python", &[])]
+        vec![command_spec("python3", &[]), command_spec("python", &[])]
     }
 }
 
 fn execute_connection_test_script(script_path: &Path, env_path: &Path) -> Result<Output, String> {
-    for (program, base_args) in python_command_candidates() {
-        let mut command = Command::new(program);
-        configure_onboarding_command(&mut command);
-        command.args(base_args);
-        command.arg(script_path);
-        command.arg("--test-only");
-        command.arg("--json");
-        command.arg("--env-file");
-        command.arg(env_path);
+    let python_command = resolve_available_python_command()?;
+    let mut command = Command::new(&python_command.program);
+    configure_onboarding_command(&mut command);
+    command.args(&python_command.args);
+    command.arg(script_path);
+    command.arg("--test-only");
+    command.arg("--json");
+    command.arg("--env-file");
+    command.arg(env_path);
 
-        if let Some(script_dir) = script_path.parent() {
-            command.current_dir(script_dir);
-        }
-
-        match command.output() {
-            Ok(output) => return Ok(output),
-            Err(error) if error.kind() == ErrorKind::NotFound => continue,
-            Err(error) => {
-                return Err(format!(
-                    "Failed to execute {} with {}: {}",
-                    script_path.display(),
-                    program,
-                    error
-                ));
-            }
-        }
+    if let Some(script_dir) = script_path.parent() {
+        command.current_dir(script_dir);
     }
 
-    Err(
-        "Python runtime not found. Install python3 or python to run bundled connection tests."
-            .to_string(),
-    )
+    command.output().map_err(|error| {
+        format!(
+            "Failed to execute {} with {}: {}",
+            script_path.display(),
+            python_command.program,
+            error
+        )
+    })
 }
 
 fn run_onboarding_connection_test(
@@ -2044,9 +2141,10 @@ mod tests {
         build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
         build_onboarding_environment_requirements, build_onboarding_install_preview,
         command_output_with_search_path, merge_unix_search_path_values,
-        merge_windows_search_path_values, resolve_connection_test_script_path,
+        merge_windows_search_path_values, probe_requirement_with_runner,
+        resolve_connection_test_script_path, resolve_install_step_command_with_runner,
         resolve_process_search_path_from_values, trim_process_output, OnboardingAgentSyncResult,
-        OnboardingEnvironmentPlatform,
+        OnboardingEnvironmentInstallStep, OnboardingEnvironmentPlatform,
     };
     use crate::models::{
         OnboardingAgentState, OnboardingLinuxDevice, OnboardingRoleUseCaseContent, OnboardingState,
@@ -2055,6 +2153,7 @@ mod tests {
     use crate::onboarding::state::default_selected_install_skill_ids;
     use std::collections::HashMap;
     use std::fs;
+    use std::io::ErrorKind;
     use std::path::PathBuf;
     use std::process::Output;
     use std::sync::{Mutex, OnceLock};
@@ -2106,6 +2205,14 @@ mod tests {
     fn failure_status() -> std::process::ExitStatus {
         use std::os::windows::process::ExitStatusExt;
         std::process::ExitStatus::from_raw(1)
+    }
+
+    fn command_output(status: std::process::ExitStatus, stdout: &str, stderr: &str) -> Output {
+        Output {
+            status,
+            stdout: stdout.as_bytes().to_vec(),
+            stderr: stderr.as_bytes().to_vec(),
+        }
     }
 
     #[test]
@@ -2192,6 +2299,77 @@ mod tests {
         assert_eq!(
             trim_process_output(&output.stdout),
             "resolved-from-search-path"
+        );
+    }
+
+    #[test]
+    fn onboarding_python_probe_falls_back_to_python_when_py_launcher_fails() {
+        let result = probe_requirement_with_runner("python3", |program, args| {
+            if program == "py" && args == ["-3".to_string(), "--version".to_string()] {
+                return Ok(command_output(
+                    failure_status(),
+                    "",
+                    "No installed Python found for -3",
+                ));
+            }
+
+            if program == "python" && args == ["--version".to_string()] {
+                return Ok(command_output(success_status(), "Python 3.12.8", ""));
+            }
+
+            Err(std::io::Error::new(ErrorKind::NotFound, "missing"))
+        })
+        .expect("probe result");
+
+        assert_eq!(result, ("ready".to_string(), "Python 3.12.8".to_string()));
+    }
+
+    #[test]
+    fn onboarding_windows_paramiko_install_uses_python_when_py_launcher_fails() {
+        let step = OnboardingEnvironmentInstallStep {
+            requirement_id: "paramiko".to_string(),
+            label: "Paramiko".to_string(),
+            program: "python".to_string(),
+            args: vec![
+                "-m".to_string(),
+                "pip".to_string(),
+                "install".to_string(),
+                "-r".to_string(),
+                r"C:\tmp\requirements.txt".to_string(),
+            ],
+        };
+
+        let resolved = resolve_install_step_command_with_runner(
+            &step,
+            OnboardingEnvironmentPlatform::Windows,
+            |program, args| {
+                if program == "py" && args == ["-3".to_string(), "--version".to_string()] {
+                    return Ok(command_output(
+                        failure_status(),
+                        "",
+                        "No installed Python found for -3",
+                    ));
+                }
+
+                if program == "python" && args == ["--version".to_string()] {
+                    return Ok(command_output(success_status(), "Python 3.12.8", ""));
+                }
+
+                Err(std::io::Error::new(ErrorKind::NotFound, "missing"))
+            },
+        )
+        .expect("resolved paramiko install command");
+
+        assert_eq!(resolved.program, "python");
+        assert_eq!(
+            resolved.args,
+            vec![
+                "-m".to_string(),
+                "pip".to_string(),
+                "install".to_string(),
+                "-r".to_string(),
+                r"C:\tmp\requirements.txt".to_string(),
+            ]
         );
     }
 
