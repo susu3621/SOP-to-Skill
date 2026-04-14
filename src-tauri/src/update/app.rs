@@ -15,8 +15,25 @@ pub struct AppUpdateInfo {
     pub date: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppBuildInfo {
+    pub current_version: String,
+    pub display_version: String,
+}
+
 pub(crate) fn updater_is_configured(config: &Config) -> bool {
     matches!(config.plugins.0.get("updater"), Some(value) if value.is_object())
+}
+
+#[tauri::command]
+pub fn get_app_build_info() -> AppBuildInfo {
+    AppBuildInfo {
+        current_version: env!("CARGO_PKG_VERSION").to_string(),
+        display_version: option_env!("SOP_TO_SKILL_BUILD_DISPLAY_VERSION")
+            .map(str::to_string)
+            .unwrap_or_else(|| format!("v{}", env!("CARGO_PKG_VERSION"))),
+    }
 }
 
 #[tauri::command]

@@ -121,7 +121,10 @@ def probe_gerrit_http(
     )
 
     with opener(request, timeout=10) as response:
-        payload = json.loads(response.read().decode("utf-8"))
+        body = response.read().decode("utf-8-sig")
+        if body.startswith(")]}'"):
+            body = body[len(")]}'") :].lstrip("\r\n")
+        payload = json.loads(body)
         status_code = response.status if hasattr(response, "status") else response.getcode()
 
     return {

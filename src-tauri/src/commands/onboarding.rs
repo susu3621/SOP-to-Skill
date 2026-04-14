@@ -633,6 +633,9 @@ fn configure_onboarding_command(command: &mut Command) {
     if let Some(path) = resolve_process_search_path() {
         command.env("PATH", path);
     }
+
+    command.env("PYTHONUTF8", "1");
+    command.env("PYTHONIOENCODING", "UTF-8");
 }
 
 fn command_output_with_search_path(

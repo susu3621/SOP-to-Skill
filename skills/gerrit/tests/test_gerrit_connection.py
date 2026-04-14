@@ -109,6 +109,35 @@ def test_probe_gerrit_http_builds_basic_auth_request():
     }
 
 
+def test_probe_gerrit_http_strips_xssi_prefix():
+    module = load_script_module("gerrit_connection_probe_http_xssi")
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def read(self):
+            return b')]}\'\n{"name":"gerrit.user","email":"your.email@example.com"}'
+
+    result = module.probe_gerrit_http(
+        api_url="https://gerrit.example.com/a/accounts/self/detail",
+        username="gerrit.user",
+        password="gerrit-secret",
+        opener=lambda request, timeout: FakeResponse(),
+    )
+
+    assert result == {
+        "status_code": 200,
+        "username": "gerrit.user",
+        "email": "your.email@example.com",
+    }
+
+
 def test_probe_gerrit_ssh_runs_gerrit_version():
     module = load_script_module("gerrit_connection_probe_ssh_command")
 

@@ -718,6 +718,13 @@ textarea {
   justify-items: end;
 }
 
+.masthead__version {
+  margin: 0;
+  color: rgba(22, 48, 41, 0.68);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 .locale-switcher {
   display: inline-flex;
   gap: 8px;
@@ -1126,13 +1133,21 @@ textarea {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .onboarding-linux-device-card__title {
   margin: 0;
   font-weight: 700;
   color: #163029;
+}
+
+.onboarding-linux-device-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
 }
 
 .onboarding-linux-device-grid {
@@ -1551,7 +1566,7 @@ textarea {
 .update-hint {
   color: #e74c3c;
   font-weight: 600;
-  margin-top: 8px;
+  margin: 0;
 }
 
 .skills-grid {

@@ -119,6 +119,7 @@ pub fn run() {
             commands::config::open_data_directory,
             commands::config::export_current_log,
             // Update commands
+            update::app::get_app_build_info,
             update::app::check_app_update,
             update::app::install_app_update,
             update::github::check_skill_updates,

@@ -528,6 +528,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
   const {
     completion,
     connectionTests,
+    linuxDeviceConnectionTests,
     credentialGroups,
     dirty,
     environmentChecks,
@@ -550,6 +551,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     startSync,
     removeLinuxDevice,
     runManualConnectionTest,
+    runManualLinuxDeviceConnectionTest,
     installEnvironment,
     toggleAgent,
     toggleBaseSkill,
@@ -822,6 +824,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
               <CredentialsStep
                 locale={locale}
                 connectionTests={connectionTests}
+                linuxDeviceConnectionTests={linuxDeviceConnectionTests}
                 environmentChecks={environmentChecks}
                 environmentInstalls={environmentInstalls}
                 credentialGroups={credentialGroups}
@@ -830,6 +833,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                 onAddLinuxDevice={addLinuxDevice}
                 onInstallEnvironment={installEnvironment}
                 onRemoveLinuxDevice={removeLinuxDevice}
+                onRunLinuxDeviceConnectionTest={runManualLinuxDeviceConnectionTest}
                 onRunConnectionTest={runManualConnectionTest}
                 onUpdateCredential={updateCredentialValue}
                 onUpdateLinuxDeviceField={updateLinuxDeviceField}

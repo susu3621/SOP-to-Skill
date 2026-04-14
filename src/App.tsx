@@ -6,6 +6,7 @@ import { pageCopy, getCopy } from './content/copy'
 import { useLocale, useSkills } from './hooks/useSkills'
 import { useUpdates } from './hooks/useUpdates'
 import type {
+  AppBuildInfo,
   InstalledSkillInfo,
   InstallWizardState,
   Locale,
@@ -18,6 +19,12 @@ import './styles.css'
 function formatVersionLabel(locale: Locale, version?: string) {
   if (!version) return '-'
   return version === 'local' ? getCopy(locale, pageCopy.localPackage) : `v${version}`
+}
+
+function formatCurrentBuildLabel(locale: Locale, buildInfo: AppBuildInfo | null) {
+  return `${getCopy(locale, pageCopy.currentVersionPrefix)} ${
+    buildInfo?.displayVersion ?? '-'
+  }`
 }
 
 function getSkillCategoryLabel(category: string, locale: Locale) {
@@ -37,6 +44,7 @@ function App() {
   const [selectedSkill, setSelectedSkill] = useState<SkillInfo | null>(null)
   const [wizardState, setWizardState] = useState<InstallWizardState | null>(null)
   const [dataDirectoryPath, setDataDirectoryPath] = useState('~/.sop-to-skill')
+  const [buildInfo, setBuildInfo] = useState<AppBuildInfo | null>(null)
   const [installing, setInstalling] = useState(false)
   const [installResult, setInstallResult] = useState<{
     success?: boolean
@@ -93,6 +101,22 @@ function App() {
       .then((path) => {
         if (!cancelled && path) {
           setDataDirectoryPath(path)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void invoke<AppBuildInfo>('get_app_build_info')
+      .then((info) => {
+        if (!cancelled && info) {
+          setBuildInfo(info)
         }
       })
       .catch(() => {})
@@ -255,6 +279,9 @@ function App() {
                       {getCopy(locale, pageCopy.localeTag)}
                     </button>
                   )}
+                  <p className="masthead__version">
+                    {formatCurrentBuildLabel(locale, buildInfo)}
+                  </p>
                 </div>
                 <button
                   className="button--ghost"

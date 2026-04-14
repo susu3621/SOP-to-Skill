@@ -414,6 +414,24 @@ function buildCredentialFingerprint(
   )
 }
 
+function buildLinuxDeviceCredentialValues(device: OnboardingLinuxDeviceRecord) {
+  return {
+    linuxDeviceName: device.name,
+    linuxHost: device.host,
+    linuxUsername: device.username,
+    linuxPassword: device.password,
+  }
+}
+
+function isLinuxDeviceComplete(device: OnboardingLinuxDeviceRecord) {
+  const credentialValues = buildLinuxDeviceCredentialValues(device)
+  return Object.values(credentialValues).every((value) => isConfiguredText(value))
+}
+
+function buildLinuxDeviceFingerprint(device: OnboardingLinuxDeviceRecord) {
+  return JSON.stringify(buildLinuxDeviceCredentialValues(device))
+}
+
 function shouldRefreshEnvironmentCheck(
   existing: OnboardingEnvironmentCheckState | undefined,
   nextFingerprint: string
@@ -596,6 +614,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   const [saveFeedbacks, setSaveFeedbacks] = useState<Record<string, SaveFeedback>>({})
   const [savingScope, setSavingScope] = useState<string | null>(null)
   const [connectionTests, setConnectionTests] = useState<Record<string, OnboardingConnectionTestState>>({})
+  const [linuxDeviceConnectionTests, setLinuxDeviceConnectionTests] = useState<
+    Record<string, OnboardingConnectionTestState>
+  >({})
   const [environmentChecks, setEnvironmentChecks] = useState<
     Record<string, OnboardingEnvironmentCheckState>
   >({})
@@ -603,6 +624,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     Record<string, OnboardingEnvironmentInstallState>
   >({})
   const connectionTestRequestIdsRef = useRef<Record<string, number>>({})
+  const linuxDeviceConnectionTestRequestIdsRef = useRef<Record<string, number>>({})
   const environmentCheckRequestIdsRef = useRef<Record<string, number>>({})
   const environmentInstallRequestIdsRef = useRef<Record<string, number>>({})
 
@@ -917,6 +939,111 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       await runConnectionTest(serviceId, 'manual')
     },
     [runConnectionTest]
+  )
+
+  const runManualLinuxDeviceConnectionTest = useCallback(
+    async (deviceId: string) => {
+      const group = credentialGroupById.get('linux')
+      const device = state.linux_devices.find((item) => item.id === deviceId)
+
+      if (!group || !device) {
+        return
+      }
+
+      const requestId = (linuxDeviceConnectionTestRequestIdsRef.current[deviceId] ?? 0) + 1
+      linuxDeviceConnectionTestRequestIdsRef.current[deviceId] = requestId
+
+      if (!isLinuxDeviceComplete(device)) {
+        setLinuxDeviceConnectionTests((current) => ({
+          ...current,
+          [deviceId]: {
+            ...createIdleConnectionTestState(requestId),
+            summary: getOnboardingCopy(locale, onboardingCopy.connectionTestIncomplete),
+          },
+        }))
+        return
+      }
+
+      const credentialValues = buildLinuxDeviceCredentialValues(device)
+      const testedFingerprint = buildLinuxDeviceFingerprint(device)
+
+      setLinuxDeviceConnectionTests((current) => ({
+        ...current,
+        [deviceId]: {
+          status: 'pending',
+          summary: getOnboardingCopy(locale, onboardingCopy.connectionTestPending),
+          details: null,
+          last_trigger: 'manual',
+          tested_fingerprint: testedFingerprint,
+          request_id: requestId,
+        },
+      }))
+
+      try {
+        const result = await invoke<SkillResult<OnboardingConnectionTestResult>>(
+          'test_onboarding_connection',
+          {
+            input: {
+              service_id: group.service_id,
+              credential_values: credentialValues,
+              trigger: 'manual',
+              tested_fingerprint: testedFingerprint,
+            } satisfies OnboardingConnectionTestInput,
+          }
+        )
+
+        setLinuxDeviceConnectionTests((current) => {
+          if (current[deviceId]?.request_id !== requestId) {
+            return current
+          }
+
+          if (result.success) {
+            return {
+              ...current,
+              [deviceId]: {
+                status: result.success.success ? 'success' : 'error',
+                summary: result.success.summary,
+                details: result.success.details,
+                last_trigger: 'manual',
+                tested_fingerprint: result.success.tested_fingerprint,
+                request_id: requestId,
+              },
+            }
+          }
+
+          return {
+            ...current,
+            [deviceId]: {
+              status: 'error',
+              summary: result.error ?? getOnboardingCopy(locale, onboardingCopy.connectionTestError),
+              details: null,
+              last_trigger: 'manual',
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      } catch (error) {
+        setLinuxDeviceConnectionTests((current) => {
+          if (current[deviceId]?.request_id !== requestId) {
+            return current
+          }
+
+          return {
+            ...current,
+            [deviceId]: {
+              status: 'error',
+              summary: String(error),
+              details: null,
+              last_trigger: 'manual',
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      }
+    },
+    [credentialGroupById, locale, state.linux_devices]
   )
 
   const runEnvironmentCheck = useCallback(
@@ -1309,6 +1436,64 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       return changed ? next : current
     })
   }, [credentialGroups, state.credential_values])
+
+  useEffect(() => {
+    const linuxSelected = credentialGroups.some((group) => group.service_id === 'linux')
+
+    setLinuxDeviceConnectionTests((current) => {
+      if (!linuxSelected) {
+        return Object.keys(current).length > 0 ? {} : current
+      }
+
+      let changed = false
+      const deviceIds = new Set(state.linux_devices.map((device) => device.id))
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([deviceId]) => {
+          const keep = deviceIds.has(deviceId)
+          if (!keep) {
+            changed = true
+          }
+          return keep
+        })
+      )
+
+      state.linux_devices.forEach((device) => {
+        const existing = next[device.id]
+        if (!existing) {
+          return
+        }
+
+        const complete = isLinuxDeviceComplete(device)
+        const nextFingerprint = complete ? buildLinuxDeviceFingerprint(device) : null
+        const shouldReset =
+          !complete ||
+          (existing.tested_fingerprint != null && existing.tested_fingerprint !== nextFingerprint) ||
+          (complete && existing.tested_fingerprint == null && existing.summary != null)
+
+        if (shouldReset) {
+          const resetRequestId = Math.max(
+            existing.request_id,
+            linuxDeviceConnectionTestRequestIdsRef.current[device.id] ?? 0
+          ) + 1
+          linuxDeviceConnectionTestRequestIdsRef.current[device.id] = resetRequestId
+          const resetState = createIdleConnectionTestState(resetRequestId)
+
+          if (
+            existing.status !== resetState.status ||
+            existing.summary !== resetState.summary ||
+            existing.details !== resetState.details ||
+            existing.last_trigger !== resetState.last_trigger ||
+            existing.tested_fingerprint !== resetState.tested_fingerprint
+          ) {
+            next[device.id] = resetState
+            changed = true
+          }
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [credentialGroups, state.linux_devices])
 
   useEffect(() => {
     const selectedServiceIds = new Set(credentialGroups.map((group) => group.service_id))
@@ -1891,6 +2076,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   return {
     completion,
     connectionTests,
+    linuxDeviceConnectionTests,
     environmentChecks,
     environmentInstalls,
     credentialFields,
@@ -1918,6 +2104,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     toggleBaseSkill,
     toggleInstallSkill,
     runManualConnectionTest,
+    runManualLinuxDeviceConnectionTest,
     installEnvironment,
     updateLinuxDeviceField,
     updateCredentialValue,

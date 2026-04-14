@@ -271,6 +271,8 @@ beforeEach(() => {
         return { success: [] }
       case 'get_config':
         return { success: { preferred_locale: 'zh-CN' } }
+      case 'get_app_build_info':
+        return { currentVersion: '0.2.0', displayVersion: 'dd40e57' }
       case 'get_onboarding_state':
         return { success: currentState }
       case 'set_onboarding_state':
@@ -1403,6 +1405,59 @@ describe('OnboardingShell', () => {
     ]
     expect(payload.input.service_id).toBe('jira')
     expect(payload.input.trigger).toBe('manual')
+  })
+
+  it('runs a manual connection test for an individual linux device', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['linux'],
+      selected_install_skill_ids: ['linux'],
+      linux_devices: [
+        {
+          id: 'linux-device-1',
+          name: 'Build Server',
+          host: '192.168.9.20',
+          username: 'ops',
+          password: 'linux-secret',
+        },
+      ],
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    const deviceNameInput = screen.getByDisplayValue('Build Server')
+    const deviceCard = deviceNameInput.closest('.onboarding-linux-device-card')
+    expect(deviceCard).not.toBeNull()
+
+    await user.click(within(deviceCard as HTMLElement).getByRole('button', { name: '测试连接' }))
+
+    expect(getConnectionTestCalls().length).toBeGreaterThan(0)
+    const latestConnectionTestCall =
+      getConnectionTestCalls()[getConnectionTestCalls().length - 1]
+    const [, payload] = latestConnectionTestCall as [
+      string,
+      {
+        input: {
+          service_id: string
+          trigger: string
+          credential_values: Record<string, string>
+        }
+      },
+    ]
+    expect(payload.input.service_id).toBe('linux')
+    expect(payload.input.trigger).toBe('manual')
+    expect(payload.input.credential_values).toEqual({
+      linuxDeviceName: 'Build Server',
+      linuxHost: '192.168.9.20',
+      linuxUsername: 'ops',
+      linuxPassword: 'linux-secret',
+    })
   })
 
   it('shows success and failure results inline with status symbols and error details', async () => {

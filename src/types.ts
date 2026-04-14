@@ -104,6 +104,11 @@ export interface AppUpdateInfo {
   date?: string | null
 }
 
+export interface AppBuildInfo {
+  currentVersion: string
+  displayVersion: string
+}
+
 export interface SkillResult<T> {
   success?: T
   error?: string

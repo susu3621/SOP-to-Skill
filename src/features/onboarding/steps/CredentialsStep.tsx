@@ -12,6 +12,7 @@ interface CredentialsStepProps {
   locale: Locale
   credentialGroups: OnboardingCredentialGroup[]
   connectionTests: Record<string, OnboardingConnectionTestState>
+  linuxDeviceConnectionTests: Record<string, OnboardingConnectionTestState>
   environmentChecks: Record<string, OnboardingEnvironmentCheckState>
   environmentInstalls: Record<string, OnboardingEnvironmentInstallState>
   credentialValues: Record<string, string>
@@ -24,8 +25,15 @@ interface CredentialsStepProps {
     field: keyof Omit<OnboardingLinuxDeviceRecord, 'id'>,
     value: string
   ) => void
+  onRunLinuxDeviceConnectionTest: (deviceId: string) => void
   onRunConnectionTest: (serviceId: string) => void
   onInstallEnvironment: (serviceId: string) => void
+}
+
+function isLinuxDeviceComplete(device: OnboardingLinuxDeviceRecord) {
+  return [device.name, device.host, device.username, device.password].every(
+    (value) => value.trim().length > 0
+  )
 }
 
 function getConnectionTestStatusText(
@@ -95,6 +103,7 @@ export function CredentialsStep({
   locale,
   credentialGroups,
   connectionTests,
+  linuxDeviceConnectionTests,
   environmentChecks,
   environmentInstalls,
   credentialValues,
@@ -103,6 +112,7 @@ export function CredentialsStep({
   onAddLinuxDevice,
   onRemoveLinuxDevice,
   onUpdateLinuxDeviceField,
+  onRunLinuxDeviceConnectionTest,
   onRunConnectionTest,
   onInstallEnvironment,
 }: CredentialsStepProps) {
@@ -168,92 +178,145 @@ export function CredentialsStep({
                       </p>
                     ) : (
                       <div className="onboarding-linux-device-list">
-                        {linuxDevices.map((device) => (
-                          <section className="onboarding-linux-device-card" key={device.id}>
-                            <div className="onboarding-linux-device-card__header">
-                              <p className="onboarding-linux-device-card__title">
-                                {device.name.trim() || getOnboardingCopy(locale, onboardingCopy.linuxDeviceName)}
-                              </p>
-                              <button
-                                className="button--ghost"
-                                type="button"
-                                onClick={() => onRemoveLinuxDevice(device.id)}
-                              >
-                                {getOnboardingCopy(locale, onboardingCopy.linuxRemoveDevice)}
-                              </button>
-                            </div>
-                            <div className="onboarding-linux-device-grid">
-                              <div className="field">
-                                <label htmlFor={`${device.id}-name`}>
-                                  {getOnboardingCopy(locale, onboardingCopy.linuxDeviceName)}
-                                </label>
-                                <input
-                                  id={`${device.id}-name`}
-                                  type="text"
-                                  value={device.name}
-                                  placeholder={getOnboardingCopy(
-                                    locale,
-                                    onboardingCopy.linuxDeviceNamePlaceholder
-                                  )}
-                                  onChange={(event) =>
-                                    onUpdateLinuxDeviceField(device.id, 'name', event.target.value)
-                                  }
-                                />
+                        {linuxDevices.map((device) => {
+                          const deviceConnectionTest = linuxDeviceConnectionTests[device.id]
+                          const deviceStatusText = getConnectionTestStatusText(
+                            locale,
+                            deviceConnectionTest
+                          )
+                          const deviceTriggerText = getConnectionTestTriggerText(
+                            locale,
+                            deviceConnectionTest
+                          )
+                          const deviceComplete = isLinuxDeviceComplete(device)
+
+                          return (
+                            <section className="onboarding-linux-device-card" key={device.id}>
+                              <div className="onboarding-linux-device-card__header">
+                                <div>
+                                  <p className="onboarding-linux-device-card__title">
+                                    {device.name.trim() ||
+                                      getOnboardingCopy(locale, onboardingCopy.linuxDeviceName)}
+                                  </p>
+                                  <p className={getStatusClass(deviceConnectionTest?.status)}>
+                                    {deviceStatusText}
+                                  </p>
+                                </div>
+                                <div className="onboarding-linux-device-card__actions">
+                                  <button
+                                    className="button--ghost"
+                                    disabled={
+                                      !deviceComplete || deviceConnectionTest?.status === 'pending'
+                                    }
+                                    type="button"
+                                    onClick={() => onRunLinuxDeviceConnectionTest(device.id)}
+                                  >
+                                    {getOnboardingCopy(locale, onboardingCopy.testConnection)}
+                                  </button>
+                                  <button
+                                    className="button--ghost"
+                                    type="button"
+                                    onClick={() => onRemoveLinuxDevice(device.id)}
+                                  >
+                                    {getOnboardingCopy(locale, onboardingCopy.linuxRemoveDevice)}
+                                  </button>
+                                </div>
                               </div>
-                              <div className="field">
-                                <label htmlFor={`${device.id}-host`}>
-                                  {getOnboardingCopy(locale, onboardingCopy.linuxDeviceHost)}
-                                </label>
-                                <input
-                                  id={`${device.id}-host`}
-                                  type="text"
-                                  value={device.host}
-                                  placeholder={getOnboardingCopy(
-                                    locale,
-                                    onboardingCopy.linuxDeviceHostPlaceholder
-                                  )}
-                                  onChange={(event) =>
-                                    onUpdateLinuxDeviceField(device.id, 'host', event.target.value)
-                                  }
-                                />
+                              <div className="onboarding-linux-device-grid">
+                                <div className="field">
+                                  <label htmlFor={`${device.id}-name`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.linuxDeviceName)}
+                                  </label>
+                                  <input
+                                    id={`${device.id}-name`}
+                                    type="text"
+                                    value={device.name}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.linuxDeviceNamePlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateLinuxDeviceField(device.id, 'name', event.target.value)
+                                    }
+                                  />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`${device.id}-host`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.linuxDeviceHost)}
+                                  </label>
+                                  <input
+                                    id={`${device.id}-host`}
+                                    type="text"
+                                    value={device.host}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.linuxDeviceHostPlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateLinuxDeviceField(device.id, 'host', event.target.value)
+                                    }
+                                  />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`${device.id}-username`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.linuxDeviceUsername)}
+                                  </label>
+                                  <input
+                                    id={`${device.id}-username`}
+                                    type="text"
+                                    value={device.username}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.linuxDeviceUsernamePlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateLinuxDeviceField(
+                                        device.id,
+                                        'username',
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`${device.id}-password`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.linuxDevicePassword)}
+                                  </label>
+                                  <input
+                                    id={`${device.id}-password`}
+                                    type="password"
+                                    value={device.password}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.linuxDevicePasswordPlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateLinuxDeviceField(
+                                        device.id,
+                                        'password',
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
                               </div>
-                              <div className="field">
-                                <label htmlFor={`${device.id}-username`}>
-                                  {getOnboardingCopy(locale, onboardingCopy.linuxDeviceUsername)}
-                                </label>
-                                <input
-                                  id={`${device.id}-username`}
-                                  type="text"
-                                  value={device.username}
-                                  placeholder={getOnboardingCopy(
-                                    locale,
-                                    onboardingCopy.linuxDeviceUsernamePlaceholder
-                                  )}
-                                  onChange={(event) =>
-                                    onUpdateLinuxDeviceField(device.id, 'username', event.target.value)
-                                  }
-                                />
-                              </div>
-                              <div className="field">
-                                <label htmlFor={`${device.id}-password`}>
-                                  {getOnboardingCopy(locale, onboardingCopy.linuxDevicePassword)}
-                                </label>
-                                <input
-                                  id={`${device.id}-password`}
-                                  type="password"
-                                  value={device.password}
-                                  placeholder={getOnboardingCopy(
-                                    locale,
-                                    onboardingCopy.linuxDevicePasswordPlaceholder
-                                  )}
-                                  onChange={(event) =>
-                                    onUpdateLinuxDeviceField(device.id, 'password', event.target.value)
-                                  }
-                                />
-                              </div>
-                            </div>
-                          </section>
-                        ))}
+
+                              {deviceConnectionTest?.summary &&
+                                deviceConnectionTest.summary !== deviceStatusText && (
+                                  <p className={getStatusClass(deviceConnectionTest.status)}>
+                                    {deviceConnectionTest.summary}
+                                  </p>
+                                )}
+
+                              {deviceConnectionTest?.status === 'error' &&
+                                deviceConnectionTest.details && (
+                                  <p className="error">{deviceConnectionTest.details}</p>
+                                )}
+
+                              {deviceTriggerText && <p className="muted">{deviceTriggerText}</p>}
+                            </section>
+                          )
+                        })}
                       </div>
                     )}
                   </>

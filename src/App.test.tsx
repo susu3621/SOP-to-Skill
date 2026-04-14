@@ -180,8 +180,14 @@ const fixtures = vi.hoisted(() => {
     date: '2026-04-02T00:00:00Z',
   }
 
+  const buildInfo = {
+    currentVersion: '0.2.0',
+    displayVersion: 'dd40e57',
+  }
+
   const runtime = {
     appUpdate: null as null | typeof appUpdate,
+    buildInfo: buildInfo as typeof buildInfo,
     installAppUpdateCalls: 0,
     exportCurrentLogCalls: 0,
     exportCurrentLogResult: {
@@ -213,6 +219,8 @@ vi.mock('@tauri-apps/api/core', () => ({
         return []
       case 'check_app_update':
         return fixtures.runtime.appUpdate
+      case 'get_app_build_info':
+        return fixtures.runtime.buildInfo
       case 'install_app_update':
         fixtures.runtime.installAppUpdateCalls += 1
         return true
@@ -315,6 +323,10 @@ describe('onboarding shell smoke coverage', () => {
 
   beforeEach(() => {
     fixtures.runtime.appUpdate = null
+    fixtures.runtime.buildInfo = {
+      currentVersion: '0.2.0',
+      displayVersion: 'dd40e57',
+    }
     fixtures.runtime.installAppUpdateCalls = 0
     fixtures.runtime.exportCurrentLogCalls = 0
     fixtures.runtime.exportCurrentLogResult = {
@@ -441,16 +453,34 @@ describe('onboarding shell smoke coverage', () => {
 
   it('shows an install action when a newer desktop app update is available', async () => {
     fixtures.runtime.appUpdate = fixtures.appUpdate
+    fixtures.runtime.buildInfo = {
+      currentVersion: '0.2.0',
+      displayVersion: 'v0.2.0',
+    }
     const user = userEvent.setup()
 
     render(<App />)
 
     const installButton = await screen.findByRole('button', { name: /下载并安装更新/ })
     expect(screen.getByText('发现新版本 v0.2.1')).toBeInTheDocument()
+    expect(await screen.findByText('当前版本 v0.2.0')).toBeInTheDocument()
 
     await user.click(installButton)
 
     expect(fixtures.runtime.installAppUpdateCalls).toBe(1)
+  })
+
+  it('shows the current build identifier next to the update action for local builds', async () => {
+    fixtures.runtime.buildInfo = {
+      currentVersion: '0.2.0',
+      displayVersion: 'dd40e57',
+    }
+
+    render(<App />)
+
+    await waitForOnboardingHome()
+
+    expect(await screen.findByText('当前版本 dd40e57')).toBeInTheDocument()
   })
 
   it('renders the full app shell in English when the preferred locale is en-US', async () => {
