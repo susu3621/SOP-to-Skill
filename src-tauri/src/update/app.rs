@@ -77,10 +77,7 @@ pub async fn install_app_update(
         return Err("No pending update available".to_string());
     };
 
-    match update
-        .download_and_install(|_, _| {}, || {})
-        .await
-    {
+    match update.download_and_install(|_, _| {}, || {}).await {
         Ok(_) => {
             app.restart();
         }

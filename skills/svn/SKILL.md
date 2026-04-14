@@ -12,6 +12,7 @@ Use this skill for standard SVN workflows in repositories that still rely on Sub
 - `python3` for the bundled connectivity probe
 - Network access to the SVN server over HTTP or HTTPS
 - Required environment variables:
+  - `SVN_REPOSITORIES_JSON` as the canonical multi-repository configuration
   - `SVN_URL`
   - `SVN_USERNAME`
   - `SVN_PASSWORD`
@@ -78,3 +79,4 @@ svn commit -m "brief change summary"
 - Prefer `svn status` before committing so the working-copy delta is explicit.
 - Use `svn info` or `svn ls` first when you need to confirm repository access.
 - The bundled probe is intentionally limited to HTTP/HTTPS username-password access.
+- When both `SVN_REPOSITORIES_JSON` and legacy `SVN_*` variables exist, the bundled probe prefers the first complete repository from `SVN_REPOSITORIES_JSON`.

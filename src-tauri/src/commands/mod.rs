@@ -1,5 +1,9 @@
 use serde::de::DeserializeOwned;
 use serde_json::Value;
+use std::process::Command;
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 pub mod config;
 pub mod onboarding;
@@ -7,6 +11,29 @@ pub mod skill;
 
 pub(crate) const CURRENT_STORAGE_VERSION: u64 = 1;
 pub(crate) const CURRENT_APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+#[cfg(target_os = "windows")]
+const WINDOWS_CREATE_NO_WINDOW: u32 = 0x08000000;
+
+#[cfg_attr(not(any(test, target_os = "windows")), allow(dead_code))]
+pub(crate) fn background_command_creation_flags() -> u32 {
+    #[cfg(target_os = "windows")]
+    {
+        WINDOWS_CREATE_NO_WINDOW
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        0
+    }
+}
+
+pub(crate) fn configure_background_command(_command: &mut Command) {
+    #[cfg(target_os = "windows")]
+    {
+        _command.creation_flags(background_command_creation_flags());
+    }
+}
 
 fn strip_optional_utf8_bom(content: &str) -> &str {
     content.strip_prefix('\u{feff}').unwrap_or(content)
@@ -53,4 +80,19 @@ pub(crate) fn migrate_storage_metadata(value: &mut Value) -> bool {
     }
 
     changed
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(not(target_os = "windows"))]
+    #[test]
+    fn background_command_creation_flags_are_disabled_on_non_windows() {
+        assert_eq!(super::background_command_creation_flags(), 0);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn background_command_creation_flags_hide_console_windows() {
+        assert_eq!(super::background_command_creation_flags(), 0x08000000);
+    }
 }

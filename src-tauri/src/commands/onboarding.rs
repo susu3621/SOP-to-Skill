@@ -1,7 +1,7 @@
 use crate::commands::skill::{self, SkillResult};
 use crate::models::{
     GeneratedSkillIds, OnboardingAgentState, OnboardingAgentSyncPreview, OnboardingState,
-    OnboardingSyncPlan, OnboardingUseCase,
+    OnboardingSvnRepository, OnboardingSyncPlan, OnboardingUseCase,
 };
 use crate::onboarding::{
     generator::{
@@ -29,7 +29,9 @@ use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter};
 
-use super::{migrate_storage_metadata, parse_json_with_optional_utf8_bom};
+use super::{
+    configure_background_command, migrate_storage_metadata, parse_json_with_optional_utf8_bom,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingInstallPreview {
@@ -196,6 +198,7 @@ const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "JIRA_URL",
     "JIRA_USERNAME",
     "JIRA_PASSWORD",
+    "SVN_REPOSITORIES_JSON",
     "SVN_URL",
     "SVN_USERNAME",
     "SVN_PASSWORD",
@@ -634,6 +637,8 @@ fn resolve_process_search_path() -> Option<String> {
 }
 
 fn configure_onboarding_command(command: &mut Command) {
+    configure_background_command(command);
+
     if let Some(path) = resolve_process_search_path() {
         command.env("PATH", path);
     }
@@ -648,6 +653,7 @@ fn command_output_with_search_path(
     search_path: Option<&str>,
 ) -> Result<Output, std::io::Error> {
     let mut command = Command::new(program);
+    configure_background_command(&mut command);
     if let Some(path) = search_path.filter(|path| !path.trim().is_empty()) {
         command.env("PATH", path);
     }
@@ -1627,6 +1633,133 @@ fn build_linux_devices_env_entry(
     Ok(Some(("LINUX_DEVICES_JSON".to_string(), serialized)))
 }
 
+fn serialize_svn_repository(repository: &OnboardingSvnRepository) -> serde_json::Value {
+    json!({
+        "id": repository.id,
+        "name": repository.name.trim(),
+        "url": repository.url.trim(),
+        "username": repository.username.trim(),
+        "password": repository.password,
+    })
+}
+
+fn build_svn_repositories_for_env(state: &OnboardingState) -> Vec<serde_json::Value> {
+    let configured_repositories = state
+        .svn_repositories
+        .iter()
+        .filter(|repository| {
+            [
+                repository.name.as_str(),
+                repository.url.as_str(),
+                repository.username.as_str(),
+                repository.password.as_str(),
+            ]
+            .iter()
+            .any(|value| !value.trim().is_empty())
+        })
+        .map(serialize_svn_repository)
+        .collect::<Vec<_>>();
+
+    if !configured_repositories.is_empty() {
+        return configured_repositories;
+    }
+
+    let legacy_url = state
+        .credential_values
+        .get("svnUrl")
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default();
+    let legacy_username = state
+        .credential_values
+        .get("svnUsername")
+        .map(|value| value.trim().to_string())
+        .unwrap_or_default();
+    let legacy_password = state
+        .credential_values
+        .get("svnPassword")
+        .cloned()
+        .unwrap_or_default();
+
+    if [
+        legacy_url.as_str(),
+        legacy_username.as_str(),
+        legacy_password.as_str(),
+    ]
+    .iter()
+    .all(|value| value.is_empty())
+    {
+        return Vec::new();
+    }
+
+    vec![json!({
+        "id": "svn-repository-1",
+        "name": legacy_url,
+        "url": legacy_url,
+        "username": legacy_username,
+        "password": legacy_password,
+    })]
+}
+
+fn build_svn_repositories_env_entries(
+    state: &OnboardingState,
+) -> Result<Vec<(String, String)>, String> {
+    let repositories = build_svn_repositories_for_env(state);
+    if repositories.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let serialized = serde_json::to_string(&repositories)
+        .map_err(|error| format!("Failed to serialize SVN repositories: {}", error))?;
+    let mut entries = vec![("SVN_REPOSITORIES_JSON".to_string(), serialized)];
+
+    if let Some(first_complete_repository) = repositories.iter().find(|repository| {
+        repository
+            .get("url")
+            .and_then(|value| value.as_str())
+            .map(|value| !value.trim().is_empty())
+            .unwrap_or(false)
+            && repository
+                .get("username")
+                .and_then(|value| value.as_str())
+                .map(|value| !value.trim().is_empty())
+                .unwrap_or(false)
+            && repository
+                .get("password")
+                .and_then(|value| value.as_str())
+                .map(|value| !value.trim().is_empty())
+                .unwrap_or(false)
+    }) {
+        entries.extend(vec![
+            (
+                "SVN_URL".to_string(),
+                first_complete_repository
+                    .get("url")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+            ),
+            (
+                "SVN_USERNAME".to_string(),
+                first_complete_repository
+                    .get("username")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+            ),
+            (
+                "SVN_PASSWORD".to_string(),
+                first_complete_repository
+                    .get("password")
+                    .and_then(|value| value.as_str())
+                    .unwrap_or_default()
+                    .to_string(),
+            ),
+        ]);
+    }
+
+    Ok(entries)
+}
+
 fn build_onboarding_home_env_entries(
     state: &OnboardingState,
 ) -> Result<Vec<(String, String)>, String> {
@@ -1637,6 +1770,11 @@ fn build_onboarding_home_env_entries(
             if let Some(entry) = build_linux_devices_env_entry(state)? {
                 entries.push(entry);
             }
+            continue;
+        }
+
+        if base_skill_id == "svn" {
+            entries.extend(build_svn_repositories_env_entries(state)?);
             continue;
         }
 
@@ -1993,8 +2131,10 @@ pub fn sync_onboarding_credentials(state: OnboardingState) -> SkillResult<bool> 
 pub async fn test_onboarding_connection(
     input: OnboardingConnectionTestInput,
 ) -> SkillResult<OnboardingConnectionTestResult> {
-    match run_onboarding_connection_test_async(input, |input| run_onboarding_connection_test(&input))
-        .await
+    match run_onboarding_connection_test_async(input, |input| {
+        run_onboarding_connection_test(&input)
+    })
+    .await
     {
         Ok(result) => SkillResult::Success { success: result },
         Err(error) => SkillResult::Error { error },
@@ -2289,18 +2429,17 @@ mod tests {
     use super::{
         apply_onboarding_sync_plan, build_connection_test_env_entries,
         build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
-        build_windows_paramiko_mirror_install_args,
         build_onboarding_environment_requirements, build_onboarding_install_preview,
-        command_output_with_search_path, merge_unix_search_path_values,
-        merge_windows_search_path_values, probe_requirement_with_runner,
-        resolve_connection_test_script_path, resolve_install_step_command_with_runner,
-        resolve_process_search_path_from_values, should_retry_windows_paramiko_install_with_mirror,
-        trim_process_output, OnboardingAgentSyncResult,
-        OnboardingEnvironmentInstallStep, OnboardingEnvironmentPlatform,
+        build_windows_paramiko_mirror_install_args, command_output_with_search_path,
+        merge_unix_search_path_values, merge_windows_search_path_values,
+        probe_requirement_with_runner, resolve_connection_test_script_path,
+        resolve_install_step_command_with_runner, resolve_process_search_path_from_values,
+        should_retry_windows_paramiko_install_with_mirror, trim_process_output,
+        OnboardingAgentSyncResult, OnboardingEnvironmentInstallStep, OnboardingEnvironmentPlatform,
     };
     use crate::models::{
         OnboardingAgentState, OnboardingLinuxDevice, OnboardingRoleUseCaseContent, OnboardingState,
-        OnboardingUseCase,
+        OnboardingSvnRepository, OnboardingUseCase,
     };
     use crate::onboarding::state::default_selected_install_skill_ids;
     use std::collections::HashMap;
@@ -2759,7 +2898,9 @@ mod tests {
         assert!(steps[0].args.contains(&"Python.Python.3.12".to_string()));
         assert_eq!(steps[1].requirement_id, "svn");
         assert_eq!(steps[1].program, "winget");
-        assert!(steps[1].args.contains(&"TortoiseSVN.TortoiseSVN".to_string()));
+        assert!(steps[1]
+            .args
+            .contains(&"TortoiseSVN.TortoiseSVN".to_string()));
         assert!(steps[1].args.contains(&"--custom".to_string()));
         assert!(steps[1].args.contains(&"ADDLOCAL=ALL".to_string()));
     }
@@ -3049,6 +3190,7 @@ mod tests {
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -3112,6 +3254,7 @@ mod tests {
             ],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -3168,6 +3311,7 @@ mod tests {
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -3223,6 +3367,7 @@ mod tests {
             ],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -3281,6 +3426,7 @@ mod tests {
             ],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let preview = build_onboarding_install_preview(
@@ -3329,6 +3475,7 @@ mod tests {
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let result = super::get_onboarding_install_preview(
@@ -3365,6 +3512,7 @@ mod tests {
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let result = super::get_onboarding_install_preview(
@@ -3406,6 +3554,7 @@ mod tests {
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
@@ -3444,6 +3593,7 @@ mod tests {
             selected_install_candidate_skill_ids: vec![],
             credential_values: std::collections::HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {
@@ -3642,6 +3792,7 @@ mod tests {
                 ("mailPassword".to_string(), "mail-secret".to_string()),
             ]),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         super::sync_onboarding_credentials_to_home_env(&state).expect("sync home env");
@@ -3699,6 +3850,7 @@ mod tests {
                 ("mailPassword".to_string(), "mail-secret".to_string()),
             ]),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
@@ -3751,6 +3903,7 @@ mod tests {
                     password: "deploy-secret".to_string(),
                 },
             ],
+            svn_repositories: vec![],
         };
 
         super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
@@ -3802,6 +3955,7 @@ mod tests {
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
             ]),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
@@ -3816,6 +3970,51 @@ mod tests {
         assert!(!content.contains("MAIL_FROM="));
         assert!(!content.contains("MAIL_USE_SSL="));
         assert!(!content.contains("MAIL_USE_STARTTLS="));
+    }
+
+    #[test]
+    fn onboarding_sync_writes_svn_repositories_to_home_env_file() {
+        let home_dir = temp_dir("home-env-svn");
+        let env_path = home_dir.join(".env");
+
+        let state = OnboardingState {
+            selected_agent_ids: vec!["codex".to_string()],
+            selected_role_id: "it-manager".to_string(),
+            selected_base_skill_ids: vec!["svn".to_string()],
+            role_use_case_contents: vec![],
+            selected_install_skill_ids: vec![],
+            selected_install_skill_ids_initialized: false,
+            selected_install_candidate_skill_ids: vec![],
+            credential_values: HashMap::new(),
+            linux_devices: vec![],
+            svn_repositories: vec![
+                OnboardingSvnRepository {
+                    id: "svn-repository-1".to_string(),
+                    name: "Draft Repo".to_string(),
+                    url: "".to_string(),
+                    username: "".to_string(),
+                    password: "".to_string(),
+                },
+                OnboardingSvnRepository {
+                    id: "svn-repository-2".to_string(),
+                    name: "Project Repo".to_string(),
+                    url: "https://svn.example.com/repos/project".to_string(),
+                    username: "svn.user".to_string(),
+                    password: "svn-secret".to_string(),
+                },
+            ],
+        };
+
+        super::sync_onboarding_credentials_to_env_path(&state, &env_path).expect("sync env");
+
+        let content = fs::read_to_string(&env_path).expect("read env");
+        assert!(content.contains("SVN_REPOSITORIES_JSON="));
+        assert!(content.contains("Project Repo"));
+        assert!(content.contains("https://svn.example.com/repos/project"));
+        assert!(content.contains("SVN_URL=\"https://svn.example.com/repos/project\""));
+        assert!(content.contains("SVN_USERNAME=\"svn.user\""));
+        assert!(content.contains("SVN_PASSWORD=\"svn-secret\""));
+        assert!(!content.contains("SVN_URL=\"\""));
     }
 
     #[test]
@@ -3851,6 +4050,7 @@ mod tests {
                 ("mailPassword".to_string(), "mail-secret".to_string()),
             ]),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let result = super::sync_onboarding_credentials(state);
@@ -3889,6 +4089,7 @@ mod tests {
                 ("jiraPassword".to_string(), "jira-secret".to_string()),
             ]),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let result = super::sync_onboarding_installation(OnboardingSyncCommandInput {

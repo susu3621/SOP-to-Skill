@@ -2,8 +2,7 @@ use crate::models::{InstallStrategy, InstalledSkill, SkillError, SkillTemplate, 
 use crate::template::{
     copy_directory, delete_skill_path, ensure_directories, get_default_variables,
     get_installed_dir, get_output_dir, get_output_path, get_skills_dir, load_all_templates,
-    load_skill_template, load_template_file, render_template, validate_variables,
-    write_skill_file,
+    load_skill_template, load_template_file, render_template, validate_variables, write_skill_file,
 };
 use serde::Serialize;
 use std::collections::HashMap;
@@ -157,7 +156,10 @@ pub(crate) fn parse_target_app_id(app_id: &str) -> Result<TargetAppId, SkillErro
         "claude-code" => Ok(TargetAppId::ClaudeCode),
         "codex" => Ok(TargetAppId::Codex),
         "workbuddy" => Ok(TargetAppId::WorkBuddy),
-        _ => Err(SkillError::TemplateNotFound(format!("Unknown app: {}", app_id))),
+        _ => Err(SkillError::TemplateNotFound(format!(
+            "Unknown app: {}",
+            app_id
+        ))),
     }
 }
 
@@ -245,9 +247,8 @@ pub(crate) fn save_installed_skill(
     let installed_dir = installed_dir_for_data_root(data_root).join(skill.app_id.as_str());
 
     if !installed_dir.exists() {
-        fs::create_dir_all(&installed_dir).map_err(|e| {
-            SkillError::WriteError(format!("Failed to create directory: {}", e))
-        })?;
+        fs::create_dir_all(&installed_dir)
+            .map_err(|e| SkillError::WriteError(format!("Failed to create directory: {}", e)))?;
     }
 
     let meta_path = installed_dir.join(format!("{}.json", skill.skill_id));
@@ -261,7 +262,10 @@ pub(crate) fn save_installed_skill(
 }
 
 /// Delete installed skill metadata
-pub(crate) fn delete_installed_skill(skill_id: &str, app_id: &TargetAppId) -> Result<(), SkillError> {
+pub(crate) fn delete_installed_skill(
+    skill_id: &str,
+    app_id: &TargetAppId,
+) -> Result<(), SkillError> {
     let installed_dir = get_installed_dir().join(app_id.as_str());
     let meta_path = installed_dir.join(format!("{}.json", skill_id));
 
@@ -461,7 +465,8 @@ pub async fn list_installed() -> SkillResult<Vec<InstalledSkillInfo>> {
 
                         if skill_path.extension().map(|e| e == "json").unwrap_or(false) {
                             if let Ok(content) = fs::read_to_string(&skill_path) {
-                                if let Ok(installed) = serde_json::from_str::<InstalledSkill>(&content)
+                                if let Ok(installed) =
+                                    serde_json::from_str::<InstalledSkill>(&content)
                                 {
                                     installed_skills.push(InstalledSkillInfo {
                                         skill_id: installed.skill_id,
@@ -587,12 +592,9 @@ mod tests {
             content_hash: "sha256:test".to_string(),
         };
 
-        let template = load_skill_template_from_dir_with_manifest(
-            "jira",
-            &jira_dir,
-            Some(&manifest_entry),
-        )
-        .unwrap();
+        let template =
+            load_skill_template_from_dir_with_manifest("jira", &jira_dir, Some(&manifest_entry))
+                .unwrap();
 
         let installed = install_directory_package_at_path(
             "jira",

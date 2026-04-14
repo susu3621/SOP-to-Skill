@@ -187,6 +187,14 @@ export interface OnboardingLinuxDeviceRecord {
   password: string
 }
 
+export interface OnboardingSvnRepositoryRecord {
+  id: string
+  name: string
+  url: string
+  username: string
+  password: string
+}
+
 export interface OnboardingState {
   selected_agent_ids: string[]
   selected_role_id: string
@@ -197,6 +205,7 @@ export interface OnboardingState {
   selected_install_candidate_skill_ids: string[]
   credential_values: Record<string, string>
   linux_devices: OnboardingLinuxDeviceRecord[]
+  svn_repositories?: OnboardingSvnRepositoryRecord[]
 }
 
 export interface OnboardingInstallCandidateGroup {
@@ -329,7 +338,7 @@ export interface OnboardingCredentialGroup {
   service_id: string
   service_name: string
   service_description: string
-  editor_type: 'fields' | 'linux-devices'
+  editor_type: 'fields' | 'linux-devices' | 'svn-repositories'
   supports_connection_test: boolean
   fields: WizardField[]
   required_field_ids: string[]

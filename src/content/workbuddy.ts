@@ -972,6 +972,18 @@ function buildCredentialGroup(
     }
   }
 
+  if (skillKey === 'svn') {
+    return {
+      service_id: skillKey,
+      service_name: readConfigText(skill.name, locale),
+      service_description: readConfigText(skill.description, locale),
+      editor_type: 'svn-repositories',
+      supports_connection_test: false,
+      fields: [],
+      required_field_ids: [],
+    }
+  }
+
   const fields = (credentialFieldCache[skillKey] ?? []).filter((field) =>
     isVisibleCredentialField(skillKey, field.id, credentialValues)
   )

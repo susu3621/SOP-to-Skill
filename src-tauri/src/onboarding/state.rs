@@ -10,7 +10,10 @@ fn push_unique(values: &mut Vec<String>, value: String) {
     }
 }
 
-pub fn generated_skill_ids_for_use_case(role_id: &str, use_case_directory: &str) -> GeneratedSkillIds {
+pub fn generated_skill_ids_for_use_case(
+    role_id: &str,
+    use_case_directory: &str,
+) -> GeneratedSkillIds {
     GeneratedSkillIds {
         production_skill_id: format!("{role_id}-{use_case_directory}"),
         test_skill_id: format!("test-{role_id}-{use_case_directory}"),
@@ -41,7 +44,10 @@ pub fn default_selected_install_skill_ids(
             &mut selected_install_skill_ids,
             generated_skill_ids.production_skill_id,
         );
-        push_unique(&mut selected_install_skill_ids, generated_skill_ids.test_skill_id);
+        push_unique(
+            &mut selected_install_skill_ids,
+            generated_skill_ids.test_skill_id,
+        );
     }
 
     selected_install_skill_ids
@@ -53,11 +59,13 @@ pub fn prune_deselected_base_skill_credentials(
     selected_base_skill_ids: &[String],
     base_skills: &[OnboardingBaseSkill],
 ) -> OnboardingState {
-    state.selected_install_skill_ids_initialized =
-        state.selected_install_skill_ids_initialized || !state.selected_install_skill_ids.is_empty();
+    state.selected_install_skill_ids_initialized = state.selected_install_skill_ids_initialized
+        || !state.selected_install_skill_ids.is_empty();
 
-    let selected_base_skill_ids: HashSet<String> = selected_base_skill_ids.iter().cloned().collect();
-    let base_skill_ids: HashSet<String> = base_skills.iter().map(|skill| skill.id.clone()).collect();
+    let selected_base_skill_ids: HashSet<String> =
+        selected_base_skill_ids.iter().cloned().collect();
+    let base_skill_ids: HashSet<String> =
+        base_skills.iter().map(|skill| skill.id.clone()).collect();
     let removed_base_skill_ids: HashSet<String> = base_skill_ids
         .difference(&selected_base_skill_ids)
         .cloned()
@@ -87,8 +95,10 @@ pub fn resolve_selected_install_skill_ids(
     state: &OnboardingState,
     current_candidate_skill_ids: &[String],
 ) -> Vec<String> {
-    let current_candidate_skill_ids_set: HashSet<&str> =
-        current_candidate_skill_ids.iter().map(|id| id.as_str()).collect();
+    let current_candidate_skill_ids_set: HashSet<&str> = current_candidate_skill_ids
+        .iter()
+        .map(|id| id.as_str())
+        .collect();
     let previous_candidate_skill_ids: HashSet<&str> = state
         .selected_install_candidate_skill_ids
         .iter()
@@ -160,8 +170,14 @@ mod tests {
     fn onboarding_generates_production_and_test_skill_ids_for_a_role_use_case_pair() {
         let generated = generated_skill_ids_for_use_case("project-manager", "weekly-report");
 
-        assert_eq!(generated.production_skill_id, "project-manager-weekly-report");
-        assert_eq!(generated.test_skill_id, "test-project-manager-weekly-report");
+        assert_eq!(
+            generated.production_skill_id,
+            "project-manager-weekly-report"
+        );
+        assert_eq!(
+            generated.test_skill_id,
+            "test-project-manager-weekly-report"
+        );
     }
 
     #[test]
@@ -177,10 +193,7 @@ mod tests {
                 id: "planning".to_string(),
                 name: "记录计划".to_string(),
                 directory: "planning".to_string(),
-                applicable_role_ids: vec![
-                    "project-manager".to_string(),
-                    "qa-manager".to_string(),
-                ],
+                applicable_role_ids: vec!["project-manager".to_string(), "qa-manager".to_string()],
             },
             OnboardingUseCase {
                 id: "daily-log".to_string(),
@@ -240,6 +253,7 @@ mod tests {
                 ("sharedNote".to_string(), "keep-me".to_string()),
             ]),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let pruned = prune_deselected_base_skill_credentials(
@@ -268,7 +282,10 @@ mod tests {
         assert_eq!(pruned.selected_base_skill_ids, vec!["jira".to_string()]);
         assert_eq!(
             pruned.selected_install_skill_ids,
-            vec!["jira".to_string(), "project-manager-weekly-report".to_string()]
+            vec![
+                "jira".to_string(),
+                "project-manager-weekly-report".to_string()
+            ]
         );
         assert!(pruned.selected_install_skill_ids_initialized);
         assert_eq!(
@@ -295,7 +312,8 @@ mod tests {
     }
 
     #[test]
-    fn onboarding_preserves_explicit_deselections_and_selects_new_candidates_after_context_change() {
+    fn onboarding_preserves_explicit_deselections_and_selects_new_candidates_after_context_change()
+    {
         let state = OnboardingState {
             selected_agent_ids: vec!["codex".to_string()],
             selected_role_id: "project-manager".to_string(),
@@ -313,6 +331,7 @@ mod tests {
             ],
             credential_values: HashMap::new(),
             linux_devices: vec![],
+            svn_repositories: vec![],
         };
 
         let resolved = resolve_selected_install_skill_ids(

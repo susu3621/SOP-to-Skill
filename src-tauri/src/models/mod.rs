@@ -1,5 +1,5 @@
-mod skill;
 mod onboarding;
+mod skill;
 
-pub use skill::*;
 pub use onboarding::*;
+pub use skill::*;

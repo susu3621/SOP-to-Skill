@@ -95,18 +95,12 @@ pub fn get_output_dir(app_id: &TargetAppId, skill_id: &str) -> PathBuf {
 }
 
 /// Write rendered content to the target file
-pub fn write_skill_file(
-    output_path: &PathBuf,
-    content: &str,
-) -> Result<(), SkillError> {
+pub fn write_skill_file(output_path: &PathBuf, content: &str) -> Result<(), SkillError> {
     // Ensure parent directory exists
     if let Some(parent) = output_path.parent() {
         if !parent.exists() {
             fs::create_dir_all(parent).map_err(|e| {
-                SkillError::WriteError(format!(
-                    "Failed to create directory {:?}: {}",
-                    parent, e
-                ))
+                SkillError::WriteError(format!("Failed to create directory {:?}: {}", parent, e))
             })?;
         }
     }
@@ -238,6 +232,9 @@ mod tests {
         let home_dir = dirs::home_dir().expect("home dir");
         let output_dir = get_output_dir(&TargetAppId::WorkBuddy, "mail");
 
-        assert_eq!(output_dir, home_dir.join(".workbuddy").join("skills").join("mail"));
+        assert_eq!(
+            output_dir,
+            home_dir.join(".workbuddy").join("skills").join("mail")
+        );
     }
 }

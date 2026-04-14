@@ -76,7 +76,8 @@ pub fn build_selected_agent_install_sync_plans(
             for skill_id in &agent.installed_skill_ids {
                 let skill_id_str = skill_id.as_str();
 
-                if contains_skill(&managed_skill_ids, skill_id_str) && !desired_skill_ids.contains(skill_id_str)
+                if contains_skill(&managed_skill_ids, skill_id_str)
+                    && !desired_skill_ids.contains(skill_id_str)
                 {
                     removed_skill_ids.push(skill_id.clone());
                 } else {
@@ -85,7 +86,11 @@ pub fn build_selected_agent_install_sync_plans(
             }
 
             for skill_id in &normalized_selected_install_skill_ids {
-                if !agent.installed_skill_ids.iter().any(|installed| installed == skill_id) {
+                if !agent
+                    .installed_skill_ids
+                    .iter()
+                    .any(|installed| installed == skill_id)
+                {
                     added_skill_ids.push(skill_id.clone());
                 }
             }
@@ -112,7 +117,8 @@ mod tests {
     use crate::models::{OnboardingAgentState, OnboardingAgentSyncPreview};
 
     #[test]
-    fn onboarding_builds_per_agent_add_remove_and_unchanged_previews_for_multiple_selected_agents() {
+    fn onboarding_builds_per_agent_add_remove_and_unchanged_previews_for_multiple_selected_agents()
+    {
         let preview = build_selected_agent_install_sync_plans(
             &[
                 OnboardingAgentState {
@@ -145,13 +151,22 @@ mod tests {
                 "test-project-manager-weekly-report".to_string(),
             ],
             &["codex".to_string(), "workbuddy".to_string()],
-            &["jira".to_string(), "test-project-manager-weekly-report".to_string()],
+            &[
+                "jira".to_string(),
+                "test-project-manager-weekly-report".to_string(),
+            ],
         );
 
-        assert_eq!(preview.selected_agent_ids, vec!["codex".to_string(), "workbuddy".to_string()]);
+        assert_eq!(
+            preview.selected_agent_ids,
+            vec!["codex".to_string(), "workbuddy".to_string()]
+        );
         assert_eq!(
             preview.selected_install_skill_ids,
-            vec!["jira".to_string(), "test-project-manager-weekly-report".to_string()]
+            vec![
+                "jira".to_string(),
+                "test-project-manager-weekly-report".to_string()
+            ]
         );
         assert_eq!(
             preview.agent_previews,

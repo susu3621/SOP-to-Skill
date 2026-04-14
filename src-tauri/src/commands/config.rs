@@ -5,8 +5,8 @@ use std::path::Path;
 use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
-use super::{migrate_storage_metadata, parse_json_with_optional_utf8_bom};
 use super::skill::SkillResult;
+use super::{migrate_storage_metadata, parse_json_with_optional_utf8_bom};
 
 fn persist_json_value(path: &Path, value: &serde_json::Value) -> Result<(), String> {
     let _ = ensure_directories();
@@ -63,7 +63,8 @@ pub fn load_config() -> AppConfig {
 
     if config_path.exists() {
         if let Ok(content) = fs::read_to_string(&config_path) {
-            if let Ok(mut value) = parse_json_with_optional_utf8_bom::<serde_json::Value>(&content) {
+            if let Ok(mut value) = parse_json_with_optional_utf8_bom::<serde_json::Value>(&content)
+            {
                 let migrated = migrate_storage_metadata(&mut value);
 
                 if migrated {
@@ -83,8 +84,8 @@ pub fn load_config() -> AppConfig {
 /// Save configuration to disk
 pub fn save_config(config: &AppConfig) -> Result<(), String> {
     let config_path = get_config_path();
-    let mut value =
-        serde_json::to_value(config).map_err(|error| format!("Failed to serialize config: {error}"))?;
+    let mut value = serde_json::to_value(config)
+        .map_err(|error| format!("Failed to serialize config: {error}"))?;
     migrate_storage_metadata(&mut value);
     persist_json_value(&config_path, &value)?;
 
@@ -268,7 +269,10 @@ mod tests {
         let error = super::copy_log_file_to_destination(&source_path, &destination_path)
             .expect_err("missing source log should fail");
 
-        assert_eq!(error, "No current log file is available to export.".to_string());
+        assert_eq!(
+            error,
+            "No current log file is available to export.".to_string()
+        );
     }
 
     #[test]

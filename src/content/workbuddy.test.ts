@@ -175,16 +175,13 @@ describe('workbuddy agent apps', () => {
     ])
   })
 
-  it('shows SVN credential fields as a simple HTTP credential group', () => {
+  it('exposes SVN as a structured onboarding credential group without flat fields', () => {
     const svnGroup = getCredentialGroups(['svn'])[0]
 
     expect(svnGroup?.service_name).toBe('SVN')
-    expect(svnGroup?.fields.map((field) => field.id)).toEqual([
-      'svnUrl',
-      'svnUsername',
-      'svnPassword',
-    ])
-    expect(svnGroup?.required_field_ids).toEqual(['svnUrl', 'svnUsername', 'svnPassword'])
+    expect(svnGroup?.editor_type).toBe('svn-repositories')
+    expect(svnGroup?.fields).toEqual([])
+    expect(svnGroup?.required_field_ids).toEqual([])
   })
 
   it('exposes Linux as a structured onboarding credential group without flat fields', () => {

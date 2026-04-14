@@ -529,6 +529,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     completion,
     connectionTests,
     linuxDeviceConnectionTests,
+    svnRepositoryConnectionTests,
     credentialGroups,
     dirty,
     environmentChecks,
@@ -536,6 +537,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     hasPendingEnvironmentChecks,
     installCandidateGroups,
     addLinuxDevice,
+    addSvnRepository,
     loading,
     preview,
     previewError,
@@ -550,8 +552,10 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     syncResult,
     startSync,
     removeLinuxDevice,
+    removeSvnRepository,
     runManualConnectionTest,
     runManualLinuxDeviceConnectionTest,
+    runManualSvnRepositoryConnectionTest,
     installEnvironment,
     toggleAgent,
     toggleBaseSkill,
@@ -562,6 +566,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     removeUseCaseQuestion,
     updateCredentialValue,
     updateLinuxDeviceField,
+    updateSvnRepositoryField,
     updateUseCaseDescription,
     updateUseCaseQuestionAnswer,
     updateUseCaseQuestionLabel,
@@ -825,18 +830,24 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                 locale={locale}
                 connectionTests={connectionTests}
                 linuxDeviceConnectionTests={linuxDeviceConnectionTests}
+                svnRepositoryConnectionTests={svnRepositoryConnectionTests}
                 environmentChecks={environmentChecks}
                 environmentInstalls={environmentInstalls}
                 credentialGroups={credentialGroups}
                 credentialValues={state.credential_values}
                 linuxDevices={state.linux_devices}
+                svnRepositories={state.svn_repositories ?? []}
                 onAddLinuxDevice={addLinuxDevice}
+                onAddSvnRepository={addSvnRepository}
                 onInstallEnvironment={installEnvironment}
                 onRemoveLinuxDevice={removeLinuxDevice}
+                onRemoveSvnRepository={removeSvnRepository}
                 onRunLinuxDeviceConnectionTest={runManualLinuxDeviceConnectionTest}
+                onRunSvnRepositoryConnectionTest={runManualSvnRepositoryConnectionTest}
                 onRunConnectionTest={runManualConnectionTest}
                 onUpdateCredential={updateCredentialValue}
                 onUpdateLinuxDeviceField={updateLinuxDeviceField}
+                onUpdateSvnRepositoryField={updateSvnRepositoryField}
               />
             </section>
             <div className="button-row">

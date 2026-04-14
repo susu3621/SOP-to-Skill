@@ -227,6 +227,54 @@ export const onboardingCopy = {
     'zh-CN': '当前还没有 Linux 设备，点击“新增设备”开始录入。',
     'en-US': 'No Linux devices yet. Click “Add device” to start.',
   },
+  svnRepositoriesBody: {
+    'zh-CN': '可录入多个 SVN 仓库，每个仓库单独填写名称、URL 和登录账号。',
+    'en-US': 'Add multiple SVN repositories and keep a separate name, URL, and login for each one.',
+  },
+  svnRepositoryName: {
+    'zh-CN': '仓库名称',
+    'en-US': 'Repository name',
+  },
+  svnRepositoryNamePlaceholder: {
+    'zh-CN': '例如：Project Repo',
+    'en-US': 'Example: Project Repo',
+  },
+  svnRepositoryUrl: {
+    'zh-CN': 'SVN URL',
+    'en-US': 'SVN URL',
+  },
+  svnRepositoryUrlPlaceholder: {
+    'zh-CN': 'https://svn.your-company.com/repos/project',
+    'en-US': 'https://svn.your-company.com/repos/project',
+  },
+  svnRepositoryUsername: {
+    'zh-CN': 'SVN 用户名',
+    'en-US': 'SVN Username',
+  },
+  svnRepositoryUsernamePlaceholder: {
+    'zh-CN': 'your.name',
+    'en-US': 'your.name',
+  },
+  svnRepositoryPassword: {
+    'zh-CN': 'SVN 密码',
+    'en-US': 'SVN Password',
+  },
+  svnRepositoryPasswordPlaceholder: {
+    'zh-CN': '输入 SVN 密码',
+    'en-US': 'Enter your SVN password',
+  },
+  svnAddRepository: {
+    'zh-CN': '新增仓库',
+    'en-US': 'Add repository',
+  },
+  svnRemoveRepository: {
+    'zh-CN': '删除仓库',
+    'en-US': 'Remove repository',
+  },
+  svnRepositoryListEmpty: {
+    'zh-CN': '当前还没有 SVN 仓库，点击“新增仓库”开始录入。',
+    'en-US': 'No SVN repositories yet. Click “Add repository” to start.',
+  },
   selectAgentApps: {
     'zh-CN': '选择 Agent 应用',
     'en-US': 'Choose AI apps',
@@ -260,8 +308,8 @@ export const onboardingCopy = {
     'en-US': '❌ Failed',
   },
   connectionTestAutoHint: {
-    'zh-CN': '保存设置后会自动测试，也可以手动点击测试连接。',
-    'en-US': 'The app tests automatically after you save settings, and you can also run it manually.',
+    'zh-CN': '填写完成后可手动点击测试连接。',
+    'en-US': 'After filling in the fields, run the connection test manually.',
   },
   connectionTestIncomplete: {
     'zh-CN': '请先填写当前服务的必填项。',

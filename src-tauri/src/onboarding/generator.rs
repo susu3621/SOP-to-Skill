@@ -36,7 +36,11 @@ fn get_onboarding_staging_dir_with_data_root(data_root: Option<&PathBuf>) -> Pat
         .join("generated-skills")
 }
 
-fn build_skill_markdown(input: &StageOnboardingPackageInput, skill_id: &str, include_test_guidance: bool) -> String {
+fn build_skill_markdown(
+    input: &StageOnboardingPackageInput,
+    skill_id: &str,
+    include_test_guidance: bool,
+) -> String {
     let base_skill_ids = if input.selected_base_skill_ids.is_empty() {
         "无".to_string()
     } else {
@@ -131,7 +135,9 @@ fn stage_generated_use_case_skill_packages_with_data_root(
 
 #[cfg(test)]
 mod tests {
-    use super::{stage_generated_use_case_skill_packages_with_data_root, StageOnboardingPackageInput};
+    use super::{
+        stage_generated_use_case_skill_packages_with_data_root, StageOnboardingPackageInput,
+    };
     use crate::models::OnboardingUseCaseQuestion;
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -152,23 +158,26 @@ mod tests {
     fn onboarding_stages_both_generated_package_variants_under_app_data_root() {
         let data_dir = temp_data_dir("onboarding-stage");
 
-        let result = stage_generated_use_case_skill_packages_with_data_root(&StageOnboardingPackageInput {
-            role_id: "project-manager".to_string(),
-            role_name: "项目经理".to_string(),
-            selected_agent_ids: vec!["codex".to_string(), "workbuddy".to_string()],
-            selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
-            use_case: crate::models::OnboardingRoleUseCaseContent {
+        let result = stage_generated_use_case_skill_packages_with_data_root(
+            &StageOnboardingPackageInput {
                 role_id: "project-manager".to_string(),
-                use_case_id: "weekly-report".to_string(),
-                use_case_name: "项目周报".to_string(),
-                description: "按周报模板输出项目状态".to_string(),
-                description_locked: false,
-                info_sources: "Jira 看板、Confluence 模板".to_string(),
-                rules: "先风险后里程碑".to_string(),
-                questions: vec![],
+                role_name: "项目经理".to_string(),
+                selected_agent_ids: vec!["codex".to_string(), "workbuddy".to_string()],
+                selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
+                use_case: crate::models::OnboardingRoleUseCaseContent {
+                    role_id: "project-manager".to_string(),
+                    use_case_id: "weekly-report".to_string(),
+                    use_case_name: "项目周报".to_string(),
+                    description: "按周报模板输出项目状态".to_string(),
+                    description_locked: false,
+                    info_sources: "Jira 看板、Confluence 模板".to_string(),
+                    rules: "先风险后里程碑".to_string(),
+                    questions: vec![],
+                },
+                use_case_directory: "weekly-report".to_string(),
             },
-            use_case_directory: "weekly-report".to_string(),
-        }, Some(&data_dir))
+            Some(&data_dir),
+        )
         .expect("stage packages");
 
         assert_eq!(result.production.skill_id, "project-manager-weekly-report");
@@ -177,33 +186,33 @@ mod tests {
         assert!(result.test.source_dir.starts_with(&data_dir));
         assert!(result.production.source_dir.join("SKILL.md").exists());
         assert!(result.test.source_dir.join("SKILL.md").exists());
-        assert!(
-            fs::read_to_string(result.test.source_dir.join("SKILL.md"))
-                .expect("test skill md")
-                .contains("/tmp/skills-for-no-engineer")
-        );
-
+        assert!(fs::read_to_string(result.test.source_dir.join("SKILL.md"))
+            .expect("test skill md")
+            .contains("/tmp/skills-for-no-engineer"));
     }
 
     #[test]
     fn onboarding_rejects_empty_use_case_directory() {
-        let result = stage_generated_use_case_skill_packages_with_data_root(&StageOnboardingPackageInput {
-            role_id: "project-manager".to_string(),
-            role_name: "项目经理".to_string(),
-            selected_agent_ids: vec!["codex".to_string()],
-            selected_base_skill_ids: vec!["jira".to_string()],
-            use_case: crate::models::OnboardingRoleUseCaseContent {
+        let result = stage_generated_use_case_skill_packages_with_data_root(
+            &StageOnboardingPackageInput {
                 role_id: "project-manager".to_string(),
-                use_case_id: "weekly-report".to_string(),
-                use_case_name: "项目周报".to_string(),
-                description: "按周报模板输出项目状态".to_string(),
-                description_locked: false,
-                info_sources: "Jira 看板".to_string(),
-                rules: "先风险后里程碑".to_string(),
-                questions: vec![],
+                role_name: "项目经理".to_string(),
+                selected_agent_ids: vec!["codex".to_string()],
+                selected_base_skill_ids: vec!["jira".to_string()],
+                use_case: crate::models::OnboardingRoleUseCaseContent {
+                    role_id: "project-manager".to_string(),
+                    use_case_id: "weekly-report".to_string(),
+                    use_case_name: "项目周报".to_string(),
+                    description: "按周报模板输出项目状态".to_string(),
+                    description_locked: false,
+                    info_sources: "Jira 看板".to_string(),
+                    rules: "先风险后里程碑".to_string(),
+                    questions: vec![],
+                },
+                use_case_directory: String::new(),
             },
-            use_case_directory: String::new(),
-        }, None);
+            None,
+        );
 
         assert!(result.is_err());
         assert_eq!(
@@ -216,44 +225,48 @@ mod tests {
     fn onboarding_renders_structured_questions_into_generated_markdown() {
         let data_dir = temp_data_dir("onboarding-structured");
 
-        let result = stage_generated_use_case_skill_packages_with_data_root(&StageOnboardingPackageInput {
-            role_id: "project-manager".to_string(),
-            role_name: "项目经理".to_string(),
-            selected_agent_ids: vec!["codex".to_string()],
-            selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
-            use_case: crate::models::OnboardingRoleUseCaseContent {
+        let result = stage_generated_use_case_skill_packages_with_data_root(
+            &StageOnboardingPackageInput {
                 role_id: "project-manager".to_string(),
-                use_case_id: "weekly-report".to_string(),
-                use_case_name: "项目周报".to_string(),
-                description: "汇总项目状态、风险和下周动作，形成标准化周报输出。".to_string(),
-                description_locked: true,
-                info_sources: "".to_string(),
-                rules: "".to_string(),
-                questions: vec![
-                    OnboardingUseCaseQuestion {
-                        id: "project-list-source".to_string(),
-                        label: "从哪里获取负责的项目清单？".to_string(),
-                        placeholder: "".to_string(),
-                        required: true,
-                        answer: "https://wiki.company.com/project-list".to_string(),
-                        locked: true,
-                    },
-                    OnboardingUseCaseQuestion {
-                        id: "weekly-report-sop".to_string(),
-                        label: "从哪里获取周报 SOP？".to_string(),
-                        placeholder: "".to_string(),
-                        required: true,
-                        answer: "https://wiki.company.com/pmo/weekly-report-template".to_string(),
-                        locked: true,
-                    },
-                ],
+                role_name: "项目经理".to_string(),
+                selected_agent_ids: vec!["codex".to_string()],
+                selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
+                use_case: crate::models::OnboardingRoleUseCaseContent {
+                    role_id: "project-manager".to_string(),
+                    use_case_id: "weekly-report".to_string(),
+                    use_case_name: "项目周报".to_string(),
+                    description: "汇总项目状态、风险和下周动作，形成标准化周报输出。".to_string(),
+                    description_locked: true,
+                    info_sources: "".to_string(),
+                    rules: "".to_string(),
+                    questions: vec![
+                        OnboardingUseCaseQuestion {
+                            id: "project-list-source".to_string(),
+                            label: "从哪里获取负责的项目清单？".to_string(),
+                            placeholder: "".to_string(),
+                            required: true,
+                            answer: "https://wiki.company.com/project-list".to_string(),
+                            locked: true,
+                        },
+                        OnboardingUseCaseQuestion {
+                            id: "weekly-report-sop".to_string(),
+                            label: "从哪里获取周报 SOP？".to_string(),
+                            placeholder: "".to_string(),
+                            required: true,
+                            answer: "https://wiki.company.com/pmo/weekly-report-template"
+                                .to_string(),
+                            locked: true,
+                        },
+                    ],
+                },
+                use_case_directory: "weekly-report".to_string(),
             },
-            use_case_directory: "weekly-report".to_string(),
-        }, Some(&data_dir))
+            Some(&data_dir),
+        )
         .expect("stage packages");
 
-        let production_markdown =
-            fs::read_to_string(result.production.source_dir.join("SKILL.md")).expect("production skill md");
+        let production_markdown = fs::read_to_string(result.production.source_dir.join("SKILL.md"))
+            .expect("production skill md");
 
         assert!(production_markdown.contains("## 用例说明"));
         assert!(production_markdown.contains("汇总项目状态、风险和下周动作，形成标准化周报输出。"));

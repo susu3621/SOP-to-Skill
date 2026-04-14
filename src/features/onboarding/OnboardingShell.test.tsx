@@ -807,6 +807,15 @@ describe('OnboardingShell', () => {
       ...fixtures.onboardingState,
       selected_base_skill_ids: ['jira', 'confluence', 'gerrit', 'svn', 'mail'],
       selected_install_skill_ids: ['jira', 'confluence', 'gerrit', 'svn', 'mail'],
+      svn_repositories: [
+        {
+          id: 'svn-repository-1',
+          name: '',
+          url: '',
+          username: '',
+          password: '',
+        },
+      ],
     }
     const user = userEvent.setup()
 
@@ -822,6 +831,7 @@ describe('OnboardingShell', () => {
     expect(screen.getByLabelText('Gerrit URL')).toBeInTheDocument()
     expect(screen.getByLabelText('Gerrit 用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('Gerrit 密码 / HTTP 密码')).toBeInTheDocument()
+    expect(screen.getByLabelText('仓库名称')).toBeInTheDocument()
     expect(screen.getByLabelText('SVN URL')).toBeInTheDocument()
     expect(screen.getByLabelText('SVN 用户名')).toBeInTheDocument()
     expect(screen.getByLabelText('SVN 密码')).toBeInTheDocument()
@@ -1109,6 +1119,86 @@ describe('OnboardingShell', () => {
     ])
   })
 
+  it('persists multiple SVN repositories as structured records when saving base skills', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: [],
+      selected_install_skill_ids: [],
+      credential_values: {},
+    } as any
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+    await user.click(screen.getByRole('checkbox', { name: 'SVN' }))
+
+    expect(screen.getAllByLabelText('仓库名称')).toHaveLength(1)
+
+    await user.type(screen.getByLabelText('仓库名称'), 'Project Repo')
+    await user.clear(screen.getByLabelText('SVN URL'))
+    await user.type(screen.getByLabelText('SVN URL'), 'https://svn.example.com/repos/project')
+    await user.clear(screen.getByLabelText('SVN 用户名'))
+    await user.type(screen.getByLabelText('SVN 用户名'), 'svn.user')
+    await user.clear(screen.getByLabelText('SVN 密码'))
+    await user.type(screen.getByLabelText('SVN 密码'), 'svn-secret')
+
+    await user.click(screen.getByRole('button', { name: '新增仓库' }))
+
+    const repoNameInputs = screen.getAllByLabelText('仓库名称')
+    const repoUrlInputs = screen.getAllByLabelText('SVN URL')
+    const repoUsernameInputs = screen.getAllByLabelText('SVN 用户名')
+    const repoPasswordInputs = screen.getAllByLabelText('SVN 密码')
+
+    await user.type(repoNameInputs[1], 'Ops Repo')
+    await user.clear(repoUrlInputs[1])
+    await user.type(repoUrlInputs[1], 'https://svn.example.com/repos/ops')
+    await user.clear(repoUsernameInputs[1])
+    await user.type(repoUsernameInputs[1], 'ops.user')
+    await user.clear(repoPasswordInputs[1])
+    await user.type(repoPasswordInputs[1], 'ops-secret')
+
+    await user.click(screen.getByRole('button', { name: '保存设置' }))
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    const [, payload] = getSetStateCalls()[0] as [
+      string,
+      {
+        state: {
+          selected_base_skill_ids: string[]
+          svn_repositories?: Array<{
+            name: string
+            url: string
+            username: string
+            password: string
+          }>
+        }
+      },
+    ]
+
+    expect(payload.state.selected_base_skill_ids).toContain('svn')
+    expect(payload.state.svn_repositories).toEqual([
+      expect.objectContaining({
+        name: 'Project Repo',
+        url: 'https://svn.example.com/repos/project',
+        username: 'svn.user',
+        password: 'svn-secret',
+      }),
+      expect.objectContaining({
+        name: 'Ops Repo',
+        url: 'https://svn.example.com/repos/ops',
+        username: 'ops.user',
+        password: 'ops-secret',
+      }),
+    ])
+  })
+
   it('runs an automatic environment check when a base skill is selected and renders the environment panel beside credentials', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
@@ -1336,7 +1426,7 @@ describe('OnboardingShell', () => {
     expect(screen.queryByRole('button', { name: '自动安装缺失环境' })).not.toBeInTheDocument()
   })
 
-  it('runs automatic connection tests after saving completed credentials', async () => {
+  it('does not run automatic connection tests after saving completed credentials', async () => {
     mockControls.stateOverride = {
       ...fixtures.onboardingState,
       selected_base_skill_ids: ['jira'],
@@ -1368,13 +1458,9 @@ describe('OnboardingShell', () => {
 
     expect(getSetStateCalls()).toHaveLength(1)
     expect(getCredentialSyncCalls()).toHaveLength(1)
-    expect(getConnectionTestCalls()).toHaveLength(1)
-    const [, payload] = getConnectionTestCalls()[0] as [
-      string,
-      { input: { service_id: string; trigger: string } },
-    ]
-    expect(payload.input.service_id).toBe('jira')
-    expect(payload.input.trigger).toBe('automatic')
+    expect(getConnectionTestCalls()).toHaveLength(0)
+    expect(screen.getByText('未测试')).toBeInTheDocument()
+    expect(screen.getByText('填写完成后可手动点击测试连接。')).toBeInTheDocument()
   })
 
   it('runs a manual connection test for the selected service', async () => {
@@ -1459,6 +1545,60 @@ describe('OnboardingShell', () => {
       linuxHost: '192.168.9.20',
       linuxUsername: 'ops',
       linuxPassword: 'linux-secret',
+    })
+  })
+
+  it('runs a manual connection test for an individual SVN repository', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['svn'],
+      selected_install_skill_ids: ['svn'],
+      credential_values: {},
+      svn_repositories: [
+        {
+          id: 'svn-repository-1',
+          name: 'Project Repo',
+          url: 'https://svn.example.com/repos/project',
+          username: 'svn.user',
+          password: 'svn-secret',
+        },
+      ],
+    } as any
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    const repoNameInput = screen.getByDisplayValue('Project Repo')
+    const repoCard = repoNameInput.closest('.onboarding-svn-repository-card')
+    expect(repoCard).not.toBeNull()
+
+    await user.click(within(repoCard as HTMLElement).getByRole('button', { name: '测试连接' }))
+
+    expect(getConnectionTestCalls().length).toBeGreaterThan(0)
+    const latestConnectionTestCall =
+      getConnectionTestCalls()[getConnectionTestCalls().length - 1]
+    const [, payload] = latestConnectionTestCall as [
+      string,
+      {
+        input: {
+          service_id: string
+          trigger: string
+          credential_values: Record<string, string>
+        }
+      },
+    ]
+    expect(payload.input.service_id).toBe('svn')
+    expect(payload.input.trigger).toBe('manual')
+    expect(payload.input.credential_values).toEqual({
+      svnRepositoryName: 'Project Repo',
+      svnUrl: 'https://svn.example.com/repos/project',
+      svnUsername: 'svn.user',
+      svnPassword: 'svn-secret',
     })
   })
 

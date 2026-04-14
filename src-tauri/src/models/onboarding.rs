@@ -67,6 +67,19 @@ pub struct OnboardingLinuxDevice {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub struct OnboardingSvnRepository {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub url: String,
+    #[serde(default)]
+    pub username: String,
+    #[serde(default)]
+    pub password: String,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub struct OnboardingState {
     #[serde(default)]
     pub selected_agent_ids: Vec<String>,
@@ -85,6 +98,8 @@ pub struct OnboardingState {
     pub credential_values: HashMap<String, String>,
     #[serde(default)]
     pub linux_devices: Vec<OnboardingLinuxDevice>,
+    #[serde(default)]
+    pub svn_repositories: Vec<OnboardingSvnRepository>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

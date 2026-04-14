@@ -60,8 +60,9 @@ fn migrate_legacy_data_root_if_needed(
         return Ok(());
     };
 
-    fs::create_dir_all(new_root)
-        .map_err(|e| SkillError::WriteError(format!("Failed to create directory {:?}: {}", new_root, e)))?;
+    fs::create_dir_all(new_root).map_err(|e| {
+        SkillError::WriteError(format!("Failed to create directory {:?}: {}", new_root, e))
+    })?;
     copy_directory_contents(legacy_root, new_root)
 }
 
@@ -237,8 +238,9 @@ pub fn ensure_directories() -> Result<(), SkillError> {
 
     for dir in dirs_to_create {
         if !dir.exists() {
-            fs::create_dir_all(&dir)
-                .map_err(|e| SkillError::WriteError(format!("Failed to create directory {:?}: {}", dir, e)))?;
+            fs::create_dir_all(&dir).map_err(|e| {
+                SkillError::WriteError(format!("Failed to create directory {:?}: {}", dir, e))
+            })?;
         }
     }
 
@@ -283,8 +285,10 @@ fn extract_heading(content: &str) -> Option<String> {
         lines = content.lines();
     }
 
-    lines
-        .find_map(|line| line.strip_prefix("# ").map(|value| value.trim().to_string()))
+    lines.find_map(|line| {
+        line.strip_prefix("# ")
+            .map(|value| value.trim().to_string())
+    })
 }
 
 fn manifest_path(skills_dir: &Path) -> PathBuf {
@@ -300,9 +304,8 @@ fn load_skill_manifest_from_skills_dir(
     }
 
     let content = fs::read_to_string(&path)?;
-    let manifest = serde_json::from_str(&content).map_err(|e| {
-        SkillError::ManifestError(format!("Failed to parse {:?}: {}", path, e))
-    })?;
+    let manifest = serde_json::from_str(&content)
+        .map_err(|e| SkillError::ManifestError(format!("Failed to parse {:?}: {}", path, e)))?;
 
     Ok(Some(manifest))
 }
@@ -327,7 +330,9 @@ fn resolve_manifest_skill_dir(skills_dir: &Path, entry: &SkillManifestEntry) -> 
 
 fn directory_package_targets(entry: Option<&SkillManifestEntry>) -> Vec<TargetConfig> {
     let target_app_ids = match entry {
-        Some(manifest_entry) if !manifest_entry.targets.is_empty() => manifest_entry.targets.clone(),
+        Some(manifest_entry) if !manifest_entry.targets.is_empty() => {
+            manifest_entry.targets.clone()
+        }
         _ => vec![TargetAppId::ClaudeCode, TargetAppId::Codex],
     };
 
@@ -411,7 +416,9 @@ pub fn load_skill_template(skill_id: &str) -> Result<SkillTemplate, SkillError> 
     load_skill_template_from_dir_with_manifest(skill_id, &skill_dir, manifest_entry.as_ref())
 }
 
-pub(crate) fn load_all_templates_from_dir(skills_dir: &Path) -> Result<Vec<SkillTemplate>, SkillError> {
+pub(crate) fn load_all_templates_from_dir(
+    skills_dir: &Path,
+) -> Result<Vec<SkillTemplate>, SkillError> {
     if !skills_dir.exists() {
         return Ok(Vec::new());
     }
@@ -591,7 +598,11 @@ description: Use when reading Jira issue details.
             r#"{"preferred_locale":"zh-CN"}"#,
         )
         .unwrap();
-        fs::write(legacy_root.join("installed").join("jira").join("SKILL.md"), "# Jira").unwrap();
+        fs::write(
+            legacy_root.join("installed").join("jira").join("SKILL.md"),
+            "# Jira",
+        )
+        .unwrap();
 
         let resolved = resolve_data_root_from_base_dir(&base_dir).unwrap();
 
@@ -600,7 +611,11 @@ description: Use when reading Jira issue details.
             fs::read_to_string(expected_root.join("config.json")).unwrap(),
             r#"{"preferred_locale":"zh-CN"}"#
         );
-        assert!(expected_root.join("installed").join("jira").join("SKILL.md").exists());
+        assert!(expected_root
+            .join("installed")
+            .join("jira")
+            .join("SKILL.md")
+            .exists());
         assert!(expected_root.join("cache").exists());
     }
 
@@ -613,13 +628,20 @@ description: Use when reading Jira issue details.
         fs::create_dir_all(legacy_root.join("installed").join("jira")).unwrap();
         fs::create_dir_all(&new_root).unwrap();
         fs::write(legacy_root.join("config.json"), "legacy").unwrap();
-        fs::write(legacy_root.join("installed").join("jira").join("SKILL.md"), "# Jira").unwrap();
+        fs::write(
+            legacy_root.join("installed").join("jira").join("SKILL.md"),
+            "# Jira",
+        )
+        .unwrap();
         fs::write(new_root.join("config.json"), "new").unwrap();
 
         let resolved = resolve_data_root_from_base_dir(&base_dir).unwrap();
 
         assert_eq!(resolved, new_root);
-        assert_eq!(fs::read_to_string(new_root.join("config.json")).unwrap(), "new");
+        assert_eq!(
+            fs::read_to_string(new_root.join("config.json")).unwrap(),
+            "new"
+        );
         assert!(!new_root.join("installed").join("jira").exists());
     }
 
@@ -630,8 +652,19 @@ description: Use when reading Jira issue details.
         let expected_root = base_dir.join(".sop-to-skill");
 
         fs::create_dir_all(previous_root.join("installed").join("jira")).unwrap();
-        fs::write(previous_root.join("config.json"), r#"{"preferred_locale":"en-US"}"#).unwrap();
-        fs::write(previous_root.join("installed").join("jira").join("SKILL.md"), "# Jira").unwrap();
+        fs::write(
+            previous_root.join("config.json"),
+            r#"{"preferred_locale":"en-US"}"#,
+        )
+        .unwrap();
+        fs::write(
+            previous_root
+                .join("installed")
+                .join("jira")
+                .join("SKILL.md"),
+            "# Jira",
+        )
+        .unwrap();
 
         let resolved = resolve_data_root_from_base_dir(&base_dir).unwrap();
 
@@ -640,7 +673,11 @@ description: Use when reading Jira issue details.
             fs::read_to_string(expected_root.join("config.json")).unwrap(),
             r#"{"preferred_locale":"en-US"}"#
         );
-        assert!(expected_root.join("installed").join("jira").join("SKILL.md").exists());
+        assert!(expected_root
+            .join("installed")
+            .join("jira")
+            .join("SKILL.md")
+            .exists());
     }
 
     #[test]
@@ -651,12 +688,26 @@ description: Use when reading Jira issue details.
         let expected_root = home_dir.join(".sop-to-skill");
 
         fs::create_dir_all(previous_root.join("installed").join("jira")).unwrap();
-        fs::write(previous_root.join("config.json"), r#"{"preferred_locale":"en-US"}"#).unwrap();
-        fs::write(previous_root.join("installed").join("jira").join("SKILL.md"), "# Jira").unwrap();
+        fs::write(
+            previous_root.join("config.json"),
+            r#"{"preferred_locale":"en-US"}"#,
+        )
+        .unwrap();
+        fs::write(
+            previous_root
+                .join("installed")
+                .join("jira")
+                .join("SKILL.md"),
+            "# Jira",
+        )
+        .unwrap();
 
         let resolved = resolve_data_root(
             &home_dir,
-            &[previous_root.clone(), previous_data_dir.join("SkillConfigurator")],
+            &[
+                previous_root.clone(),
+                previous_data_dir.join("SkillConfigurator"),
+            ],
         )
         .unwrap();
 
@@ -665,7 +716,11 @@ description: Use when reading Jira issue details.
             fs::read_to_string(expected_root.join("config.json")).unwrap(),
             r#"{"preferred_locale":"en-US"}"#
         );
-        assert!(expected_root.join("installed").join("jira").join("SKILL.md").exists());
+        assert!(expected_root
+            .join("installed")
+            .join("jira")
+            .join("SKILL.md")
+            .exists());
     }
 
     #[test]
@@ -674,13 +729,12 @@ description: Use when reading Jira issue details.
         let destination_skills_dir = temp_dir("loader-data-skills");
 
         fs::create_dir_all(bundled_skills_dir.join("jira").join("scripts")).unwrap();
+        fs::write(bundled_skills_dir.join("jira").join("SKILL.md"), "# Jira\n").unwrap();
         fs::write(
-            bundled_skills_dir.join("jira").join("SKILL.md"),
-            "# Jira\n",
-        )
-        .unwrap();
-        fs::write(
-            bundled_skills_dir.join("jira").join("scripts").join("search_jira.py"),
+            bundled_skills_dir
+                .join("jira")
+                .join("scripts")
+                .join("search_jira.py"),
             "print('jira')\n",
         )
         .unwrap();
@@ -703,15 +757,19 @@ description: Use when reading Jira issue details.
             fs::read_to_string(destination_skills_dir.join("manifest.json")).unwrap(),
             r#"{"schemaVersion":1,"skills":[{"id":"jira","path":"skills/jira","version":"1.0.0","targets":["codex"],"contentHash":"sha256:test"}]}"#
         );
-        assert!(destination_skills_dir.join("jira").join("SKILL.md").exists());
-        assert!(
-            destination_skills_dir
-                .join("jira")
-                .join("scripts")
-                .join("search_jira.py")
-                .exists()
-        );
-        assert!(destination_skills_dir.join("custom-skill").join("SKILL.md").exists());
+        assert!(destination_skills_dir
+            .join("jira")
+            .join("SKILL.md")
+            .exists());
+        assert!(destination_skills_dir
+            .join("jira")
+            .join("scripts")
+            .join("search_jira.py")
+            .exists());
+        assert!(destination_skills_dir
+            .join("custom-skill")
+            .join("SKILL.md")
+            .exists());
     }
 
     #[test]
@@ -722,11 +780,7 @@ description: Use when reading Jira issue details.
         let data_dir = temp_dir("loader-updater-data-root");
 
         fs::create_dir_all(bundled_skills_dir.join("jira").join("scripts")).unwrap();
-        fs::write(
-            bundled_skills_dir.join("jira").join("SKILL.md"),
-            "# Jira\n",
-        )
-        .unwrap();
+        fs::write(bundled_skills_dir.join("jira").join("SKILL.md"), "# Jira\n").unwrap();
         fs::write(
             bundled_skills_dir.join("manifest.json"),
             r#"{"schemaVersion":1,"skills":[{"id":"jira","path":"skills/jira","version":"1.0.0","targets":["codex"],"contentHash":"sha256:test"}]}"#,
@@ -738,7 +792,11 @@ description: Use when reading Jira issue details.
         std::env::remove_var(DATA_DIR_ENV_VAR);
 
         assert!(result.is_ok());
-        assert!(data_dir.join("skills").join("jira").join("SKILL.md").exists());
+        assert!(data_dir
+            .join("skills")
+            .join("jira")
+            .join("SKILL.md")
+            .exists());
         assert!(data_dir.join("skills").join("manifest.json").exists());
     }
 

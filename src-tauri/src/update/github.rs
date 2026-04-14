@@ -36,9 +36,8 @@ pub async fn check_github_updates(
             .strip_prefix('v')
             .unwrap_or(&latest_release.tag_name);
 
-        let current = Version::parse(current_version).map_err(|e| {
-            SkillError::GitHubError(format!("Invalid current version: {}", e))
-        })?;
+        let current = Version::parse(current_version)
+            .map_err(|e| SkillError::GitHubError(format!("Invalid current version: {}", e)))?;
 
         let latest = Version::parse(latest_tag)
             .map_err(|e| SkillError::GitHubError(format!("Invalid latest version: {}", e)))?;
@@ -193,12 +192,18 @@ pub async fn check_skill_updates() -> crate::commands::skill::SkillResult<Vec<Up
 
     let templates = match load_all_templates() {
         Ok(t) => t,
-        Err(e) => return crate::commands::skill::SkillResult::Error { error: e.to_string() },
+        Err(e) => {
+            return crate::commands::skill::SkillResult::Error {
+                error: e.to_string(),
+            }
+        }
     };
 
     match check_all_updates(templates).await {
         Ok(results) => crate::commands::skill::SkillResult::Success { success: results },
-        Err(e) => crate::commands::skill::SkillResult::Error { error: e.to_string() },
+        Err(e) => crate::commands::skill::SkillResult::Error {
+            error: e.to_string(),
+        },
     }
 }
 
@@ -207,6 +212,8 @@ pub async fn check_skill_updates() -> crate::commands::skill::SkillResult<Vec<Up
 pub async fn check_app_updates() -> crate::commands::skill::SkillResult<Option<ReleaseInfo>> {
     match get_latest_release("skills-for-no-engineer", "configurator").await {
         Ok(info) => crate::commands::skill::SkillResult::Success { success: info },
-        Err(e) => crate::commands::skill::SkillResult::Error { error: e.to_string() },
+        Err(e) => crate::commands::skill::SkillResult::Error {
+            error: e.to_string(),
+        },
     }
 }

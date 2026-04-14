@@ -5,6 +5,7 @@ import type {
   OnboardingEnvironmentCheckState,
   OnboardingEnvironmentInstallState,
   OnboardingLinuxDeviceRecord,
+  OnboardingSvnRepositoryRecord,
 } from '../../../types'
 import { getOnboardingCopy, onboardingCopy } from '../copy'
 
@@ -17,6 +18,8 @@ interface CredentialsStepProps {
   environmentInstalls: Record<string, OnboardingEnvironmentInstallState>
   credentialValues: Record<string, string>
   linuxDevices: OnboardingLinuxDeviceRecord[]
+  svnRepositories: OnboardingSvnRepositoryRecord[]
+  svnRepositoryConnectionTests: Record<string, OnboardingConnectionTestState>
   onUpdateCredential: (fieldId: string, value: string) => void
   onAddLinuxDevice: () => void
   onRemoveLinuxDevice: (deviceId: string) => void
@@ -26,12 +29,26 @@ interface CredentialsStepProps {
     value: string
   ) => void
   onRunLinuxDeviceConnectionTest: (deviceId: string) => void
+  onAddSvnRepository: () => void
+  onRemoveSvnRepository: (repositoryId: string) => void
+  onUpdateSvnRepositoryField: (
+    repositoryId: string,
+    field: keyof Omit<OnboardingSvnRepositoryRecord, 'id'>,
+    value: string
+  ) => void
+  onRunSvnRepositoryConnectionTest: (repositoryId: string) => void
   onRunConnectionTest: (serviceId: string) => void
   onInstallEnvironment: (serviceId: string) => void
 }
 
 function isLinuxDeviceComplete(device: OnboardingLinuxDeviceRecord) {
   return [device.name, device.host, device.username, device.password].every(
+    (value) => value.trim().length > 0
+  )
+}
+
+function isSvnRepositoryComplete(repository: OnboardingSvnRepositoryRecord) {
+  return [repository.name, repository.url, repository.username, repository.password].every(
     (value) => value.trim().length > 0
   )
 }
@@ -108,11 +125,17 @@ export function CredentialsStep({
   environmentInstalls,
   credentialValues,
   linuxDevices,
+  svnRepositories,
+  svnRepositoryConnectionTests,
   onUpdateCredential,
   onAddLinuxDevice,
   onRemoveLinuxDevice,
   onUpdateLinuxDeviceField,
   onRunLinuxDeviceConnectionTest,
+  onAddSvnRepository,
+  onRemoveSvnRepository,
+  onUpdateSvnRepositoryField,
+  onRunSvnRepositoryConnectionTest,
   onRunConnectionTest,
   onInstallEnvironment,
 }: CredentialsStepProps) {
@@ -314,6 +337,181 @@ export function CredentialsStep({
                                 )}
 
                               {deviceTriggerText && <p className="muted">{deviceTriggerText}</p>}
+                            </section>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </>
+                ) : group.editor_type === 'svn-repositories' ? (
+                  <>
+                    <p className="muted">
+                      {getOnboardingCopy(locale, onboardingCopy.svnRepositoriesBody)}
+                    </p>
+                    <div className="button-row">
+                      <button className="button--ghost" type="button" onClick={onAddSvnRepository}>
+                        {getOnboardingCopy(locale, onboardingCopy.svnAddRepository)}
+                      </button>
+                    </div>
+                    {svnRepositories.length === 0 ? (
+                      <p className="muted">
+                        {getOnboardingCopy(locale, onboardingCopy.svnRepositoryListEmpty)}
+                      </p>
+                    ) : (
+                      <div className="onboarding-linux-device-list onboarding-svn-repository-list">
+                        {svnRepositories.map((repository) => {
+                          const repositoryConnectionTest =
+                            svnRepositoryConnectionTests[repository.id]
+                          const repositoryStatusText = getConnectionTestStatusText(
+                            locale,
+                            repositoryConnectionTest
+                          )
+                          const repositoryTriggerText = getConnectionTestTriggerText(
+                            locale,
+                            repositoryConnectionTest
+                          )
+                          const repositoryComplete = isSvnRepositoryComplete(repository)
+
+                          return (
+                            <section
+                              className="onboarding-linux-device-card onboarding-svn-repository-card"
+                              key={repository.id}
+                            >
+                              <div className="onboarding-linux-device-card__header">
+                                <div>
+                                  <p className="onboarding-linux-device-card__title">
+                                    {repository.name.trim() ||
+                                      getOnboardingCopy(locale, onboardingCopy.svnRepositoryName)}
+                                  </p>
+                                  <p className={getStatusClass(repositoryConnectionTest?.status)}>
+                                    {repositoryStatusText}
+                                  </p>
+                                </div>
+                                <div className="onboarding-linux-device-card__actions">
+                                  <button
+                                    className="button--ghost"
+                                    disabled={
+                                      !repositoryComplete ||
+                                      repositoryConnectionTest?.status === 'pending'
+                                    }
+                                    type="button"
+                                    onClick={() =>
+                                      onRunSvnRepositoryConnectionTest(repository.id)
+                                    }
+                                  >
+                                    {getOnboardingCopy(locale, onboardingCopy.testConnection)}
+                                  </button>
+                                  <button
+                                    className="button--ghost"
+                                    type="button"
+                                    onClick={() => onRemoveSvnRepository(repository.id)}
+                                  >
+                                    {getOnboardingCopy(locale, onboardingCopy.svnRemoveRepository)}
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="onboarding-linux-device-grid">
+                                <div className="field">
+                                  <label htmlFor={`${repository.id}-name`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.svnRepositoryName)}
+                                  </label>
+                                  <input
+                                    id={`${repository.id}-name`}
+                                    type="text"
+                                    value={repository.name}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.svnRepositoryNamePlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateSvnRepositoryField(
+                                        repository.id,
+                                        'name',
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`${repository.id}-url`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.svnRepositoryUrl)}
+                                  </label>
+                                  <input
+                                    id={`${repository.id}-url`}
+                                    type="text"
+                                    value={repository.url}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.svnRepositoryUrlPlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateSvnRepositoryField(
+                                        repository.id,
+                                        'url',
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`${repository.id}-username`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.svnRepositoryUsername)}
+                                  </label>
+                                  <input
+                                    id={`${repository.id}-username`}
+                                    type="text"
+                                    value={repository.username}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.svnRepositoryUsernamePlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateSvnRepositoryField(
+                                        repository.id,
+                                        'username',
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="field">
+                                  <label htmlFor={`${repository.id}-password`}>
+                                    {getOnboardingCopy(locale, onboardingCopy.svnRepositoryPassword)}
+                                  </label>
+                                  <input
+                                    id={`${repository.id}-password`}
+                                    type="password"
+                                    value={repository.password}
+                                    placeholder={getOnboardingCopy(
+                                      locale,
+                                      onboardingCopy.svnRepositoryPasswordPlaceholder
+                                    )}
+                                    onChange={(event) =>
+                                      onUpdateSvnRepositoryField(
+                                        repository.id,
+                                        'password',
+                                        event.target.value
+                                      )
+                                    }
+                                  />
+                                </div>
+                              </div>
+
+                              {repositoryConnectionTest?.summary &&
+                                repositoryConnectionTest.summary !== repositoryStatusText && (
+                                  <p className={getStatusClass(repositoryConnectionTest.status)}>
+                                    {repositoryConnectionTest.summary}
+                                  </p>
+                                )}
+
+                              {repositoryConnectionTest?.status === 'error' &&
+                                repositoryConnectionTest.details && (
+                                  <p className="error">{repositoryConnectionTest.details}</p>
+                                )}
+
+                              {repositoryTriggerText && (
+                                <p className="muted">{repositoryTriggerText}</p>
+                              )}
                             </section>
                           )
                         })}

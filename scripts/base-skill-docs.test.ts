@@ -32,7 +32,7 @@ describe('base skill documentation contract', () => {
     },
     {
       id: 'svn',
-      expectedSnippets: ['svn', 'python3', 'SVN_URL'],
+      expectedSnippets: ['svn', 'python3', 'SVN_REPOSITORIES_JSON', 'SVN_URL'],
     },
     {
       id: 'linux',

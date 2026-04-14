@@ -36,6 +36,7 @@ import type {
   OnboardingInstallCandidateGroup,
   OnboardingInstallPreview,
   OnboardingLinuxDeviceRecord,
+  OnboardingSvnRepositoryRecord,
   OnboardingState,
   OnboardingUseCaseQuestionRecord,
   OnboardingUseCase,
@@ -104,6 +105,30 @@ function createEmptyLinuxDevice(
     id: buildNextLinuxDeviceId(records),
     name: '',
     host: '',
+    username: '',
+    password: '',
+  }
+}
+
+function buildNextSvnRepositoryId(records: OnboardingSvnRepositoryRecord[]) {
+  let suffix = records.length + 1
+  let candidate = `svn-repository-${suffix}`
+
+  while (records.some((record) => record.id === candidate)) {
+    suffix += 1
+    candidate = `svn-repository-${suffix}`
+  }
+
+  return candidate
+}
+
+function createEmptySvnRepository(
+  records: OnboardingSvnRepositoryRecord[] = []
+): OnboardingSvnRepositoryRecord {
+  return {
+    id: buildNextSvnRepositoryId(records),
+    name: '',
+    url: '',
     username: '',
     password: '',
   }
@@ -285,6 +310,27 @@ function areSameLinuxDevices(
   })
 }
 
+function areSameSvnRepositories(
+  left: OnboardingSvnRepositoryRecord[],
+  right: OnboardingSvnRepositoryRecord[]
+) {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((repository, index) => {
+    const matching = right[index]
+
+    return (
+      repository.id === matching?.id &&
+      repository.name === matching?.name &&
+      repository.url === matching?.url &&
+      repository.username === matching?.username &&
+      repository.password === matching?.password
+    )
+  })
+}
+
 function areSameUseCaseRecord(
   left: OnboardingEditableUseCaseRecord | undefined,
   right: OnboardingEditableUseCaseRecord | undefined
@@ -402,6 +448,20 @@ function isCredentialGroupComplete(
   return group.required_field_ids.every((fieldId) => isConfiguredText(credentialValues[fieldId] ?? ''))
 }
 
+const LEGACY_SVN_CREDENTIAL_FIELD_IDS = ['svnUrl', 'svnUsername', 'svnPassword'] as const
+
+function buildAllowedCredentialFieldIds(baseSkillIds: string[]) {
+  const allowedFieldIds = new Set(getCredentialFields(baseSkillIds).map((field) => field.id))
+
+  if (baseSkillIds.includes('svn')) {
+    LEGACY_SVN_CREDENTIAL_FIELD_IDS.forEach((fieldId) => {
+      allowedFieldIds.delete(fieldId)
+    })
+  }
+
+  return allowedFieldIds
+}
+
 function buildCredentialFingerprint(
   group: OnboardingCredentialGroup,
   credentialValues: Record<string, string>
@@ -423,6 +483,15 @@ function buildLinuxDeviceCredentialValues(device: OnboardingLinuxDeviceRecord) {
   }
 }
 
+function buildSvnRepositoryCredentialValues(repository: OnboardingSvnRepositoryRecord) {
+  return {
+    svnRepositoryName: repository.name,
+    svnUrl: repository.url,
+    svnUsername: repository.username,
+    svnPassword: repository.password,
+  }
+}
+
 function isLinuxDeviceComplete(device: OnboardingLinuxDeviceRecord) {
   const credentialValues = buildLinuxDeviceCredentialValues(device)
   return Object.values(credentialValues).every((value) => isConfiguredText(value))
@@ -430,6 +499,15 @@ function isLinuxDeviceComplete(device: OnboardingLinuxDeviceRecord) {
 
 function buildLinuxDeviceFingerprint(device: OnboardingLinuxDeviceRecord) {
   return JSON.stringify(buildLinuxDeviceCredentialValues(device))
+}
+
+function isSvnRepositoryComplete(repository: OnboardingSvnRepositoryRecord) {
+  const credentialValues = buildSvnRepositoryCredentialValues(repository)
+  return Object.values(credentialValues).every((value) => isConfiguredText(value))
+}
+
+function buildSvnRepositoryFingerprint(repository: OnboardingSvnRepositoryRecord) {
+  return JSON.stringify(buildSvnRepositoryCredentialValues(repository))
 }
 
 function shouldRefreshEnvironmentCheck(
@@ -554,6 +632,7 @@ function createEmptyState(): OnboardingState {
     selected_install_candidate_skill_ids: [],
     credential_values: {},
     linux_devices: [],
+    svn_repositories: [],
   }
 }
 
@@ -571,9 +650,7 @@ function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): Onboa
       onboardingBaseSkills.some((skill) => skill.id === skillId)
     )
   )
-  const allowedCredentialFieldIds = new Set(
-    getCredentialFields(selected_base_skill_ids).map((field) => field.id)
-  )
+  const allowedCredentialFieldIds = buildAllowedCredentialFieldIds(selected_base_skill_ids)
   const linux_devices = selected_base_skill_ids.includes('linux')
     ? (state.linux_devices ?? []).map((device, index) => ({
         id: device?.id?.trim() || `linux-device-${index + 1}`,
@@ -582,6 +659,34 @@ function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): Onboa
         username: device?.username ?? '',
         password: device?.password ?? '',
       }))
+    : []
+  const rawSvnRepositories = selected_base_skill_ids.includes('svn')
+    ? (state.svn_repositories ?? []).map((repository, index) => ({
+        id: repository?.id?.trim() || `svn-repository-${index + 1}`,
+        name: repository?.name ?? '',
+        url: repository?.url ?? '',
+        username: repository?.username ?? '',
+        password: repository?.password ?? '',
+      }))
+    : []
+  const legacySvnRepository =
+    selected_base_skill_ids.includes('svn') &&
+    rawSvnRepositories.length === 0 &&
+    LEGACY_SVN_CREDENTIAL_FIELD_IDS.some((fieldId) => isConfiguredText(state.credential_values?.[fieldId] ?? ''))
+      ? [
+          {
+            id: 'svn-repository-1',
+            name: state.credential_values?.svnUrl ?? 'SVN Repository 1',
+            url: state.credential_values?.svnUrl ?? '',
+            username: state.credential_values?.svnUsername ?? '',
+            password: state.credential_values?.svnPassword ?? '',
+          },
+        ]
+      : []
+  const svn_repositories = selected_base_skill_ids.includes('svn')
+    ? rawSvnRepositories.length > 0
+      ? rawSvnRepositories
+      : legacySvnRepository
     : []
 
   return {
@@ -598,6 +703,7 @@ function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): Onboa
       Object.entries(state.credential_values).filter(([fieldId]) => allowedCredentialFieldIds.has(fieldId))
     ),
     linux_devices,
+    svn_repositories,
   }
 }
 
@@ -617,6 +723,9 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   const [linuxDeviceConnectionTests, setLinuxDeviceConnectionTests] = useState<
     Record<string, OnboardingConnectionTestState>
   >({})
+  const [svnRepositoryConnectionTests, setSvnRepositoryConnectionTests] = useState<
+    Record<string, OnboardingConnectionTestState>
+  >({})
   const [environmentChecks, setEnvironmentChecks] = useState<
     Record<string, OnboardingEnvironmentCheckState>
   >({})
@@ -625,6 +734,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   >({})
   const connectionTestRequestIdsRef = useRef<Record<string, number>>({})
   const linuxDeviceConnectionTestRequestIdsRef = useRef<Record<string, number>>({})
+  const svnRepositoryConnectionTestRequestIdsRef = useRef<Record<string, number>>({})
   const environmentCheckRequestIdsRef = useRef<Record<string, number>>({})
   const environmentInstallRequestIdsRef = useRef<Record<string, number>>({})
 
@@ -770,7 +880,8 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     const baseSkills =
       !areSameStringSets(state.selected_base_skill_ids, savedState.selected_base_skill_ids) ||
       !areSameStringRecords(state.credential_values, savedState.credential_values) ||
-      !areSameLinuxDevices(state.linux_devices, savedState.linux_devices)
+      !areSameLinuxDevices(state.linux_devices, savedState.linux_devices) ||
+      !areSameSvnRepositories(state.svn_repositories ?? [], savedState.svn_repositories ?? [])
     const install =
       !areSameStringSets(state.selected_agent_ids, savedState.selected_agent_ids) ||
       !areSameStringSets(resolvedSelectedInstallSkillIds, savedResolvedSelectedInstallSkillIds)
@@ -1046,6 +1157,111 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     [credentialGroupById, locale, state.linux_devices]
   )
 
+  const runManualSvnRepositoryConnectionTest = useCallback(
+    async (repositoryId: string) => {
+      const group = credentialGroupById.get('svn')
+      const repository = (state.svn_repositories ?? []).find((item) => item.id === repositoryId)
+
+      if (!group || !repository) {
+        return
+      }
+
+      const requestId = (svnRepositoryConnectionTestRequestIdsRef.current[repositoryId] ?? 0) + 1
+      svnRepositoryConnectionTestRequestIdsRef.current[repositoryId] = requestId
+
+      if (!isSvnRepositoryComplete(repository)) {
+        setSvnRepositoryConnectionTests((current) => ({
+          ...current,
+          [repositoryId]: {
+            ...createIdleConnectionTestState(requestId),
+            summary: getOnboardingCopy(locale, onboardingCopy.connectionTestIncomplete),
+          },
+        }))
+        return
+      }
+
+      const credentialValues = buildSvnRepositoryCredentialValues(repository)
+      const testedFingerprint = buildSvnRepositoryFingerprint(repository)
+
+      setSvnRepositoryConnectionTests((current) => ({
+        ...current,
+        [repositoryId]: {
+          status: 'pending',
+          summary: getOnboardingCopy(locale, onboardingCopy.connectionTestPending),
+          details: null,
+          last_trigger: 'manual',
+          tested_fingerprint: testedFingerprint,
+          request_id: requestId,
+        },
+      }))
+
+      try {
+        const result = await invoke<SkillResult<OnboardingConnectionTestResult>>(
+          'test_onboarding_connection',
+          {
+            input: {
+              service_id: group.service_id,
+              credential_values: credentialValues,
+              trigger: 'manual',
+              tested_fingerprint: testedFingerprint,
+            } satisfies OnboardingConnectionTestInput,
+          }
+        )
+
+        setSvnRepositoryConnectionTests((current) => {
+          if (current[repositoryId]?.request_id !== requestId) {
+            return current
+          }
+
+          if (result.success) {
+            return {
+              ...current,
+              [repositoryId]: {
+                status: result.success.success ? 'success' : 'error',
+                summary: result.success.summary,
+                details: result.success.details,
+                last_trigger: 'manual',
+                tested_fingerprint: result.success.tested_fingerprint,
+                request_id: requestId,
+              },
+            }
+          }
+
+          return {
+            ...current,
+            [repositoryId]: {
+              status: 'error',
+              summary: result.error ?? getOnboardingCopy(locale, onboardingCopy.connectionTestError),
+              details: null,
+              last_trigger: 'manual',
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      } catch (error) {
+        setSvnRepositoryConnectionTests((current) => {
+          if (current[repositoryId]?.request_id !== requestId) {
+            return current
+          }
+
+          return {
+            ...current,
+            [repositoryId]: {
+              status: 'error',
+              summary: String(error),
+              details: null,
+              last_trigger: 'manual',
+              tested_fingerprint: testedFingerprint,
+              request_id: requestId,
+            },
+          }
+        })
+      }
+    },
+    [credentialGroupById, locale, state.svn_repositories]
+  )
+
   const runEnvironmentCheck = useCallback(
     async (
       serviceId: string,
@@ -1246,32 +1462,6 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       }
     },
     [credentialGroupById, locale, runEnvironmentCheck, state.credential_values]
-  )
-
-  const runAutomaticConnectionTestsForState = useCallback(
-    (persistedState: OnboardingState) => {
-      const persistedGroups = getCredentialGroups(
-        persistedState.selected_base_skill_ids,
-        locale,
-        persistedState.credential_values
-      )
-
-      void Promise.allSettled(
-        persistedGroups
-          .filter(
-            (group) =>
-              group.supports_connection_test &&
-              isCredentialGroupComplete(group, persistedState.credential_values)
-          )
-          .map((group) =>
-            runConnectionTest(group.service_id, 'automatic', {
-              credentialValues: persistedState.credential_values,
-              group,
-            })
-          )
-      )
-    },
-    [locale, runConnectionTest]
   )
 
   useEffect(() => {
@@ -1496,6 +1686,64 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
   }, [credentialGroups, state.linux_devices])
 
   useEffect(() => {
+    const svnSelected = credentialGroups.some((group) => group.service_id === 'svn')
+
+    setSvnRepositoryConnectionTests((current) => {
+      if (!svnSelected) {
+        return Object.keys(current).length > 0 ? {} : current
+      }
+
+      let changed = false
+      const repositoryIds = new Set((state.svn_repositories ?? []).map((repository) => repository.id))
+      const next = Object.fromEntries(
+        Object.entries(current).filter(([repositoryId]) => {
+          const keep = repositoryIds.has(repositoryId)
+          if (!keep) {
+            changed = true
+          }
+          return keep
+        })
+      )
+
+      ;(state.svn_repositories ?? []).forEach((repository) => {
+        const existing = next[repository.id]
+        if (!existing) {
+          return
+        }
+
+        const complete = isSvnRepositoryComplete(repository)
+        const nextFingerprint = complete ? buildSvnRepositoryFingerprint(repository) : null
+        const shouldReset =
+          !complete ||
+          (existing.tested_fingerprint != null && existing.tested_fingerprint !== nextFingerprint) ||
+          (complete && existing.tested_fingerprint == null && existing.summary != null)
+
+        if (shouldReset) {
+          const resetRequestId = Math.max(
+            existing.request_id,
+            svnRepositoryConnectionTestRequestIdsRef.current[repository.id] ?? 0
+          ) + 1
+          svnRepositoryConnectionTestRequestIdsRef.current[repository.id] = resetRequestId
+          const resetState = createIdleConnectionTestState(resetRequestId)
+
+          if (
+            existing.status !== resetState.status ||
+            existing.summary !== resetState.summary ||
+            existing.details !== resetState.details ||
+            existing.last_trigger !== resetState.last_trigger ||
+            existing.tested_fingerprint !== resetState.tested_fingerprint
+          ) {
+            next[repository.id] = resetState
+            changed = true
+          }
+        }
+      })
+
+      return changed ? next : current
+    })
+  }, [credentialGroups, state.svn_repositories])
+
+  useEffect(() => {
     const selectedServiceIds = new Set(credentialGroups.map((group) => group.service_id))
 
     setEnvironmentChecks((current) => {
@@ -1646,9 +1894,6 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
             ...current,
             [scope]: feedback,
           }))
-          if (scope === 'baseSkills' && !errorMessage) {
-            runAutomaticConnectionTestsForState(normalizedState)
-          }
           return {
             state: normalizedState,
             error: errorMessage,
@@ -1684,7 +1929,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
         setSavingScope((current) => (current === scope ? null : current))
       }
     },
-    [locale, runAutomaticConnectionTestsForState]
+    [locale]
   )
 
   const saveState = useCallback(
@@ -1745,15 +1990,19 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
           nextBaseSkillIds,
           current.role_use_case_contents
         )
-        const allowedCredentialFieldIds = new Set(
-          getCredentialFields(nextBaseSkillIds).map((field) => field.id)
-        )
+        const allowedCredentialFieldIds = buildAllowedCredentialFieldIds(nextBaseSkillIds)
         const nextLinuxDevices =
           skillId === 'linux' && !current.selected_base_skill_ids.includes('linux')
             ? current.linux_devices.length > 0
               ? current.linux_devices
               : [createEmptyLinuxDevice(current.linux_devices)]
             : current.linux_devices
+        const nextSvnRepositories =
+          skillId === 'svn' && !current.selected_base_skill_ids.includes('svn')
+            ? (current.svn_repositories ?? []).length > 0
+              ? current.svn_repositories ?? []
+              : [createEmptySvnRepository(current.svn_repositories ?? [])]
+            : current.svn_repositories ?? []
 
         return {
           ...current,
@@ -1764,6 +2013,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
             )
           ),
           linux_devices: nextLinuxDevices,
+          svn_repositories: nextSvnRepositories,
           ...nextSelection,
         }
       })
@@ -1795,6 +2045,40 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
       updateState((current) => ({
         ...current,
         linux_devices: current.linux_devices.filter((device) => device.id !== deviceId),
+      }))
+    },
+    [updateState]
+  )
+
+  const addSvnRepository = useCallback(() => {
+    updateState((current) => ({
+      ...current,
+      svn_repositories: [
+        ...(current.svn_repositories ?? []),
+        createEmptySvnRepository(current.svn_repositories ?? []),
+      ],
+    }))
+  }, [updateState])
+
+  const updateSvnRepositoryField = useCallback(
+    (repositoryId: string, field: keyof Omit<OnboardingSvnRepositoryRecord, 'id'>, value: string) => {
+      updateState((current) => ({
+        ...current,
+        svn_repositories: (current.svn_repositories ?? []).map((repository) =>
+          repository.id === repositoryId ? { ...repository, [field]: value } : repository
+        ),
+      }))
+    },
+    [updateState]
+  )
+
+  const removeSvnRepository = useCallback(
+    (repositoryId: string) => {
+      updateState((current) => ({
+        ...current,
+        svn_repositories: (current.svn_repositories ?? []).filter(
+          (repository) => repository.id !== repositoryId
+        ),
       }))
     },
     [updateState]
@@ -2077,6 +2361,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     completion,
     connectionTests,
     linuxDeviceConnectionTests,
+    svnRepositoryConnectionTests,
     environmentChecks,
     environmentInstalls,
     credentialFields,
@@ -2085,6 +2370,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     hasPendingEnvironmentChecks,
     installCandidateGroups,
     addLinuxDevice,
+    addSvnRepository,
     loading,
     preview,
     previewError,
@@ -2100,13 +2386,16 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     syncResult,
     startSync,
     removeLinuxDevice,
+    removeSvnRepository,
     toggleAgent,
     toggleBaseSkill,
     toggleInstallSkill,
     runManualConnectionTest,
     runManualLinuxDeviceConnectionTest,
+    runManualSvnRepositoryConnectionTest,
     installEnvironment,
     updateLinuxDeviceField,
+    updateSvnRepositoryField,
     updateCredentialValue,
     updateUseCaseDescription,
     updateUseCaseQuestionAnswer,
