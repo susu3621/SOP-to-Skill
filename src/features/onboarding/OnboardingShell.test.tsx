@@ -1208,7 +1208,7 @@ describe('OnboardingShell', () => {
           status: 'running',
           progress_percent: 80,
           step: '正在安装 SVN',
-          log_line: 'winget install Slik.Subversion',
+          log_line: 'winget install TortoiseSVN.TortoiseSVN --custom ADDLOCAL=ALL',
         },
       ],
     }
@@ -1237,7 +1237,9 @@ describe('OnboardingShell', () => {
     expect(await screen.findByText('正在安装 SVN')).toBeInTheDocument()
     expect(screen.getByText('80%')).toBeInTheDocument()
     expect(screen.getByText('winget install Python.Python.3.12')).toBeInTheDocument()
-    expect(screen.getByText('winget install Slik.Subversion')).toBeInTheDocument()
+    expect(
+      screen.getByText('winget install TortoiseSVN.TortoiseSVN --custom ADDLOCAL=ALL')
+    ).toBeInTheDocument()
     expect(screen.getByText('环境安装完成')).toBeInTheDocument()
   })
 

@@ -718,11 +718,20 @@ textarea {
   justify-items: end;
 }
 
+.masthead__update-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
 .masthead__version {
   margin: 0;
   color: rgba(22, 48, 41, 0.68);
   font-size: 0.82rem;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .locale-switcher {

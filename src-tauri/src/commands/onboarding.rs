@@ -350,34 +350,34 @@ fn build_onboarding_environment_install_steps(
             continue;
         }
 
-        let step =
+        let requirement_steps =
             match platform {
                 OnboardingEnvironmentPlatform::MacOS => match requirement_id.as_str() {
-                    "python3" => OnboardingEnvironmentInstallStep {
+                    "python3" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "Python 3".to_string(),
                         program: "brew".to_string(),
                         args: vec!["install".to_string(), "python".to_string()],
-                    },
-                    "git" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "git" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "Git".to_string(),
                         program: "brew".to_string(),
                         args: vec!["install".to_string(), "git".to_string()],
-                    },
-                    "svn" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "svn" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "SVN".to_string(),
                         program: "brew".to_string(),
                         args: vec!["install".to_string(), "subversion".to_string()],
-                    },
-                    "ssh" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "ssh" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "SSH".to_string(),
                         program: "brew".to_string(),
                         args: vec!["install".to_string(), "openssh".to_string()],
-                    },
-                    "paramiko" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "paramiko" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "Paramiko".to_string(),
                         program: "python3".to_string(),
@@ -388,7 +388,7 @@ fn build_onboarding_environment_install_steps(
                             "-r".to_string(),
                             linux_requirements_path()?.display().to_string(),
                         ],
-                    },
+                    }],
                     _ => {
                         return Err(format!(
                             "Unsupported environment requirement for macOS install: {}",
@@ -397,7 +397,7 @@ fn build_onboarding_environment_install_steps(
                     }
                 },
                 OnboardingEnvironmentPlatform::Windows => match requirement_id.as_str() {
-                    "python3" => OnboardingEnvironmentInstallStep {
+                    "python3" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "Python 3".to_string(),
                         program: "winget".to_string(),
@@ -409,8 +409,8 @@ fn build_onboarding_environment_install_steps(
                             "--accept-source-agreements".to_string(),
                             "--accept-package-agreements".to_string(),
                         ],
-                    },
-                    "git" | "ssh" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "git" | "ssh" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: if requirement_id == "ssh" {
                             "SSH".to_string()
@@ -426,21 +426,23 @@ fn build_onboarding_environment_install_steps(
                             "--accept-source-agreements".to_string(),
                             "--accept-package-agreements".to_string(),
                         ],
-                    },
-                    "svn" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "svn" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "SVN".to_string(),
                         program: "winget".to_string(),
                         args: vec![
                             "install".to_string(),
                             "--id".to_string(),
-                            "Slik.Subversion".to_string(),
+                            "TortoiseSVN.TortoiseSVN".to_string(),
                             "-e".to_string(),
                             "--accept-source-agreements".to_string(),
                             "--accept-package-agreements".to_string(),
+                            "--custom".to_string(),
+                            "ADDLOCAL=ALL".to_string(),
                         ],
-                    },
-                    "paramiko" => OnboardingEnvironmentInstallStep {
+                    }],
+                    "paramiko" => vec![OnboardingEnvironmentInstallStep {
                         requirement_id: requirement_id.clone(),
                         label: "Paramiko".to_string(),
                         program: "python".to_string(),
@@ -451,7 +453,7 @@ fn build_onboarding_environment_install_steps(
                             "-r".to_string(),
                             linux_requirements_path()?.display().to_string(),
                         ],
-                    },
+                    }],
                     _ => {
                         return Err(format!(
                             "Unsupported environment requirement for Windows install: {}",
@@ -465,12 +467,14 @@ fn build_onboarding_environment_install_steps(
                 ),
             };
 
-        let already_has_same_command = steps
-            .iter()
-            .any(|existing| existing.program == step.program && existing.args == step.args);
+        for step in requirement_steps {
+            let already_has_same_command = steps
+                .iter()
+                .any(|existing| existing.program == step.program && existing.args == step.args);
 
-        if !already_has_same_command {
-            steps.push(step);
+            if !already_has_same_command {
+                steps.push(step);
+            }
         }
     }
 
@@ -2755,7 +2759,9 @@ mod tests {
         assert!(steps[0].args.contains(&"Python.Python.3.12".to_string()));
         assert_eq!(steps[1].requirement_id, "svn");
         assert_eq!(steps[1].program, "winget");
-        assert!(steps[1].args.contains(&"Slik.Subversion".to_string()));
+        assert!(steps[1].args.contains(&"TortoiseSVN.TortoiseSVN".to_string()));
+        assert!(steps[1].args.contains(&"--custom".to_string()));
+        assert!(steps[1].args.contains(&"ADDLOCAL=ALL".to_string()));
     }
 
     #[test]

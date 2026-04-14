@@ -564,6 +564,20 @@ describe('onboarding shell smoke coverage', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders the current version before the update action in the header', async () => {
+    render(<App />)
+
+    await waitForOnboardingHome()
+
+    const updateArea = document.querySelector('.masthead__update')
+    expect(updateArea).not.toBeNull()
+
+    const version = within(updateArea as HTMLElement).getByText('当前版本 dd40e57')
+    const button = within(updateArea as HTMLElement).getByRole('button', { name: '检查更新' })
+
+    expect(version.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('shows an export-log action in the header utility area', async () => {
     render(<App />)
 

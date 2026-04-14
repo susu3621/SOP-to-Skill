@@ -255,8 +255,11 @@ function App() {
             <div className="masthead__utility">
               <div className="masthead__utility-row">
                 <div className="masthead__update">
-                  {hasUpdates && appUpdate ? (
-                    <>
+                  <div className="masthead__update-row">
+                    <p className="masthead__version">
+                      {formatCurrentBuildLabel(locale, buildInfo)}
+                    </p>
+                    {hasUpdates && appUpdate ? (
                       <button
                         className="tag tag--button"
                         type="button"
@@ -270,18 +273,17 @@ function App() {
                           : getCopy(locale, pageCopy.installUpdate)}
                         <span className="update-badge">{getCopy(locale, pageCopy.updateAvailable)}</span>
                       </button>
-                      <p className="update-hint">
-                        {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
-                      </p>
-                    </>
-                  ) : (
-                    <button className="tag tag--button" type="button" onClick={checkUpdates}>
-                      {getCopy(locale, pageCopy.localeTag)}
-                    </button>
-                  )}
-                  <p className="masthead__version">
-                    {formatCurrentBuildLabel(locale, buildInfo)}
-                  </p>
+                    ) : (
+                      <button className="tag tag--button" type="button" onClick={checkUpdates}>
+                        {getCopy(locale, pageCopy.localeTag)}
+                      </button>
+                    )}
+                  </div>
+                  {hasUpdates && appUpdate ? (
+                    <p className="update-hint">
+                      {getCopy(locale, pageCopy.updateHintPrefix)} v{appUpdate.version}
+                    </p>
+                  ) : null}
                 </div>
                 <button
                   className="button--ghost"
