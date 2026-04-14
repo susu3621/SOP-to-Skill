@@ -9,9 +9,9 @@ export const pageCopy = {
   },
   heroBody: {
     'zh-CN':
-      '利用公司的 SOP，快速生成对应的 Skill，让 AI 快速替你完成任务。',
+      '先绑定公司 IT 工具、岗位工作和 SOP，再把可执行 Skill 安装到 Codex、Claude Code 或 WorkBuddy。',
     'en-US':
-      'Choose the company IT tools first, decide which work AI should handle, then install it into an AI tool so repeated SOP work can run automatically.',
+      'Connect company IT tools, role-based work, and SOP rules first, then install the resulting Skills into Codex, Claude Code, or WorkBuddy.',
   },
   startButton: {
     'zh-CN': '开始配置',

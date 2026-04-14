@@ -349,7 +349,7 @@ describe('onboarding shell smoke coverage', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        '利用公司的 SOP，快速生成对应的 Skill，让 AI 快速替你完成任务。'
+        '先绑定公司 IT 工具、岗位工作和 SOP，再把可执行 Skill 安装到 Codex、Claude Code 或 WorkBuddy。'
       )
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '检查更新' })).toBeInTheDocument()

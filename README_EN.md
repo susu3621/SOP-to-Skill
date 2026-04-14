@@ -49,9 +49,9 @@ If the problem is "how do we turn the way our company already works into somethi
 
 - Added `QA Manager` and `IT Manager` onboarding roles, each with five built-in daily work use cases.
 - Expanded built-in base skills to `Jira`, `Confluence`, `Gerrit`, `SVN`, `Linux`, and `Tencent Exmail`.
-- Added automatic connection tests and environment checks after users select base skills.
-- Added multi-device Linux onboarding input and guided environment installation support.
-- Added desktop log export and persisted storage version migration for safer upgrades.
+- Added automatic environment checks after users select base skills, plus manual connection tests once credentials are filled in.
+- Added multi-device Linux onboarding input, multi-repository SVN onboarding input, and guided environment installation support.
+- Added desktop log export, visible build-version display, and persisted storage version migration for safer upgrades.
 
 ## ✨ Core Capabilities
 
@@ -73,7 +73,7 @@ If the problem is "how do we turn the way our company already works into somethi
 - Built-in infrastructure currently includes `Jira`, `Confluence`, `Gerrit`, `SVN`, `Linux`, and `Tencent Exmail`
 - Credentials are saved during onboarding and synced early so later steps can use them directly
 - Deselecting a tool removes its managed configuration as well
-- Filled credentials can trigger automatic connection tests, and Linux devices support multiple host records
+- Filled credentials can run manual connection tests, Linux supports multiple device records, and SVN supports multiple repository records
 
 ### 4. Dual package generation and install preview
 
@@ -84,7 +84,9 @@ If the problem is "how do we turn the way our company already works into somethi
 ### 5. Environment checks, logs, and upgrade readiness
 
 - Base skills can trigger runtime environment detection and supported auto-install guidance
+- Connection-test and environment-install progress are shown directly in onboarding, and Windows background commands no longer flash extra `cmd` windows
 - The top bar can export application logs for bug reports
+- The top bar also shows the current build version so local and release builds are easy to identify
 - Release builds include updater wiring and persisted storage migration support
 
 ### 6. Bilingual desktop experience

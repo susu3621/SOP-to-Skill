@@ -80,8 +80,8 @@ export const onboardingCopy = {
     'en-US': 'Test',
   },
   basicModuleDescription: {
-    'zh-CN': '先选择公司里已经在用的 IT 工具，并补充对应账号信息。保存后，后续步骤可以直接使用这些配置。',
-    'en-US': 'Choose the IT tools your company already uses and fill in the related credentials. After saving, later steps can use these settings directly.',
+    'zh-CN': '先选择公司里已经在用的 IT 工具，并补充对应账号信息。环境会自动检测；凭证填完后可按服务手动测试连接。保存后，后续步骤可以直接使用这些配置。',
+    'en-US': 'Choose the IT tools your company already uses and fill in the related credentials. Environment checks run automatically, and connection tests run manually per service after the credentials are filled in. After saving, later steps can use these settings directly.',
   },
   useCasesModuleDescription: {
     'zh-CN': '先选岗位，再补充这个岗位下要交给 AI 的具体工作内容和 SOP 要求。',
@@ -176,8 +176,8 @@ export const onboardingCopy = {
     'en-US': 'Credentials',
   },
   credentialsBody: {
-    'zh-CN': '只显示当前仍被选择的公司 IT 工具所需的凭证字段。保存后会立即同步这些配置。',
-    'en-US': 'Only the credential fields for currently selected company IT tools are shown. Saving this module syncs the credentials immediately.',
+    'zh-CN': '只显示当前仍被选择的公司 IT 工具所需的凭证字段。保存后会立即同步这些配置；连接测试请按服务、设备或仓库手动执行。',
+    'en-US': 'Only the credential fields for currently selected company IT tools are shown. Saving this module syncs the credentials immediately; run connection tests manually per service, device, or repository.',
   },
   linuxDevicesBody: {
     'zh-CN': '可录入多台 Linux 设备，每台设备单独填写名称、IP 和登录账号。',
@@ -534,16 +534,16 @@ export const onboardingCopy = {
         'en-US': 'Company IT Tools',
       },
       summary: {
-        'zh-CN': '先选公司常用系统',
-        'en-US': 'Choose company systems first',
+        'zh-CN': '先选系统，再测连接',
+        'en-US': 'Choose systems, then test access',
       },
       description: {
-        'zh-CN': '先选公司里已经在用的 IT 工具。AI 后面要从这些工具里取信息，才能按公司的 SOP 做事。',
-        'en-US': 'Choose the IT tools your company already uses. AI reads information from these tools so it can follow company SOPs.',
+        'zh-CN': '先选公司里已经在用的 IT 工具，补充账号信息，并在需要时手动测试连接。AI 后面要从这些工具里取信息，才能按公司的 SOP 做事。',
+        'en-US': 'Choose the IT tools your company already uses, add the required credentials, and manually test access when needed. AI reads information from these tools so it can follow company SOPs.',
       },
       items: {
-        'zh-CN': ['选择公司 IT 工具'],
-        'en-US': ['Choose company IT tools'],
+        'zh-CN': ['选择公司 IT 工具', '填写账号信息', '按需测试连接'],
+        'en-US': ['Choose company IT tools', 'Fill in credentials', 'Run connection tests as needed'],
       },
     },
     useCases: {

@@ -23,6 +23,7 @@ lastUpdated: false
 <a href="#benefits">你会得到什么</a>
 <a href="#roles">谁都能用</a>
 <a href="#proof-points">先从哪里开始</a>
+<a href="#role-details">岗位说明</a>
 <a href="#closing">最后一句话</a>
 </nav>
 
@@ -244,23 +245,45 @@ flowchart LR
 </div>
 
 <div class="info-card">
-<strong>IT 经理</strong>
+<strong>IT经理</strong>
 <span>支持服务台分析、权限开通跟踪、基础软件安装、运维巡检和项目立项配置建立。</span>
 </div>
 
 <div class="info-card">
 <strong>基础技能</strong>
-<span>当前内置 Jira、Confluence、Gerrit、SVN、Linux 和腾讯企业邮箱，可在引导流程里直接配置。</span>
+<span>当前内置 Jira、Confluence、Gerrit、SVN、Linux 和腾讯企业邮箱，可在引导流程里直接配置；其中 Linux 支持多设备，SVN 支持多仓库。</span>
 </div>
 
 <div class="info-card">
 <strong>环境检测</strong>
-<span>勾选基础技能后会自动检测运行环境，并在支持的场景里提示自动安装缺失环境。</span>
+<span>勾选基础技能后会自动检测运行环境；凭证填写完成后可按服务手动测试连接，并在支持的场景里提示自动安装缺失环境。</span>
 </div>
 
 <div class="info-card">
 <strong>发布准备</strong>
-<span>桌面端已经支持导出日志、应用升级提示，以及带版本号的本地持久化迁移。</span>
+<span>桌面端已经支持显示当前版本、导出日志、应用升级提示，以及带版本号的本地持久化迁移。</span>
+</div>
+
+</div>
+
+<span id="role-details"></span>
+
+## v0.2.0 新增岗位说明
+
+`v0.2.0` 新增的两个岗位，不是泛泛地“多了两个标签”，而是各自带了一套更贴近实际协作场景的默认工作包。
+
+<div class="card-grid">
+
+<div class="info-card">
+<strong>质量经理</strong>
+<span>更适合把质量异常闭环、客诉分析、变更质量影响检查、质量周报和供应商质量跟踪这类跨系统、强流程、需要持续跟催的工作交给 AI 先做整理和初稿。</span>
+<span>内置工作包括：质量异常汇总与闭环跟进、客诉售后问题分析与回复草稿、变更评审里的质量影响检查、质量周报、供应商质量问题跟踪。</span>
+</div>
+
+<div class="info-card">
+<strong>IT经理</strong>
+<span>更适合把服务台分析、账号权限开通、基础软件安装、运维巡检和立项配置建立这类标准化但跨系统的信息搬运和状态跟踪工作交给 AI 先做汇总和推进。</span>
+<span>内置工作包括：IT 服务台工单分析与周报、账号权限申请审核与开通跟踪、基础应用程序的安装、运维巡检异常汇总、项目立项配置建立。</span>
 </div>
 
 </div>
