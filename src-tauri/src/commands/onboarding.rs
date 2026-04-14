@@ -503,10 +503,155 @@ where
     merged.join(";")
 }
 
-fn probe_command_output(program: &str, args: &[&str]) -> Result<Output, std::io::Error> {
+#[cfg_attr(windows, allow(dead_code))]
+fn merge_unix_search_path_values<'a, I>(values: I) -> String
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut merged = Vec::new();
+    let mut seen = HashSet::new();
+
+    for value in values {
+        for segment in value.split(':') {
+            let trimmed = segment.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            if seen.insert(trimmed.to_string()) {
+                merged.push(trimmed.to_string());
+            }
+        }
+    }
+
+    merged.join(":")
+}
+
+const LOGIN_SHELL_PATH_MARKER: &str = "__SKILL_CONFIGURATOR_LOGIN_PATH__=";
+
+#[cfg(target_os = "macos")]
+fn login_shell_candidates() -> Vec<String> {
+    let mut candidates = Vec::new();
+
+    if let Ok(shell) = std::env::var("SHELL") {
+        let trimmed = shell.trim();
+        if !trimmed.is_empty() {
+            candidates.push(trimmed.to_string());
+        }
+    }
+
+    for shell in ["/bin/zsh", "/bin/bash", "/bin/sh"] {
+        if !candidates.iter().any(|candidate| candidate == shell) {
+            candidates.push(shell.to_string());
+        }
+    }
+
+    candidates
+}
+
+#[cfg(target_os = "macos")]
+fn parse_login_shell_search_path(output: &str) -> Option<String> {
+    output.lines().rev().find_map(|line| {
+        line.trim()
+            .strip_prefix(LOGIN_SHELL_PATH_MARKER)
+            .map(str::trim)
+            .filter(|path| !path.is_empty())
+            .map(ToOwned::to_owned)
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn resolve_macos_login_shell_search_path() -> Option<String> {
+    for shell in login_shell_candidates() {
+        let mut command = Command::new(&shell);
+        command.arg("-lc");
+        command.arg(format!(
+            "printf '{}%s\\n' \"$PATH\"",
+            LOGIN_SHELL_PATH_MARKER
+        ));
+
+        let output = match command.output() {
+            Ok(output) => output,
+            Err(_) => continue,
+        };
+
+        if !output.status.success() {
+            continue;
+        }
+
+        let stdout = trim_process_output(&output.stdout);
+        if let Some(path) = parse_login_shell_search_path(&stdout) {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+#[cfg(not(target_os = "macos"))]
+fn resolve_macos_login_shell_search_path() -> Option<String> {
+    None
+}
+
+fn resolve_process_search_path_from_values(
+    platform: OnboardingEnvironmentPlatform,
+    current_path: Option<String>,
+    login_shell_path: Option<String>,
+) -> Option<String> {
+    match platform {
+        OnboardingEnvironmentPlatform::MacOS => {
+            let current_path = current_path.unwrap_or_default();
+            let login_shell_path = login_shell_path.unwrap_or_default();
+            let merged =
+                merge_unix_search_path_values([login_shell_path.as_str(), current_path.as_str()]);
+
+            if merged.is_empty() {
+                None
+            } else {
+                Some(merged)
+            }
+        }
+        OnboardingEnvironmentPlatform::Windows | OnboardingEnvironmentPlatform::Unsupported => {
+            current_path
+                .map(|path| path.trim().to_string())
+                .filter(|path| !path.is_empty())
+        }
+    }
+}
+
+fn resolve_process_search_path() -> Option<String> {
+    let platform = current_onboarding_environment_platform();
+    let current_path = std::env::var("PATH").ok();
+    let login_shell_path = match platform {
+        OnboardingEnvironmentPlatform::MacOS => resolve_macos_login_shell_search_path(),
+        OnboardingEnvironmentPlatform::Windows | OnboardingEnvironmentPlatform::Unsupported => None,
+    };
+
+    resolve_process_search_path_from_values(platform, current_path, login_shell_path)
+}
+
+fn configure_onboarding_command(command: &mut Command) {
+    if let Some(path) = resolve_process_search_path() {
+        command.env("PATH", path);
+    }
+}
+
+fn command_output_with_search_path(
+    program: &str,
+    args: &[&str],
+    search_path: Option<&str>,
+) -> Result<Output, std::io::Error> {
     let mut command = Command::new(program);
+    if let Some(path) = search_path.filter(|path| !path.trim().is_empty()) {
+        command.env("PATH", path);
+    }
     command.args(args);
     command.output()
+}
+
+fn probe_command_output(program: &str, args: &[&str]) -> Result<Output, std::io::Error> {
+    let search_path = resolve_process_search_path();
+    command_output_with_search_path(program, args, search_path.as_deref())
 }
 
 #[cfg(windows)]
@@ -766,6 +911,7 @@ fn run_install_step(
     step_label: &str,
 ) -> Result<(), String> {
     let mut command = Command::new(&step.program);
+    configure_onboarding_command(&mut command);
     command.args(&step.args);
     command.stdout(Stdio::piped());
     command.stderr(Stdio::piped());
@@ -1524,6 +1670,7 @@ fn python_command_candidates() -> Vec<(&'static str, &'static [&'static str])> {
 fn execute_connection_test_script(script_path: &Path, env_path: &Path) -> Result<Output, String> {
     for (program, base_args) in python_command_candidates() {
         let mut command = Command::new(program);
+        configure_onboarding_command(&mut command);
         command.args(base_args);
         command.arg(script_path);
         command.arg("--test-only");
@@ -1896,8 +2043,10 @@ mod tests {
         apply_onboarding_sync_plan, build_connection_test_env_entries,
         build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
         build_onboarding_environment_requirements, build_onboarding_install_preview,
+        command_output_with_search_path, merge_unix_search_path_values,
         merge_windows_search_path_values, resolve_connection_test_script_path,
-        OnboardingAgentSyncResult, OnboardingEnvironmentPlatform,
+        resolve_process_search_path_from_values, trim_process_output, OnboardingAgentSyncResult,
+        OnboardingEnvironmentPlatform,
     };
     use crate::models::{
         OnboardingAgentState, OnboardingLinuxDevice, OnboardingRoleUseCaseContent, OnboardingState,
@@ -1991,6 +2140,58 @@ mod tests {
         assert_eq!(
             merged,
             [r"C:\Tools", r"C:\Windows\System32", r"C:\Tools\bin"].join(";")
+        );
+    }
+
+    #[test]
+    fn onboarding_unix_path_merge_prefers_first_occurrence_order() {
+        let merged = merge_unix_search_path_values([
+            "/opt/homebrew/bin:/usr/local/bin",
+            "/usr/local/bin:/usr/bin",
+        ]);
+
+        assert_eq!(merged, "/opt/homebrew/bin:/usr/local/bin:/usr/bin");
+    }
+
+    #[test]
+    fn onboarding_process_search_path_prefers_macos_login_shell_entries() {
+        let resolved = resolve_process_search_path_from_values(
+            OnboardingEnvironmentPlatform::MacOS,
+            Some("/usr/bin:/bin".to_string()),
+            Some("/opt/homebrew/bin:/opt/anaconda3/envs/python312/bin".to_string()),
+        );
+
+        assert_eq!(
+            resolved,
+            Some("/opt/homebrew/bin:/opt/anaconda3/envs/python312/bin:/usr/bin:/bin".to_string())
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn onboarding_command_output_uses_supplied_search_path() {
+        let executable_dir = temp_dir("command-search-path");
+        let command_path = executable_dir.join("path-only-tool");
+        fs::write(&command_path, "#!/bin/sh\necho resolved-from-search-path\n")
+            .expect("write command");
+        let mut permissions = fs::metadata(&command_path)
+            .expect("read command metadata")
+            .permissions();
+        use std::os::unix::fs::PermissionsExt;
+        permissions.set_mode(0o755);
+        fs::set_permissions(&command_path, permissions).expect("set executable bit");
+
+        let output = command_output_with_search_path(
+            "path-only-tool",
+            &[],
+            Some(executable_dir.to_string_lossy().as_ref()),
+        )
+        .expect("run command from supplied search path");
+
+        assert!(output.status.success());
+        assert_eq!(
+            trim_process_output(&output.stdout),
+            "resolved-from-search-path"
         );
     }
 
