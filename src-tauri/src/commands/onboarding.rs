@@ -1945,6 +1945,20 @@ fn run_onboarding_connection_test(
     ))
 }
 
+async fn run_onboarding_connection_test_async<F>(
+    input: OnboardingConnectionTestInput,
+    runner: F,
+) -> Result<OnboardingConnectionTestResult, String>
+where
+    F: FnOnce(OnboardingConnectionTestInput) -> Result<OnboardingConnectionTestResult, String>
+        + Send
+        + 'static,
+{
+    tokio::task::spawn_blocking(move || runner(input))
+        .await
+        .map_err(|error| format!("Failed to run onboarding connection test: {error}"))?
+}
+
 #[tauri::command]
 pub fn get_onboarding_state() -> SkillResult<OnboardingState> {
     SkillResult::Success {
@@ -1969,10 +1983,12 @@ pub fn sync_onboarding_credentials(state: OnboardingState) -> SkillResult<bool> 
 }
 
 #[tauri::command]
-pub fn test_onboarding_connection(
+pub async fn test_onboarding_connection(
     input: OnboardingConnectionTestInput,
 ) -> SkillResult<OnboardingConnectionTestResult> {
-    match run_onboarding_connection_test(&input) {
+    match run_onboarding_connection_test_async(input, |input| run_onboarding_connection_test(&input))
+        .await
+    {
         Ok(result) => SkillResult::Success { success: result },
         Err(error) => SkillResult::Error { error },
     }
@@ -2286,7 +2302,7 @@ mod tests {
     use std::path::PathBuf;
     use std::process::Output;
     use std::sync::{Mutex, OnceLock};
-    use std::time::{SystemTime, UNIX_EPOCH};
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
 
@@ -2451,6 +2467,49 @@ mod tests {
         .expect("probe result");
 
         assert_eq!(result, ("ready".to_string(), "Python 3.12.8".to_string()));
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn onboarding_connection_test_async_offloads_blocking_work() {
+        let input = super::OnboardingConnectionTestInput {
+            service_id: "jira".to_string(),
+            credential_values: HashMap::new(),
+            trigger: "manual".to_string(),
+            tested_fingerprint: "fingerprint-1".to_string(),
+        };
+        let started_at = Instant::now();
+        let background_test = tokio::spawn(super::run_onboarding_connection_test_async(
+            input.clone(),
+            move |input| {
+                std::thread::sleep(Duration::from_millis(120));
+
+                Ok(super::OnboardingConnectionTestResult {
+                    service_id: input.service_id,
+                    success: true,
+                    status: "success".to_string(),
+                    summary: "Jira connection test succeeded.".to_string(),
+                    details: String::new(),
+                    trigger: input.trigger,
+                    tested_fingerprint: input.tested_fingerprint,
+                })
+            },
+        ));
+
+        tokio::time::sleep(Duration::from_millis(20)).await;
+
+        assert!(
+            started_at.elapsed() < Duration::from_millis(80),
+            "connection test blocked the runtime instead of running in the background"
+        );
+
+        let result = background_test
+            .await
+            .expect("join background connection test")
+            .expect("background connection test result");
+
+        assert_eq!(result.service_id, "jira");
+        assert!(result.success);
+        assert_eq!(result.status, "success");
     }
 
     #[test]
