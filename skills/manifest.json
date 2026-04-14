@@ -18,18 +18,18 @@
     {
       "id": "gerrit",
       "path": "skills/gerrit",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "targets": ["claude-code", "codex", "workbuddy"],
       "category": "version-management",
-      "contentHash": "sha256:0c4b7895b03231800ab54fa36b0658f8960293dd4b2753de342310d700fe3771"
+      "contentHash": "sha256:2090d8eac8b81e656021ff162cafdb3a005aabc88f73d7953eb143d0be7617c4"
     },
     {
       "id": "svn",
       "path": "skills/svn",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "targets": ["claude-code", "codex", "workbuddy"],
       "category": "version-management",
-      "contentHash": "sha256:5197831b2ef548d1982e924ad97790dcb0d7f9ac36ceb58f215388741a7d5191"
+      "contentHash": "sha256:f2dd846f5b70ca6f59522f1fdcb57e8d23f71fca2e15a2a947850869ad6a8ed6"
     },
     {
       "id": "linux",
