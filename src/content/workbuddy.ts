@@ -89,7 +89,7 @@ interface SharedConfig {
 }
 
 const typedConfig = config as SharedConfig
-const visibleRoleIds = ['project-manager', 'qa-manager', 'it-manager', 'rd-manager'] as const
+const visibleRoleIds = ['project-manager', 'qa-manager', 'it-manager'] as const
 const supportedLocales: Locale[] = ['zh-CN', 'en-US']
 
 export const defaultOnboardingRoleId = visibleRoleIds[0]
@@ -719,7 +719,19 @@ export function getBaseSkillDescriptionById(skillId: string, locale: Locale = 'z
 }
 
 export function getApplicableUseCasesForRole(roleId: string): OnboardingUseCaseOption[] {
-  return onboardingUseCases.filter((useCase) => useCase.applicable_role_ids.includes(roleId))
+  const configuredUseCases = typedConfig.roles[roleId]?.useCases ?? []
+
+  return configuredUseCases
+    .map((useCaseName) => {
+      const useCase = typedConfig.useCases[useCaseName]
+
+      if (!useCase) {
+        return null
+      }
+
+      return buildOnboardingUseCaseOption(useCaseName, useCase)
+    })
+    .filter((useCase): useCase is OnboardingUseCaseOption => useCase != null)
 }
 
 export function getOnboardingUseCaseOptionById(useCaseId: string, locale: Locale = 'zh-CN') {
