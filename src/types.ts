@@ -87,6 +87,7 @@ export interface AppConfig {
   update_check_interval_hours: number
   last_update_check?: string
   preferred_locale?: string
+  onboarding_guides?: Partial<Record<OnboardingGuideId, OnboardingGuideCompletionState>>
 }
 
 export interface UpdateCheckResult {
@@ -107,6 +108,39 @@ export interface AppUpdateInfo {
 export interface AppBuildInfo {
   currentVersion: string
   displayVersion: string
+}
+
+export type OnboardingGuideId =
+  | 'onboarding-home'
+  | 'onboarding-basic'
+  | 'onboarding-use-cases'
+  | 'onboarding-install'
+
+export interface OnboardingGuideCompletionState {
+  completed: boolean
+}
+
+export type OnboardingGuideCompletionMap = Record<
+  OnboardingGuideId,
+  OnboardingGuideCompletionState
+>
+
+export interface FirstRunGuideStep {
+  anchor_id: string
+  title: string
+  body: string
+  placement?: 'right' | 'left' | 'bottom'
+  before_enter?: 'use-cases-role-tab' | 'use-cases-work-tab'
+}
+
+export interface FirstRunGuideDefinition {
+  id: OnboardingGuideId
+  steps: FirstRunGuideStep[]
+}
+
+export interface ActiveFirstRunGuideState {
+  guideId: OnboardingGuideId
+  stepIndex: number
 }
 
 export interface SkillResult<T> {

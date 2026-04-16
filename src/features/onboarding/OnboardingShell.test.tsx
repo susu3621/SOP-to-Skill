@@ -204,6 +204,12 @@ type EnvironmentCheckFixture = {
 const mockControls = vi.hoisted(() => ({
   saveError: null as string | null,
   stateOverride: null as OnboardingState | null,
+  configOverride: null as
+    | null
+    | {
+        preferred_locale: string
+        onboarding_guides: Record<string, { completed: boolean }>
+      },
   connectionTestResults: {} as Record<
     string,
     { success: boolean; summary: string; details: string }
@@ -251,6 +257,7 @@ vi.mock('@tauri-apps/api/event', () => ({
 beforeEach(() => {
   mockControls.saveError = null
   mockControls.stateOverride = null
+  mockControls.configOverride = null
   mockControls.connectionTestResults = {}
   mockControls.environmentCheckResults = {}
   mockControls.environmentCheckSequences = {}
@@ -270,7 +277,38 @@ beforeEach(() => {
       case 'check_skill_updates':
         return { success: [] }
       case 'get_config':
-        return { success: { preferred_locale: 'zh-CN' } }
+        return {
+          success:
+            mockControls.configOverride ?? {
+              preferred_locale: 'zh-CN',
+              onboarding_guides: {
+                'onboarding-home': { completed: true },
+                'onboarding-basic': { completed: true },
+                'onboarding-use-cases': { completed: true },
+                'onboarding-install': { completed: true },
+              },
+            },
+        }
+      case 'update_config':
+        {
+          const currentConfig =
+            mockControls.configOverride ?? {
+              preferred_locale: 'zh-CN',
+              onboarding_guides: {
+                'onboarding-home': { completed: true },
+                'onboarding-basic': { completed: true },
+                'onboarding-use-cases': { completed: true },
+                'onboarding-install': { completed: true },
+              },
+            }
+
+          mockControls.configOverride = {
+            preferred_locale: payload?.preferredLocale ?? currentConfig.preferred_locale,
+            onboarding_guides: payload?.onboardingGuides ?? currentConfig.onboarding_guides,
+          }
+
+          return { success: mockControls.configOverride }
+        }
       case 'get_app_build_info':
         return { currentVersion: '0.2.0', displayVersion: 'dd40e57' }
       case 'get_onboarding_state':
@@ -399,6 +437,10 @@ function getSetStateCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'set_onboarding_state')
 }
 
+function getConfigUpdateCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'update_config')
+}
+
 function getCredentialSyncCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_credentials')
 }
@@ -462,6 +504,142 @@ function buildStructuredQuestionAnswers(useCaseId: string, answers: Record<strin
 }
 
 describe('OnboardingShell', () => {
+  it('auto-opens the homepage first-run guide and does not persist completion on early close', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: false },
+        'onboarding-basic': { completed: true },
+        'onboarding-use-cases': { completed: true },
+        'onboarding-install': { completed: true },
+      },
+    }
+
+    render(<App />)
+
+    expect(await screen.findByText('第 1 步 / 共 3 步')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '先选公司 IT 工具' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '关闭' }))
+
+    expect(screen.queryByText('第 1 步 / 共 3 步')).not.toBeInTheDocument()
+    expect(getConfigUpdateCalls()).toHaveLength(0)
+  })
+
+  it('blocks homepage actions while the homepage first-run guide is active', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: false },
+        'onboarding-basic': { completed: true },
+        'onboarding-use-cases': { completed: true },
+        'onboarding-install': { completed: true },
+      },
+    }
+
+    render(<App />)
+
+    const basicEntry = await screen.findByRole('button', { name: '选择公司 IT 工具' })
+    await expect(user.click(basicEntry)).rejects.toThrow(/pointer-events/i)
+
+    expect(screen.getByRole('heading', { name: '先选公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Jira' })).not.toBeInTheDocument()
+  })
+
+  it('marks the homepage first-run guide complete only after the final step', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: false },
+        'onboarding-basic': { completed: true },
+        'onboarding-use-cases': { completed: true },
+        'onboarding-install': { completed: true },
+      },
+    }
+
+    render(<App />)
+
+    expect(await screen.findByText('第 1 步 / 共 3 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    expect(screen.getByText('第 2 步 / 共 3 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    expect(screen.getByText('第 3 步 / 共 3 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+
+    await waitFor(() => {
+      expect(getConfigUpdateCalls()).toHaveLength(1)
+    })
+
+    const [, payload] = getConfigUpdateCalls()[0]
+    expect(payload?.onboardingGuides?.['onboarding-home']).toEqual({ completed: true })
+    expect(screen.queryByText('第 3 步 / 共 3 步')).not.toBeInTheDocument()
+  })
+
+  it('auto-opens the 公司 IT 工具 first-run guide on first entry', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: true },
+        'onboarding-basic': { completed: false },
+        'onboarding-use-cases': { completed: true },
+        'onboarding-install': { completed: true },
+      },
+    }
+
+    render(<App />)
+    await waitForOnboardingHome()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    expect(
+      await screen.findByRole('heading', { name: '先选你们公司正在使用的 IT 工具' })
+    ).toBeInTheDocument()
+  })
+
+  it('auto-opens the 工作配置 first-run guide on first entry', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: true },
+        'onboarding-basic': { completed: true },
+        'onboarding-use-cases': { completed: false },
+        'onboarding-install': { completed: true },
+      },
+    }
+
+    render(<App />)
+    await waitForOnboardingHome()
+
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+
+    expect(await screen.findByRole('heading', { name: '先选岗位' })).toBeInTheDocument()
+  })
+
+  it('auto-opens the 安装 first-run guide on first entry', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: true },
+        'onboarding-basic': { completed: true },
+        'onboarding-use-cases': { completed: true },
+        'onboarding-install': { completed: false },
+      },
+    }
+
+    render(<App />)
+    await waitForOnboardingHome()
+
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await screen.findByRole('heading', { name: '先选要安装到的 AI 工具' })).toBeInTheDocument()
+  })
+
   it('shows no selected role while leaving all onboarding sections incomplete for a fresh state', async () => {
     mockControls.stateOverride = {
       selected_agent_ids: [],
@@ -1840,7 +2018,17 @@ describe('OnboardingShell', () => {
         case 'check_skill_updates':
           return { success: [] }
         case 'get_config':
-          return { success: { preferred_locale: 'zh-CN' } }
+          return {
+            success: {
+              preferred_locale: 'zh-CN',
+              onboarding_guides: {
+                'onboarding-home': { completed: true },
+                'onboarding-basic': { completed: true },
+                'onboarding-use-cases': { completed: true },
+                'onboarding-install': { completed: true },
+              },
+            },
+          }
         case 'get_onboarding_state':
           throw new Error('Tauri backend unavailable')
         case 'set_onboarding_state':

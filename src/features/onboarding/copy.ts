@@ -527,6 +527,118 @@ export const onboardingCopy = {
     'zh-CN': '请先保存其他页面的设置。',
     'en-US': 'Save the changes on the other pages first.',
   },
+  guideNext: {
+    'zh-CN': '下一步',
+    'en-US': 'Next',
+  },
+  guidePrevious: {
+    'zh-CN': '上一步',
+    'en-US': 'Back',
+  },
+  guideClose: {
+    'zh-CN': '关闭',
+    'en-US': 'Close',
+  },
+  guideStepLabel: {
+    'zh-CN': '第 {current} 步 / 共 {total} 步',
+    'en-US': 'Step {current} of {total}',
+  },
+  guideHomeStep1Title: {
+    'zh-CN': '先选公司 IT 工具',
+    'en-US': 'Start with company IT tools',
+  },
+  guideHomeStep1Body: {
+    'zh-CN': '第一步先把公司正在用的 IT 工具和账号信息准备好，后面的工作配置都会依赖这些系统。',
+    'en-US': 'Start by selecting the company IT tools and preparing the related credentials. Later steps depend on these systems.',
+  },
+  guideHomeStep2Title: {
+    'zh-CN': '再配置要交给 AI 的工作',
+    'en-US': 'Then configure the work for AI',
+  },
+  guideHomeStep2Body: {
+    'zh-CN': '第二步再选择岗位，并补充这个岗位下要交给 AI 的具体工作和 SOP 要求。',
+    'en-US': 'Next choose the role and describe the work plus SOP requirements that AI should handle.',
+  },
+  guideHomeStep3Title: {
+    'zh-CN': '最后安装到 AI 工具',
+    'en-US': 'Finally install into the AI tool',
+  },
+  guideHomeStep3Body: {
+    'zh-CN': '最后确认要安装到哪一个 AI 工具，再开始同步安装。',
+    'en-US': 'Finally choose the AI tool you want to install into and start sync installation.',
+  },
+  guideBasicStep1Title: {
+    'zh-CN': '先选你们公司正在使用的 IT 工具',
+    'en-US': 'First choose the IT tools your company uses',
+  },
+  guideBasicStep1Body: {
+    'zh-CN': '先勾选公司里已经在用的系统，只保留你们真正需要接入的工具。',
+    'en-US': 'Start by selecting the systems your company actually uses so only relevant tools are configured.',
+  },
+  guideBasicStep2Title: {
+    'zh-CN': '再填写这些工具对应的账号信息',
+    'en-US': 'Then fill in the credentials for those tools',
+  },
+  guideBasicStep2Body: {
+    'zh-CN': '系统会根据你选中的工具显示对应账号字段；把这里补齐以后，AI 才能从这些系统里取信息。',
+    'en-US': 'The app shows only the credential fields for the selected tools. Fill these in so AI can read data from those systems.',
+  },
+  guideBasicStep3Title: {
+    'zh-CN': '最后保存公司 IT 工具设置',
+    'en-US': 'Finally save the company IT tool settings',
+  },
+  guideBasicStep3Body: {
+    'zh-CN': '确认信息无误后保存这一页，后面的岗位工作和安装步骤就会直接复用这些配置。',
+    'en-US': 'Save this page after the information is ready so later onboarding steps can reuse these settings.',
+  },
+  guideUseCasesStep1Title: {
+    'zh-CN': '先选岗位',
+    'en-US': 'Choose the role first',
+  },
+  guideUseCasesStep1Body: {
+    'zh-CN': '先在这里确认你当前的岗位，系统会据此决定后面默认给你哪些工作类型。',
+    'en-US': 'Choose the current role first. The app uses it to decide which work types to prepare next.',
+  },
+  guideUseCasesStep2Title: {
+    'zh-CN': '再切到要交给 AI 的工作',
+    'en-US': 'Then switch to the work tab',
+  },
+  guideUseCasesStep2Body: {
+    'zh-CN': '切到工作页以后，选择这个岗位下真正要交给 AI 去做的工作。',
+    'en-US': 'Switch to the work tab and choose the work items this role should hand off to AI.',
+  },
+  guideUseCasesStep3Title: {
+    'zh-CN': '最后补充工作说明和 SOP',
+    'en-US': 'Finally add the work instructions and SOP',
+  },
+  guideUseCasesStep3Body: {
+    'zh-CN': '把工作说明、信息来源和执行要求补完整，再保存这部分内容。',
+    'en-US': 'Add the work description, information sources, and execution rules, then save the configuration.',
+  },
+  guideInstallStep1Title: {
+    'zh-CN': '先选要安装到的 AI 工具',
+    'en-US': 'First choose the AI tool to install into',
+  },
+  guideInstallStep1Body: {
+    'zh-CN': '先选择最终要把 Skill 安装到哪一个 AI 工具里。',
+    'en-US': 'Start by choosing which AI tool should receive the generated Skills.',
+  },
+  guideInstallStep2Title: {
+    'zh-CN': '再确认安装内容',
+    'en-US': 'Then review the install contents',
+  },
+  guideInstallStep2Body: {
+    'zh-CN': '这里会汇总基础工具和岗位生成的 Skill，确认哪些内容会被安装。',
+    'en-US': 'Review the base tools and generated Skills here to confirm what will be installed.',
+  },
+  guideInstallStep3Title: {
+    'zh-CN': '最后开始同步安装',
+    'en-US': 'Finally start sync installation',
+  },
+  guideInstallStep3Body: {
+    'zh-CN': '确认无误后点击同步安装，把前面准备好的内容真正写入目标 AI 工具。',
+    'en-US': 'Start sync installation to write the prepared content into the target AI tool.',
+  },
   homeEntries: {
     basic: {
       title: {

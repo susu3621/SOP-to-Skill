@@ -194,6 +194,12 @@ const fixtures = vi.hoisted(() => {
       success: '/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log',
     } as { success?: string; error?: string },
     preferredLocale: 'zh-CN' as 'zh-CN' | 'en-US',
+    onboardingGuides: {
+      'onboarding-home': { completed: true },
+      'onboarding-basic': { completed: true },
+      'onboarding-use-cases': { completed: true },
+      'onboarding-install': { completed: true },
+    } as Record<string, { completed: boolean }>,
     updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
     trayNavigateHandler: null as null | ((event: { payload: string }) => void),
     skills: [] as Array<Record<string, unknown>>,
@@ -231,13 +237,26 @@ vi.mock('@tauri-apps/api/core', () => ({
         }
         return { success: fixtures.runtime.exportCurrentLogResult.success }
       case 'get_config':
-        return { success: { preferred_locale: fixtures.runtime.preferredLocale } }
+        return {
+          success: {
+            preferred_locale: fixtures.runtime.preferredLocale,
+            onboarding_guides: fixtures.runtime.onboardingGuides,
+          },
+        }
       case 'update_config':
         if (payload?.preferredLocale) {
           fixtures.runtime.preferredLocale = payload.preferredLocale
           fixtures.runtime.updatedLocales.push(payload.preferredLocale)
         }
-        return { success: { preferred_locale: fixtures.runtime.preferredLocale } }
+        if (payload?.onboardingGuides) {
+          fixtures.runtime.onboardingGuides = payload.onboardingGuides
+        }
+        return {
+          success: {
+            preferred_locale: fixtures.runtime.preferredLocale,
+            onboarding_guides: fixtures.runtime.onboardingGuides,
+          },
+        }
       case 'get_data_directory':
         return '~/.sop-to-skill'
       case 'get_onboarding_state':
@@ -333,6 +352,12 @@ describe('onboarding shell smoke coverage', () => {
       success: '/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log',
     }
     fixtures.runtime.preferredLocale = 'zh-CN'
+    fixtures.runtime.onboardingGuides = {
+      'onboarding-home': { completed: true },
+      'onboarding-basic': { completed: true },
+      'onboarding-use-cases': { completed: true },
+      'onboarding-install': { completed: true },
+    }
     fixtures.runtime.updatedLocales = []
     fixtures.runtime.trayNavigateHandler = null
     fixtures.runtime.skills = []

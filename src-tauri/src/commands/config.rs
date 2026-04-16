@@ -1,4 +1,4 @@
-use crate::models::AppConfig;
+use crate::models::{AppConfig, OnboardingGuideCompletion};
 use crate::template::{ensure_directories, get_config_path, get_data_root, get_logs_dir};
 use std::fs;
 use std::path::Path;
@@ -104,6 +104,7 @@ pub fn get_config() -> SkillResult<AppConfig> {
 pub fn update_config(
     preferred_locale: Option<String>,
     update_check_interval_hours: Option<u64>,
+    onboarding_guides: Option<std::collections::HashMap<String, OnboardingGuideCompletion>>,
 ) -> SkillResult<AppConfig> {
     let mut config = load_config();
 
@@ -113,6 +114,10 @@ pub fn update_config(
 
     if let Some(interval) = update_check_interval_hours {
         config.update_check_interval_hours = interval;
+    }
+
+    if let Some(guides) = onboarding_guides {
+        config.onboarding_guides = guides;
     }
 
     match save_config(&config) {
@@ -177,7 +182,9 @@ pub async fn export_current_log(app: AppHandle) -> SkillResult<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::load_config;
+    use super::{load_config, save_config};
+    use crate::models::AppConfig;
+    use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
     use std::sync::{Mutex, OnceLock};
@@ -259,6 +266,90 @@ mod tests {
             env!("CARGO_PKG_VERSION")
         )));
         assert!(!persisted.contains("\"last_migrated_app_version\": \"0.0.1\""));
+    }
+
+    #[test]
+    fn load_config_defaults_missing_onboarding_guides_to_incomplete() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("missing-guides");
+        let config_path = data_dir.join("config.json");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+
+        fs::write(
+            &config_path,
+            r#"{"preferred_locale":"zh-CN","update_check_interval_hours":1}"#,
+        )
+        .expect("write config without onboarding guides");
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        let loaded = load_config();
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(
+            loaded.onboarding_guides.get("onboarding-home").map(|guide| guide.completed),
+            Some(false)
+        );
+        assert_eq!(
+            loaded.onboarding_guides.get("onboarding-basic").map(|guide| guide.completed),
+            Some(false)
+        );
+        assert_eq!(
+            loaded
+                .onboarding_guides
+                .get("onboarding-use-cases")
+                .map(|guide| guide.completed),
+            Some(false)
+        );
+        assert_eq!(
+            loaded
+                .onboarding_guides
+                .get("onboarding-install")
+                .map(|guide| guide.completed),
+            Some(false)
+        );
+    }
+
+    #[test]
+    fn save_config_persists_onboarding_guide_completion_without_clobbering_locale() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("save-guides");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        save_config(&AppConfig {
+            preferred_locale: Some("en-US".to_string()),
+            update_check_interval_hours: 4,
+            onboarding_guides: HashMap::from([
+                (
+                    "onboarding-home".to_string(),
+                    crate::models::OnboardingGuideCompletion { completed: true },
+                ),
+                (
+                    "onboarding-basic".to_string(),
+                    crate::models::OnboardingGuideCompletion { completed: false },
+                ),
+                (
+                    "onboarding-use-cases".to_string(),
+                    crate::models::OnboardingGuideCompletion { completed: false },
+                ),
+                (
+                    "onboarding-install".to_string(),
+                    crate::models::OnboardingGuideCompletion { completed: false },
+                ),
+            ]),
+            ..AppConfig::default()
+        })
+        .expect("save config with onboarding guides");
+
+        let loaded = load_config();
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(loaded.preferred_locale.as_deref(), Some("en-US"));
+        assert_eq!(loaded.update_check_interval_hours, 4);
+        assert_eq!(
+            loaded.onboarding_guides.get("onboarding-home").map(|guide| guide.completed),
+            Some(true)
+        );
     }
 
     #[test]

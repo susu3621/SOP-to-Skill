@@ -206,10 +206,39 @@ pub struct AppConfig {
     pub last_update_check: Option<chrono::DateTime<chrono::Utc>>,
     #[serde(default)]
     pub preferred_locale: Option<String>,
+    #[serde(default = "default_onboarding_guides")]
+    pub onboarding_guides: HashMap<String, OnboardingGuideCompletion>,
 }
 
 fn default_check_interval() -> u64 {
     1 // 1 hour default
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub struct OnboardingGuideCompletion {
+    #[serde(default)]
+    pub completed: bool,
+}
+
+fn default_onboarding_guides() -> HashMap<String, OnboardingGuideCompletion> {
+    HashMap::from([
+        (
+            "onboarding-home".to_string(),
+            OnboardingGuideCompletion::default(),
+        ),
+        (
+            "onboarding-basic".to_string(),
+            OnboardingGuideCompletion::default(),
+        ),
+        (
+            "onboarding-use-cases".to_string(),
+            OnboardingGuideCompletion::default(),
+        ),
+        (
+            "onboarding-install".to_string(),
+            OnboardingGuideCompletion::default(),
+        ),
+    ])
 }
 
 impl Default for AppConfig {
@@ -218,6 +247,7 @@ impl Default for AppConfig {
             update_check_interval_hours: default_check_interval(),
             last_update_check: None,
             preferred_locale: Some("zh-CN".to_string()),
+            onboarding_guides: default_onboarding_guides(),
         }
     }
 }

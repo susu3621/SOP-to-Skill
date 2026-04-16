@@ -1,4 +1,11 @@
-import { startTransition, useEffect, useMemo, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { type ReactNode, startTransition, useEffect, useMemo, useState } from 'react'
+import { FirstRunGuideBubble } from './FirstRunGuideBubble'
+import {
+  createDefaultOnboardingGuideCompletionMap,
+  getFirstRunGuideDefinitions,
+  resolveOnboardingGuideCompletionMap,
+} from './firstRunGuides'
 import { AgentSelectionStep } from './steps/AgentSelectionStep'
 import { CompletionStep } from './steps/CompletionStep'
 import { CredentialsStep } from './steps/CredentialsStep'
@@ -16,9 +23,15 @@ import {
   getRoleNameById,
 } from '../../content/workbuddy'
 import type {
+  ActiveFirstRunGuideState,
+  AppConfig,
+  FirstRunGuideStep,
   InstalledSkillInfo,
   Locale,
   OnboardingEditableUseCaseRecord,
+  OnboardingGuideCompletionMap,
+  OnboardingGuideId,
+  SkillResult,
 } from '../../types'
 import { getOnboardingCopy, getOnboardingList, onboardingCopy } from './copy'
 
@@ -52,6 +65,20 @@ function getOnboardingHomeEntries(locale: Locale): Record<Exclude<OnboardingView
       description: getOnboardingCopy(locale, onboardingCopy.homeEntries.install.description),
       items: getOnboardingList(locale, onboardingCopy.homeEntries.install.items),
     },
+  }
+}
+
+function getGuideIdForView(view: OnboardingView): OnboardingGuideId {
+  switch (view) {
+    case 'basic':
+      return 'onboarding-basic'
+    case 'useCases':
+      return 'onboarding-use-cases'
+    case 'install':
+      return 'onboarding-install'
+    case 'home':
+    default:
+      return 'onboarding-home'
   }
 }
 
@@ -171,6 +198,14 @@ interface DetailPanelProps {
   placement?: 'left' | 'right'
 }
 
+interface GuideAnchorProps {
+  anchorId: string
+  activeStep: FirstRunGuideStep | null
+  bubble: ReactNode
+  children: ReactNode
+  className?: string
+}
+
 interface HomeSummaryGroup {
   label: string
   kind?: 'values' | 'installTable'
@@ -211,6 +246,21 @@ function DetailPanel({
         ))}
       </ol>
     </section>
+  )
+}
+
+function GuideAnchor({ anchorId, activeStep, bubble, children, className }: GuideAnchorProps) {
+  const isActive = activeStep?.anchor_id === anchorId
+
+  return (
+    <div
+      className={`guide-anchor${className ? ` ${className}` : ''}`}
+      data-guide-active={isActive}
+      data-guide-anchor={anchorId}
+    >
+      {children}
+      {isActive ? bubble : null}
+    </div>
   )
 }
 
@@ -423,6 +473,7 @@ function UseCaseList({
 
 interface InstallModuleProps {
   locale: Locale
+  activeGuideStep: FirstRunGuideStep | null
   installCandidateGroups: ReturnType<typeof useOnboarding>['installCandidateGroups']
   installedCount: number
   onOpenInstalled: () => void
@@ -441,10 +492,12 @@ interface InstallModuleProps {
   onStartSync: () => void
   onToggleAgent: (agentId: string) => void
   onToggleInstallSkill: (skillId: string) => void
+  renderGuideBubble: () => ReactNode
 }
 
 function InstallModule({
   locale,
+  activeGuideStep,
   installCandidateGroups,
   installedCount,
   onOpenInstalled,
@@ -463,9 +516,10 @@ function InstallModule({
   onStartSync,
   onToggleAgent,
   onToggleInstallSkill,
+  renderGuideBubble,
 }: InstallModuleProps) {
   return (
-    <div className="onboarding-shell">
+    <div className="onboarding-shell" data-guide-visible={Boolean(activeGuideStep)}>
       <section className="onboarding-section">
         <ModuleHeader
           locale={locale}
@@ -477,43 +531,62 @@ function InstallModule({
         />
         <SaveFeedbackBanner feedback={saveFeedback} />
         <div className="field-stack">
-          <AgentSelectionStep
-            locale={locale}
-            selectedAgentIds={selectedAgentIds}
-            onToggleAgent={onToggleAgent}
-          />
+          <GuideAnchor
+            anchorId="onboarding-install-agent-selection"
+            activeStep={activeGuideStep}
+            bubble={renderGuideBubble()}
+          >
+            <AgentSelectionStep
+              locale={locale}
+              selectedAgentIds={selectedAgentIds}
+              onToggleAgent={onToggleAgent}
+            />
+          </GuideAnchor>
           {previewError && <p className="error">{previewError}</p>}
-          <InstallSelectionStep
-            locale={locale}
-            agentPreviews={preview.agent_previews}
-            installCandidateGroups={installCandidateGroups}
-            selectedAgentIds={selectedAgentIds}
-            selectedBaseSkillIds={selectedBaseSkillIds}
-            selectedInstallSkillIds={preview.selected_install_skill_ids}
-            onToggleInstallSkill={onToggleInstallSkill}
-          />
-          <div className="button-row">
-            <button className="button--ghost" disabled={saveDisabled} type="button" onClick={onSave}>
-              {saving
-                ? getOnboardingCopy(locale, onboardingCopy.saving)
-                : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
-            </button>
-            <button
-              className="button"
-              type="button"
-              onClick={onStartSync}
-              disabled={syncing || selectedAgentIds.length === 0}
-            >
-              {syncing
-                ? getOnboardingCopy(locale, onboardingCopy.syncing)
-                : getOnboardingCopy(locale, onboardingCopy.sync)}
-            </button>
-          </div>
+          <GuideAnchor
+            anchorId="onboarding-install-review"
+            activeStep={activeGuideStep}
+            bubble={renderGuideBubble()}
+          >
+            <InstallSelectionStep
+              locale={locale}
+              agentPreviews={preview.agent_previews}
+              installCandidateGroups={installCandidateGroups}
+              selectedAgentIds={selectedAgentIds}
+              selectedBaseSkillIds={selectedBaseSkillIds}
+              selectedInstallSkillIds={preview.selected_install_skill_ids}
+              onToggleInstallSkill={onToggleInstallSkill}
+            />
+          </GuideAnchor>
+          <GuideAnchor
+            anchorId="onboarding-install-sync"
+            activeStep={activeGuideStep}
+            bubble={renderGuideBubble()}
+          >
+            <div className="button-row">
+              <button className="button--ghost" disabled={saveDisabled} type="button" onClick={onSave}>
+                {saving
+                  ? getOnboardingCopy(locale, onboardingCopy.saving)
+                  : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
+              </button>
+              <button
+                className="button"
+                type="button"
+                onClick={onStartSync}
+                disabled={syncing || selectedAgentIds.length === 0}
+              >
+                {syncing
+                  ? getOnboardingCopy(locale, onboardingCopy.syncing)
+                  : getOnboardingCopy(locale, onboardingCopy.sync)}
+              </button>
+            </div>
+          </GuideAnchor>
           <section className="summary-card onboarding-subeditor-panel">
             <CompletionStep locale={locale} syncError={syncError} syncResult={syncResult} />
           </section>
         </div>
       </section>
+      {activeGuideStep ? <div aria-hidden="true" className="onboarding-guide-overlay" /> : null}
     </div>
   )
 }
@@ -581,16 +654,191 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
   const [newUseCaseName, setNewUseCaseName] = useState('')
   const [newUseCaseError, setNewUseCaseError] = useState<string | null>(null)
   const onboardingHomeEntries = useMemo(() => getOnboardingHomeEntries(locale), [locale])
+  const firstRunGuides = useMemo(() => getFirstRunGuideDefinitions(locale), [locale])
+  const [guideConfig, setGuideConfig] = useState<OnboardingGuideCompletionMap>(() =>
+    createDefaultOnboardingGuideCompletionMap()
+  )
+  const [guideConfigLoaded, setGuideConfigLoaded] = useState(false)
+  const [activeGuide, setActiveGuide] = useState<ActiveFirstRunGuideState | null>(null)
+  const [dismissedGuideId, setDismissedGuideId] = useState<OnboardingGuideId | null>(null)
+
+  const activeGuideDefinition = activeGuide ? firstRunGuides[activeGuide.guideId] : null
+  const activeGuideStep =
+    activeGuide && activeGuideDefinition ? activeGuideDefinition.steps[activeGuide.stepIndex] : null
+
+  function applyGuideStepBeforeEnter(step: FirstRunGuideStep) {
+    if (step.before_enter === 'use-cases-role-tab') {
+      setActiveUseCaseTab('role')
+    }
+
+    if (step.before_enter === 'use-cases-work-tab') {
+      setActiveUseCaseTab('work')
+    }
+  }
 
   const openView = (nextView: OnboardingView) => {
     startTransition(() => {
       setView(nextView)
+      setDismissedGuideId(null)
 
       if (nextView === 'useCases') {
         setActiveUseCaseTab('role')
       }
     })
   }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadGuideConfig() {
+      try {
+        const result = await invoke<SkillResult<AppConfig>>('get_config')
+
+        if (!cancelled && result.success) {
+          setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+          setGuideConfigLoaded(true)
+        } else if (!cancelled) {
+          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
+          setGuideConfigLoaded(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
+          setGuideConfigLoaded(true)
+        }
+      }
+    }
+
+    void loadGuideConfig()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    setDismissedGuideId(null)
+  }, [view])
+
+  useEffect(() => {
+    if (!guideConfigLoaded) {
+      return
+    }
+
+    const guideId = getGuideIdForView(view)
+
+    if (dismissedGuideId === guideId) {
+      return
+    }
+
+    if (guideConfig[guideId]?.completed) {
+      if (activeGuide?.guideId === guideId) {
+        setActiveGuide(null)
+      }
+      return
+    }
+
+    if (!activeGuide || activeGuide.guideId !== guideId) {
+      const firstStep = firstRunGuides[guideId].steps[0]
+      applyGuideStepBeforeEnter(firstStep)
+      setActiveGuide({ guideId, stepIndex: 0 })
+    }
+  }, [activeGuide, dismissedGuideId, firstRunGuides, guideConfig, guideConfigLoaded, view])
+
+  useEffect(() => {
+    if (!activeGuideStep) {
+      return
+    }
+
+    const element = document.querySelector<HTMLElement>(
+      `[data-guide-anchor="${activeGuideStep.anchor_id}"]`
+    )
+    if (typeof element?.scrollIntoView === 'function') {
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+  }, [activeGuideStep])
+
+  const handleGuideClose = () => {
+    if (!activeGuide) {
+      return
+    }
+
+    setDismissedGuideId(activeGuide.guideId)
+    setActiveGuide(null)
+  }
+
+  const handleGuideBack = () => {
+    if (!activeGuide || activeGuide.stepIndex === 0) {
+      return
+    }
+
+    const nextStepIndex = activeGuide.stepIndex - 1
+    const nextStep = firstRunGuides[activeGuide.guideId].steps[nextStepIndex]
+    applyGuideStepBeforeEnter(nextStep)
+    setActiveGuide({
+      guideId: activeGuide.guideId,
+      stepIndex: nextStepIndex,
+    })
+  }
+
+  const handleGuideNext = async () => {
+    if (!activeGuide || !activeGuideDefinition) {
+      return
+    }
+
+    const nextStepIndex = activeGuide.stepIndex + 1
+
+    if (nextStepIndex < activeGuideDefinition.steps.length) {
+      const nextStep = activeGuideDefinition.steps[nextStepIndex]
+      applyGuideStepBeforeEnter(nextStep)
+      setActiveGuide({
+        guideId: activeGuide.guideId,
+        stepIndex: nextStepIndex,
+      })
+      return
+    }
+
+    const nextGuideConfig: OnboardingGuideCompletionMap = {
+      ...guideConfig,
+      [activeGuide.guideId]: { completed: true },
+    }
+
+    try {
+      const result = await invoke<SkillResult<AppConfig>>('update_config', {
+        onboardingGuides: nextGuideConfig,
+      })
+
+      if (result.success) {
+        setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+      } else {
+        setDismissedGuideId(activeGuide.guideId)
+      }
+    } catch {
+      setDismissedGuideId(activeGuide.guideId)
+    }
+
+    setActiveGuide(null)
+  }
+
+  const renderGuideBubble = () =>
+    activeGuide && activeGuideStep && activeGuideDefinition ? (
+      <FirstRunGuideBubble
+        locale={locale}
+        currentStep={activeGuide.stepIndex + 1}
+        totalSteps={activeGuideDefinition.steps.length}
+        title={activeGuideStep.title}
+        body={activeGuideStep.body}
+        canGoBack={activeGuide.stepIndex > 0}
+        placement={activeGuideStep.placement}
+        onBack={handleGuideBack}
+        onClose={handleGuideClose}
+        onNext={handleGuideNext}
+      />
+    ) : null
+
+  const guideOverlay = activeGuideStep ? (
+    <div aria-hidden="true" className="onboarding-guide-overlay" />
+  ) : null
 
   useEffect(() => {
     if (!selectedUseCaseId || !state.role_use_case_contents.some((item) => item.use_case_id === selectedUseCaseId)) {
@@ -701,7 +949,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
 
   if (view === 'home') {
     return (
-      <div className="onboarding-shell">
+      <div className="onboarding-shell" data-guide-visible={Boolean(activeGuideStep)}>
         <section className="onboarding-section">
           <div className="onboarding-section__header">
             <div>
@@ -723,7 +971,12 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
           </div>
 
           <div className="onboarding-entry-grid">
-            <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
+            <GuideAnchor
+              anchorId="onboarding-home-basic-card"
+              activeStep={activeGuideStep}
+              bubble={renderGuideBubble()}
+              className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform"
+            >
               <EntryCard
                 locale={locale}
                 active={hoveredHomeEntry === 'basic'}
@@ -736,7 +989,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                 onHover={() => setHoveredHomeEntry('basic')}
                 onLeave={() => setHoveredHomeEntry(null)}
               />
-              {hoveredHomeEntry === 'basic' && (
+              {!activeGuideStep && hoveredHomeEntry === 'basic' && (
                 <DetailPanel
                   className="onboarding-detail-panel--bubble"
                   description={onboardingHomeEntries.basic.description}
@@ -746,8 +999,13 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                   title={onboardingHomeEntries.basic.title}
                 />
               )}
-            </div>
-            <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
+            </GuideAnchor>
+            <GuideAnchor
+              anchorId="onboarding-home-use-cases-card"
+              activeStep={activeGuideStep}
+              bubble={renderGuideBubble()}
+              className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform"
+            >
               <EntryCard
                 locale={locale}
                 active={hoveredHomeEntry === 'useCases'}
@@ -760,7 +1018,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                 onHover={() => setHoveredHomeEntry('useCases')}
                 onLeave={() => setHoveredHomeEntry(null)}
               />
-              {hoveredHomeEntry === 'useCases' && (
+              {!activeGuideStep && hoveredHomeEntry === 'useCases' && (
                 <DetailPanel
                   className="onboarding-detail-panel--bubble"
                   description={onboardingHomeEntries.useCases.description}
@@ -770,8 +1028,13 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                   title={onboardingHomeEntries.useCases.title}
                 />
               )}
-            </div>
-            <div className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform">
+            </GuideAnchor>
+            <GuideAnchor
+              anchorId="onboarding-home-install-card"
+              activeStep={activeGuideStep}
+              bubble={renderGuideBubble()}
+              className="onboarding-entry-card-shell onboarding-entry-card-shell--uniform"
+            >
               <EntryCard
                 locale={locale}
                 active={hoveredHomeEntry === 'install'}
@@ -784,7 +1047,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                 onHover={() => setHoveredHomeEntry('install')}
                 onLeave={() => setHoveredHomeEntry(null)}
               />
-              {hoveredHomeEntry === 'install' && (
+              {!activeGuideStep && hoveredHomeEntry === 'install' && (
                 <DetailPanel
                   className="onboarding-detail-panel--bubble"
                   description={onboardingHomeEntries.install.description}
@@ -794,18 +1057,19 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                   title={onboardingHomeEntries.install.title}
                 />
               )}
-            </div>
+            </GuideAnchor>
           </div>
 
           <HomeSummarySection groups={homeSummaryGroups} locale={locale} />
         </section>
+        {guideOverlay}
       </div>
     )
   }
 
   if (view === 'basic') {
     return (
-      <div className="onboarding-shell">
+      <div className="onboarding-shell" data-guide-visible={Boolean(activeGuideStep)}>
         <section className="onboarding-section">
           <ModuleHeader
             locale={locale}
@@ -818,59 +1082,78 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
 
           <section className="summary-card onboarding-subeditor-panel">
             <SaveFeedbackBanner feedback={saveFeedbacks.baseSkills} />
-            <BaseSkillSelectionPanel
-              locale={locale}
-              selectedBaseSkillIds={state.selected_base_skill_ids}
-              onToggleBaseSkill={toggleBaseSkill}
-            />
-            <section className="summary-card onboarding-subeditor-panel">
-              <h3>{getOnboardingCopy(locale, onboardingCopy.credentialsTitle)}</h3>
-              <p>{getOnboardingCopy(locale, onboardingCopy.credentialsBody)}</p>
-              <CredentialsStep
+            <GuideAnchor
+              anchorId="onboarding-basic-base-skills"
+              activeStep={activeGuideStep}
+              bubble={renderGuideBubble()}
+            >
+              <BaseSkillSelectionPanel
                 locale={locale}
-                connectionTests={connectionTests}
-                linuxDeviceConnectionTests={linuxDeviceConnectionTests}
-                svnRepositoryConnectionTests={svnRepositoryConnectionTests}
-                environmentChecks={environmentChecks}
-                environmentInstalls={environmentInstalls}
-                credentialGroups={credentialGroups}
-                credentialValues={state.credential_values}
-                linuxDevices={state.linux_devices}
-                svnRepositories={state.svn_repositories ?? []}
-                onAddLinuxDevice={addLinuxDevice}
-                onAddSvnRepository={addSvnRepository}
-                onInstallEnvironment={installEnvironment}
-                onRemoveLinuxDevice={removeLinuxDevice}
-                onRemoveSvnRepository={removeSvnRepository}
-                onRunLinuxDeviceConnectionTest={runManualLinuxDeviceConnectionTest}
-                onRunSvnRepositoryConnectionTest={runManualSvnRepositoryConnectionTest}
-                onRunConnectionTest={runManualConnectionTest}
-                onUpdateCredential={updateCredentialValue}
-                onUpdateLinuxDeviceField={updateLinuxDeviceField}
-                onUpdateSvnRepositoryField={updateSvnRepositoryField}
+                selectedBaseSkillIds={state.selected_base_skill_ids}
+                onToggleBaseSkill={toggleBaseSkill}
               />
-            </section>
-            <div className="button-row">
-              <button
-                className="button"
-                disabled={!dirty.baseSkills || savingScope === 'baseSkills'}
-                type="button"
-                onClick={() => void saveState('baseSkills')}
-              >
-                {savingScope === 'baseSkills'
-                  ? getOnboardingCopy(locale, onboardingCopy.saving)
-                  : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
-              </button>
-            </div>
+            </GuideAnchor>
+            <GuideAnchor
+              anchorId="onboarding-basic-credentials"
+              activeStep={activeGuideStep}
+              bubble={renderGuideBubble()}
+            >
+              <section className="summary-card onboarding-subeditor-panel">
+                <h3>{getOnboardingCopy(locale, onboardingCopy.credentialsTitle)}</h3>
+                <p>{getOnboardingCopy(locale, onboardingCopy.credentialsBody)}</p>
+                <CredentialsStep
+                  locale={locale}
+                  connectionTests={connectionTests}
+                  linuxDeviceConnectionTests={linuxDeviceConnectionTests}
+                  svnRepositoryConnectionTests={svnRepositoryConnectionTests}
+                  environmentChecks={environmentChecks}
+                  environmentInstalls={environmentInstalls}
+                  credentialGroups={credentialGroups}
+                  credentialValues={state.credential_values}
+                  linuxDevices={state.linux_devices}
+                  svnRepositories={state.svn_repositories ?? []}
+                  onAddLinuxDevice={addLinuxDevice}
+                  onAddSvnRepository={addSvnRepository}
+                  onInstallEnvironment={installEnvironment}
+                  onRemoveLinuxDevice={removeLinuxDevice}
+                  onRemoveSvnRepository={removeSvnRepository}
+                  onRunLinuxDeviceConnectionTest={runManualLinuxDeviceConnectionTest}
+                  onRunSvnRepositoryConnectionTest={runManualSvnRepositoryConnectionTest}
+                  onRunConnectionTest={runManualConnectionTest}
+                  onUpdateCredential={updateCredentialValue}
+                  onUpdateLinuxDeviceField={updateLinuxDeviceField}
+                  onUpdateSvnRepositoryField={updateSvnRepositoryField}
+                />
+              </section>
+            </GuideAnchor>
+            <GuideAnchor
+              anchorId="onboarding-basic-save"
+              activeStep={activeGuideStep}
+              bubble={renderGuideBubble()}
+            >
+              <div className="button-row">
+                <button
+                  className="button"
+                  disabled={!dirty.baseSkills || savingScope === 'baseSkills'}
+                  type="button"
+                  onClick={() => void saveState('baseSkills')}
+                >
+                  {savingScope === 'baseSkills'
+                    ? getOnboardingCopy(locale, onboardingCopy.saving)
+                    : getOnboardingCopy(locale, onboardingCopy.saveSettings)}
+                </button>
+              </div>
+            </GuideAnchor>
           </section>
         </section>
+        {guideOverlay}
       </div>
     )
   }
 
   if (view === 'useCases') {
     return (
-      <div className="onboarding-shell">
+      <div className="onboarding-shell" data-guide-visible={Boolean(activeGuideStep)}>
         <section className="onboarding-section">
           <ModuleHeader
             locale={locale}
@@ -924,31 +1207,37 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
             </div>
 
             {activeUseCaseTab === 'role' ? (
-              <section
-                aria-labelledby="onboarding-role-tab"
-                className="summary-card onboarding-subeditor-panel"
-                id="onboarding-role-tabpanel"
-                role="tabpanel"
+              <GuideAnchor
+                anchorId="onboarding-use-cases-role-panel"
+                activeStep={activeGuideStep}
+                bubble={renderGuideBubble()}
               >
-                <RoleSelectionPanel
-                  locale={locale}
-                  selectedRoleId={state.selected_role_id}
-                  onSelectRole={selectRole}
-                />
-                <SaveFeedbackBanner feedback={saveFeedbacks.role} />
-                <div className="button-row">
-                  <button
-                    className="button"
-                    disabled={!dirty.role || savingScope === 'role'}
-                    type="button"
-                    onClick={() => void saveState('role')}
-                  >
-                    {savingScope === 'role'
-                      ? getOnboardingCopy(locale, onboardingCopy.saving)
-                      : getOnboardingCopy(locale, onboardingCopy.saveRole)}
-                  </button>
-                </div>
-              </section>
+                <section
+                  aria-labelledby="onboarding-role-tab"
+                  className="summary-card onboarding-subeditor-panel"
+                  id="onboarding-role-tabpanel"
+                  role="tabpanel"
+                >
+                  <RoleSelectionPanel
+                    locale={locale}
+                    selectedRoleId={state.selected_role_id}
+                    onSelectRole={selectRole}
+                  />
+                  <SaveFeedbackBanner feedback={saveFeedbacks.role} />
+                  <div className="button-row">
+                    <button
+                      className="button"
+                      disabled={!dirty.role || savingScope === 'role'}
+                      type="button"
+                      onClick={() => void saveState('role')}
+                    >
+                      {savingScope === 'role'
+                        ? getOnboardingCopy(locale, onboardingCopy.saving)
+                        : getOnboardingCopy(locale, onboardingCopy.saveRole)}
+                    </button>
+                  </div>
+                </section>
+              </GuideAnchor>
             ) : (
               <section
                 aria-labelledby="onboarding-work-tab"
@@ -957,7 +1246,12 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                 role="tabpanel"
               >
                 <div className="onboarding-module-grid onboarding-module-grid--work">
-                  <div className="onboarding-module-grid__sidebar onboarding-subeditor-panel">
+                  <GuideAnchor
+                    anchorId="onboarding-use-cases-work-list"
+                    activeStep={activeGuideStep}
+                    bubble={renderGuideBubble()}
+                    className="onboarding-module-grid__sidebar onboarding-subeditor-panel"
+                  >
                     <div className="onboarding-use-case-panel-header">
                       <div>
                         <h3>{getOnboardingCopy(locale, onboardingCopy.useCasePanelTitle)}</h3>
@@ -1027,9 +1321,14 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                       useCases={state.role_use_case_contents}
                       onSelect={setSelectedUseCaseId}
                     />
-                  </div>
+                  </GuideAnchor>
 
-                  <div className="onboarding-module-grid__content">
+                  <GuideAnchor
+                    anchorId="onboarding-use-cases-work-editor"
+                    activeStep={activeGuideStep}
+                    bubble={renderGuideBubble()}
+                    className="onboarding-module-grid__content"
+                  >
                     {activeUseCase ? (
                       <div className="onboarding-subeditor-panel">
                         <SaveFeedbackBanner
@@ -1070,18 +1369,20 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                         {getOnboardingCopy(locale, onboardingCopy.useCaseEmptyHint)}
                       </p>
                     )}
-                  </div>
+                  </GuideAnchor>
                 </div>
               </section>
             )}
           </div>
         </section>
+        {guideOverlay}
       </div>
     )
   }
 
   return (
     <InstallModule
+      activeGuideStep={activeGuideStep}
       locale={locale}
       installCandidateGroups={installCandidateGroups}
       installedCount={installedSkills.length}
@@ -1101,6 +1402,7 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
       onStartSync={startSync}
       onToggleAgent={toggleAgent}
       onToggleInstallSkill={toggleInstallSkill}
+      renderGuideBubble={renderGuideBubble}
     />
   )
 }
