@@ -1214,6 +1214,43 @@ fn run_install_step(
         return Ok(());
     }
 
+    if platform == OnboardingEnvironmentPlatform::Windows && step.requirement_id == "svn" {
+        if let Ok((status, _)) = probe_requirement("svn") {
+            if status == "ready" {
+                emit_environment_install_progress(
+                    app,
+                    OnboardingEnvironmentInstallProgressEvent {
+                        install_id: install_id.to_string(),
+                        service_id: service_id.to_string(),
+                        status: "running".to_string(),
+                        progress_percent,
+                        step: step_label.to_string(),
+                        log_line: Some(
+                            "检测到 SVN 命令已经可用，已忽略当前安装器返回的冲突状态。"
+                                .to_string(),
+                        ),
+                    },
+                );
+                return Ok(());
+            }
+        }
+
+        if let Some(message) = build_windows_svn_install_conflict_message(&execution.output_lines) {
+            emit_environment_install_progress(
+                app,
+                OnboardingEnvironmentInstallProgressEvent {
+                    install_id: install_id.to_string(),
+                    service_id: service_id.to_string(),
+                    status: "running".to_string(),
+                    progress_percent,
+                    step: step_label.to_string(),
+                    log_line: Some(message.clone()),
+                },
+            );
+            return Err(message);
+        }
+    }
+
     if platform == OnboardingEnvironmentPlatform::Windows
         && step.requirement_id == "paramiko"
         && should_retry_windows_paramiko_install_with_mirror(&execution.output_lines)
@@ -1910,6 +1947,55 @@ fn first_non_empty_line(value: &str) -> Option<String> {
         .map(str::to_string)
 }
 
+fn redact_value_after_prefix_until_chars(
+    input: &str,
+    prefix: &str,
+    delimiters: &[char],
+) -> String {
+    let mut output = String::with_capacity(input.len());
+    let mut cursor = 0;
+
+    while let Some(relative_index) = input[cursor..].find(prefix) {
+        let start = cursor + relative_index;
+        output.push_str(&input[cursor..start]);
+        output.push_str(prefix);
+
+        let value_start = start + prefix.len();
+        let value_end = input[value_start..]
+            .char_indices()
+            .find(|(_, character)| delimiters.contains(character))
+            .map(|(offset, _)| value_start + offset)
+            .unwrap_or(input.len());
+
+        output.push_str("[REDACTED]");
+        cursor = value_end;
+    }
+
+    output.push_str(&input[cursor..]);
+    output
+}
+
+fn sanitize_sensitive_output(value: &str) -> String {
+    let mut sanitized = value.to_string();
+
+    for (prefix, delimiters) in [
+        ("--password ", vec![' ', '\n', '\r', '\t']),
+        ("--password=", vec![' ', '\n', '\r', '\t']),
+        ("--password', '", vec!['\'']),
+        ("--password\", \"", vec!['"']),
+        ("\"password\": \"", vec!['"']),
+        ("\"password\":\"", vec!['"']),
+        ("'password': '", vec!['\'']),
+        ("'password':'", vec!['\'']),
+        ("PASSWORD=\"", vec!['"']),
+        ("password=\"", vec!['"']),
+    ] {
+        sanitized = redact_value_after_prefix_until_chars(&sanitized, prefix, &delimiters);
+    }
+
+    sanitized
+}
+
 fn build_connection_test_details(stdout: &str, stderr: &str) -> String {
     let mut sections = Vec::new();
 
@@ -1930,9 +2016,11 @@ fn build_onboarding_connection_test_result(
     tested_fingerprint: &str,
     output: Output,
 ) -> OnboardingConnectionTestResult {
-    let stdout = trim_process_output(&output.stdout);
-    let stderr = trim_process_output(&output.stderr);
-    if let Ok(parsed) = parse_json_with_optional_utf8_bom::<ScriptConnectionTestResult>(&stdout) {
+    let stdout_raw = trim_process_output(&output.stdout);
+    let stderr_raw = trim_process_output(&output.stderr);
+
+    if let Ok(parsed) = parse_json_with_optional_utf8_bom::<ScriptConnectionTestResult>(&stdout_raw)
+    {
         return OnboardingConnectionTestResult {
             service_id: service_id.to_string(),
             success: parsed.success,
@@ -1941,12 +2029,15 @@ fn build_onboarding_connection_test_result(
             } else {
                 "error".to_string()
             },
-            summary: parsed.summary,
-            details: parsed.details,
+            summary: sanitize_sensitive_output(&parsed.summary),
+            details: sanitize_sensitive_output(&parsed.details),
             trigger: trigger.to_string(),
             tested_fingerprint: tested_fingerprint.to_string(),
         };
     }
+
+    let stdout = sanitize_sensitive_output(&stdout_raw);
+    let stderr = sanitize_sensitive_output(&stderr_raw);
 
     let success = output.status.success();
     let summary = if success {
@@ -1971,6 +2062,25 @@ fn build_onboarding_connection_test_result(
         details: build_connection_test_details(&stdout, &stderr),
         trigger: trigger.to_string(),
         tested_fingerprint: tested_fingerprint.to_string(),
+    }
+}
+
+fn build_windows_svn_install_conflict_message(output_lines: &[String]) -> Option<String> {
+    let joined_output = output_lines.join("\n").to_ascii_lowercase();
+    let mentions_existing_install = joined_output.contains("already installed")
+        || joined_output.contains("trying to upgrade the installed package")
+        || joined_output.contains("no available upgrade found")
+        || joined_output.contains("older version")
+        || joined_output.contains("newer version");
+    let mentions_svn = joined_output.contains("tortoisesvn") || joined_output.contains("svn");
+
+    if mentions_existing_install && mentions_svn {
+        Some(
+            "检测到系统里已经存在旧版 SVN / TortoiseSVN 安装，自动安装可能与现有安装冲突。请先关闭旧版安装器或卸载旧版 TortoiseSVN，再重试；如果 `svn --version` 已经可用，也可以跳过自动安装。"
+                .to_string(),
+        )
+    } else {
+        None
     }
 }
 
@@ -2430,7 +2540,8 @@ mod tests {
         apply_onboarding_sync_plan, build_connection_test_env_entries,
         build_onboarding_connection_test_result, build_onboarding_environment_install_steps,
         build_onboarding_environment_requirements, build_onboarding_install_preview,
-        build_windows_paramiko_mirror_install_args, command_output_with_search_path,
+        build_windows_paramiko_mirror_install_args, build_windows_svn_install_conflict_message,
+        command_output_with_search_path,
         merge_unix_search_path_values, merge_windows_search_path_values,
         probe_requirement_with_runner, resolve_connection_test_script_path,
         resolve_install_step_command_with_runner, resolve_process_search_path_from_values,
@@ -3158,6 +3269,39 @@ mod tests {
         assert_eq!(result.details, "HTTP 401: invalid token");
         assert_eq!(result.trigger, "manual");
         assert_eq!(result.tested_fingerprint, "fingerprint-2");
+    }
+
+    #[test]
+    fn onboarding_connection_test_redacts_passwords_from_failure_output() {
+        let result = build_onboarding_connection_test_result(
+            "svn",
+            "manual",
+            "fingerprint-3",
+            Output {
+                status: failure_status(),
+                stdout: Vec::new(),
+                stderr: b"Command '['svn', 'info', 'https://svn.example.com/repo', '--non-interactive', '--username', 'svn.user', '--password', 'super-secret-password', '--no-auth-cache']' returned non-zero exit status 1.\n".to_vec(),
+            },
+        );
+
+        assert!(!result.success);
+        assert!(!result.summary.contains("super-secret-password"));
+        assert!(!result.details.contains("super-secret-password"));
+        assert!(result.details.contains("[REDACTED]"));
+    }
+
+    #[test]
+    fn onboarding_windows_svn_conflict_detection_flags_existing_install_output() {
+        let message = build_windows_svn_install_conflict_message(&[
+            "Found an existing package already installed. Trying to upgrade the installed package...".to_string(),
+            "No available upgrade found.".to_string(),
+            "TortoiseSVN.TortoiseSVN".to_string(),
+        ]);
+
+        assert!(message.is_some());
+        assert!(message
+            .expect("conflict message")
+            .contains("旧版 SVN / TortoiseSVN"));
     }
 
     #[test]

@@ -193,7 +193,7 @@ describe('workbuddy agent apps', () => {
     expect(linuxGroup?.required_field_ids).toEqual([])
   })
 
-  it('exposes project manager, quality manager, and IT manager in visible role selectors while keeping legacy role labels', () => {
+  it('exposes project manager, quality manager, IT manager, and R&D manager in visible role selectors while keeping legacy role labels', () => {
     expect(Object.keys(sharedConfig.roles)).toEqual([
       'project-manager',
       'product-manager',
@@ -203,8 +203,18 @@ describe('workbuddy agent apps', () => {
       'delivery-manager',
       'rd-manager',
     ])
-    expect(workbuddyRoles.map((role) => role.value)).toEqual(['项目经理', '质量经理', 'IT经理'])
-    expect(onboardingRoles.map((role) => role.id)).toEqual(['project-manager', 'qa-manager', 'it-manager'])
+    expect(workbuddyRoles.map((role) => role.value)).toEqual([
+      '项目经理',
+      '质量经理',
+      'IT经理',
+      '研发经理',
+    ])
+    expect(onboardingRoles.map((role) => role.id)).toEqual([
+      'project-manager',
+      'qa-manager',
+      'it-manager',
+      'rd-manager',
+    ])
     expect(getRoleNameById('product-manager')).toBe('产品经理')
   })
 
@@ -248,6 +258,23 @@ describe('workbuddy agent apps', () => {
       '项目立项配置建立',
     ])
     expect(itDefaults.every((useCase) => useCase.description_locked)).toBe(true)
+  })
+
+  it('assigns generic daily log, planning, and weekly report defaults to rd-manager', () => {
+    expect(sharedConfig.roles['rd-manager']?.useCases).toEqual([
+      '记录日志',
+      '记录计划',
+      '项目周报',
+    ])
+
+    const rdDefaults = createDefaultRoleUseCaseContents('rd-manager')
+
+    expect(rdDefaults.map((useCase) => useCase.use_case_name)).toEqual([
+      '记录日志',
+      '记录计划',
+      '项目周报',
+    ])
+    expect(rdDefaults.every((useCase) => useCase.description_locked)).toBe(true)
   })
 
   it('defines structured onboarding questions for the five IT-manager use cases', () => {

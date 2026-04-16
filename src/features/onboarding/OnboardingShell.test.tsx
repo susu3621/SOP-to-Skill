@@ -567,6 +567,7 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('radio', { name: '项目经理' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: '质量经理' })).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'IT经理' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: '研发经理' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '保存岗位' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '需求评估' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('用例描述')).not.toBeInTheDocument()
