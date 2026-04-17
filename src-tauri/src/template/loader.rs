@@ -477,7 +477,7 @@ pub fn load_template_file(skill_id: &str, template_file: &str) -> Result<String,
 mod tests {
     use super::*;
     use crate::models::InstallStrategy;
-    use std::sync::{Mutex, OnceLock};
+    use crate::test_support::env_lock;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     fn temp_dir(prefix: &str) -> PathBuf {
@@ -488,11 +488,6 @@ mod tests {
         let path = std::env::temp_dir().join(format!("skill-configurator-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
-    }
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
     }
 
     #[test]

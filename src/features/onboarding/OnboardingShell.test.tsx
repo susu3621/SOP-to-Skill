@@ -476,10 +476,6 @@ function getSyncCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_installation')
 }
 
-function getConfigUpdateCalls() {
-  return invokeMock.mock.calls.filter(([command]) => command === 'update_config')
-}
-
 function getOpenUrlCalls() {
   return openUrlMock.mock.calls
 }

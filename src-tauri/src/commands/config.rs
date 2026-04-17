@@ -233,10 +233,10 @@ pub async fn export_current_log(app: AppHandle) -> SkillResult<String> {
 mod tests {
     use super::{external_open_command, load_config, normalize_external_url, save_config};
     use crate::models::AppConfig;
+    use crate::test_support::env_lock;
     use std::collections::HashMap;
     use std::fs;
     use std::path::PathBuf;
-    use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
@@ -249,11 +249,6 @@ mod tests {
         let path = std::env::temp_dir().join(format!("config-command-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
-    }
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
     }
 
     fn restore_env_var(key: &str, value: Option<String>) {

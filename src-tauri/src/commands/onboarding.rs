@@ -2553,12 +2553,12 @@ mod tests {
         OnboardingSvnRepository, OnboardingUseCase,
     };
     use crate::onboarding::state::default_selected_install_skill_ids;
+    use crate::test_support::env_lock;
     use std::collections::HashMap;
     use std::fs;
     use std::io::ErrorKind;
     use std::path::PathBuf;
     use std::process::Output;
-    use std::sync::{Mutex, OnceLock};
     use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
     const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
@@ -2571,11 +2571,6 @@ mod tests {
         let path = std::env::temp_dir().join(format!("onboarding-command-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
-    }
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
     }
 
     fn restore_env_var(key: &str, value: Option<String>) {

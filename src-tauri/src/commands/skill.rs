@@ -621,8 +621,8 @@ pub struct TargetAppInfo {
 mod tests {
     use super::*;
     use crate::models::SkillManifestEntry;
+    use crate::test_support::env_lock;
     use crate::template::load_skill_template_from_dir_with_manifest;
-    use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
@@ -636,11 +636,6 @@ mod tests {
         let path = std::env::temp_dir().join(format!("skill-configurator-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
-    }
-
-    fn env_lock() -> &'static Mutex<()> {
-        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-        LOCK.get_or_init(|| Mutex::new(()))
     }
 
     fn restore_env_var(key: &str, value: Option<String>) {

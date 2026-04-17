@@ -2,6 +2,8 @@ mod commands;
 mod models;
 mod onboarding;
 mod template;
+#[cfg(test)]
+mod test_support;
 mod tray;
 mod update;
 

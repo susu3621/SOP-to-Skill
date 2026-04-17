@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
-import { type ReactNode, startTransition, useEffect, useMemo, useState } from 'react'
+import { type ReactNode, startTransition, useEffect, useMemo, useRef, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { FirstRunGuideBubble } from './FirstRunGuideBubble'
 import {
   createDefaultOnboardingGuideCompletionMap,
@@ -621,6 +622,7 @@ export function OnboardingShell({
     guideConfigSnapshot ?? createDefaultOnboardingGuideCompletionMap()
   )
   const [guideConfigLoaded, setGuideConfigLoaded] = useState(guideConfigSnapshot != null)
+  const latestGuideConfigRef = useRef(guideConfig)
   const [activeGuide, setActiveGuide] = useState<ActiveFirstRunGuideState | null>(null)
   const [dismissedGuideId, setDismissedGuideId] = useState<OnboardingGuideId | null>(null)
 
@@ -650,6 +652,16 @@ export function OnboardingShell({
     setGuideConfigLoaded(true)
     onGuideConfigSnapshotChange?.(nextGuideConfig)
   }
+
+  useEffect(() => {
+    latestGuideConfigRef.current = guideConfig
+  }, [guideConfig])
+
+  useEffect(() => {
+    return () => {
+      onGuideConfigSnapshotChange?.(latestGuideConfigRef.current)
+    }
+  }, [onGuideConfigSnapshotChange])
 
   useEffect(() => {
     onViewChange?.(view)
@@ -789,64 +801,6 @@ export function OnboardingShell({
   }
 
   useEffect(() => {
-    let cancelled = false
-
-    async function loadGuideConfig() {
-      try {
-        const result = await invoke<SkillResult<AppConfig>>('get_config')
-
-        if (!cancelled && result.success) {
-          setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
-          setGuideConfigLoaded(true)
-        } else if (!cancelled) {
-          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
-          setGuideConfigLoaded(true)
-        }
-      } catch {
-        if (!cancelled) {
-          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
-          setGuideConfigLoaded(true)
-        }
-      }
-    }
-
-    void loadGuideConfig()
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  useEffect(() => {
-    setDismissedGuideId(null)
-  }, [view])
-
-  useEffect(() => {
-    if (!guideConfigLoaded) {
-      return
-    }
-
-    const guideId = getGuideIdForView(view)
-
-    if (dismissedGuideId === guideId) {
-      return
-    }
-
-    if (guideConfig[guideId]?.completed) {
-      if (activeGuide?.guideId === guideId) {
-        setActiveGuide(null)
-      }
-      return
-    }
-
-    if (!activeGuide || activeGuide.guideId !== guideId) {
-      const firstStep = firstRunGuides[guideId].steps[0]
-      applyGuideStepBeforeEnter(firstStep)
-      setActiveGuide({ guideId, stepIndex: 0 })
-    }
-  }, [activeGuide, dismissedGuideId, firstRunGuides, guideConfig, guideConfigLoaded, view])
-
-  useEffect(() => {
     if (!activeGuideStep) {
       return
     }
@@ -858,84 +812,6 @@ export function OnboardingShell({
       element.scrollIntoView({ block: 'nearest', inline: 'nearest' })
     }
   }, [activeGuideStep])
-
-  const handleGuideClose = () => {
-    if (!activeGuide) {
-      return
-    }
-
-    setDismissedGuideId(activeGuide.guideId)
-    setActiveGuide(null)
-  }
-
-  const handleGuideBack = () => {
-    if (!activeGuide || activeGuide.stepIndex === 0) {
-      return
-    }
-
-    const nextStepIndex = activeGuide.stepIndex - 1
-    const nextStep = firstRunGuides[activeGuide.guideId].steps[nextStepIndex]
-    applyGuideStepBeforeEnter(nextStep)
-    setActiveGuide({
-      guideId: activeGuide.guideId,
-      stepIndex: nextStepIndex,
-    })
-  }
-
-  const handleGuideNext = async () => {
-    if (!activeGuide || !activeGuideDefinition) {
-      return
-    }
-
-    const nextStepIndex = activeGuide.stepIndex + 1
-
-    if (nextStepIndex < activeGuideDefinition.steps.length) {
-      const nextStep = activeGuideDefinition.steps[nextStepIndex]
-      applyGuideStepBeforeEnter(nextStep)
-      setActiveGuide({
-        guideId: activeGuide.guideId,
-        stepIndex: nextStepIndex,
-      })
-      return
-    }
-
-    const nextGuideConfig: OnboardingGuideCompletionMap = {
-      ...guideConfig,
-      [activeGuide.guideId]: { completed: true },
-    }
-
-    try {
-      const result = await invoke<SkillResult<AppConfig>>('update_config', {
-        onboardingGuides: nextGuideConfig,
-      })
-
-      if (result.success) {
-        setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
-      } else {
-        setDismissedGuideId(activeGuide.guideId)
-      }
-    } catch {
-      setDismissedGuideId(activeGuide.guideId)
-    }
-
-    setActiveGuide(null)
-  }
-
-  const renderGuideBubble = () =>
-    activeGuide && activeGuideStep && activeGuideDefinition ? (
-      <FirstRunGuideBubble
-        locale={locale}
-        currentStep={activeGuide.stepIndex + 1}
-        totalSteps={activeGuideDefinition.steps.length}
-        title={activeGuideStep.title}
-        body={activeGuideStep.body}
-        canGoBack={activeGuide.stepIndex > 0}
-        placement={activeGuideStep.placement}
-        onBack={handleGuideBack}
-        onClose={handleGuideClose}
-        onNext={handleGuideNext}
-      />
-    ) : null
 
   const guideOverlay = activeGuideStep ? (
     <div aria-hidden="true" className="onboarding-guide-overlay" />
@@ -1039,7 +915,11 @@ export function OnboardingShell({
       [activeGuide.guideId]: { completed: true },
     }
 
-    applyGuideConfigSnapshot(nextGuideConfig)
+    flushSync(() => {
+      setGuideConfig(nextGuideConfig)
+      setGuideConfigLoaded(true)
+      onGuideConfigSnapshotChange?.(nextGuideConfig)
+    })
     setActiveGuide(null)
 
     try {

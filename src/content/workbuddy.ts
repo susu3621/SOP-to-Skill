@@ -91,6 +91,12 @@ interface SharedConfig {
 const typedConfig = config as SharedConfig
 const visibleRoleIds = ['project-manager', 'qa-manager', 'it-manager'] as const
 const supportedLocales: Locale[] = ['zh-CN', 'en-US']
+const legacyRoleNames: Record<string, LocalizedText> = {
+  'rd-manager': {
+    'zh-CN': '研发经理',
+    'en-US': 'R&D Manager',
+  },
+}
 
 export const defaultOnboardingRoleId = visibleRoleIds[0]
 
@@ -703,7 +709,7 @@ export function getOnboardingAgentDescriptionById(
 }
 
 export function getRoleNameById(roleId: string, locale: Locale = 'zh-CN'): string {
-  return readConfigText(typedConfig.roles[roleId]?.name, locale) || roleId
+  return readConfigText(typedConfig.roles[roleId]?.name ?? legacyRoleNames[roleId], locale) || roleId
 }
 
 export function getRoleDescriptionById(roleId: string, locale: Locale = 'zh-CN'): string {
