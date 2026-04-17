@@ -212,6 +212,7 @@ describe('workbuddy agent apps', () => {
       'qa-manager',
       'it-manager',
     ])
+    expect(getRoleNameById('rd-manager')).toBe('研发经理')
     expect(getRoleNameById('product-manager')).toBe('产品经理')
   })
 
