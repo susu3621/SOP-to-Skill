@@ -88,6 +88,8 @@ function App() {
     targetApps: availableApps,
     loading,
     error,
+    loadInstalled,
+    loadSkills,
     installSkill,
     uninstallSkill,
   } = useSkills()
@@ -101,12 +103,21 @@ function App() {
     error: updateError,
   } = useUpdates()
 
+  const refreshSkillInventory = useCallback(async () => {
+    await Promise.all([loadInstalled(), loadSkills()])
+  }, [loadInstalled, loadSkills])
+
   const handleOpenSkillManagement = useCallback(() => {
     setSelectedSkill(null)
     setWizardState(null)
     setInstallResult(null)
     setView('skills-list')
-  }, [])
+    void refreshSkillInventory()
+  }, [refreshSkillInventory])
+
+  const handleOnboardingSyncComplete = useCallback(() => {
+    void refreshSkillInventory()
+  }, [refreshSkillInventory])
 
   useEffect(() => {
     const unlisten = listen<string>('tray-navigate', (event) => {
@@ -473,6 +484,7 @@ function App() {
                       homeRequestToken={onboardingHomeRequestToken}
                       locale={locale}
                       onGuideConfigSnapshotChange={setOnboardingGuideConfigSnapshot}
+                      onSyncComplete={handleOnboardingSyncComplete}
                       installedSkills={installed}
                       onViewChange={setOnboardingView}
                       onOpenInstalled={handleOpenSkillManagement}

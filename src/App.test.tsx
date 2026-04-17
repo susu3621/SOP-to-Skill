@@ -212,6 +212,7 @@ const fixtures = vi.hoisted(() => {
       'onboarding-install': { completed: true },
     } as Record<string, { completed: boolean }>,
     onboardingGuideUpdateGate: null as null | ReturnType<typeof createDeferred>,
+    syncOnboardingInstallationHook: null as null | (() => void | Promise<void>),
     updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
     trayNavigateHandler: null as null | ((event: { payload: string }) => void),
     skills: [] as Array<Record<string, unknown>>,
@@ -366,6 +367,9 @@ vi.mock('@tauri-apps/api/core', () => ({
       case 'stage_onboarding_generated_packages':
         return { success: { production: null, test: null } }
       case 'sync_onboarding_installation':
+        if (fixtures.runtime.syncOnboardingInstallationHook) {
+          await fixtures.runtime.syncOnboardingInstallationHook()
+        }
         return { success: fixtures.onboardingSyncResult }
       default:
         return { success: null }
@@ -418,6 +422,7 @@ describe('onboarding shell smoke coverage', () => {
       'onboarding-install': { completed: true },
     }
     fixtures.runtime.onboardingGuideUpdateGate = null
+    fixtures.runtime.syncOnboardingInstallationHook = null
     fixtures.runtime.updatedLocales = []
     fixtures.runtime.trayNavigateHandler = null
     fixtures.runtime.skills = []
@@ -854,6 +859,62 @@ describe('onboarding shell smoke coverage', () => {
       pendingGuideUpdate.resolve()
       await pendingGuideUpdate.promise
     })
+  })
+
+  it('refreshes installed and generated skills after onboarding sync so skill management shows them', async () => {
+    const user = userEvent.setup()
+    fixtures.runtime.skills = []
+    fixtures.runtime.installed = []
+    fixtures.runtime.syncOnboardingInstallationHook = () => {
+      fixtures.runtime.skills = [
+        {
+          id: 'project-manager-weekly-report',
+          name: {
+            'zh-CN': '项目周报 Skill',
+            'en-US': 'Weekly Report Skill',
+          },
+          description: {
+            'zh-CN': '本地生成并已安装的项目周报 Skill',
+            'en-US': 'A locally generated and installed weekly report skill.',
+          },
+          version: 'local',
+          category: null,
+          author: null,
+          targets: ['codex'],
+          variables: [],
+          is_installed: true,
+          installed_version: 'local',
+          update_status: 'unknown',
+          can_install: false,
+        },
+      ]
+      fixtures.runtime.installed = [
+        {
+          skill_id: 'project-manager-weekly-report',
+          app_id: 'codex',
+          app_name: 'Codex',
+          installed_version: 'local',
+          installed_at: '2026-04-17T18:00:00Z',
+          output_path: '~/.codex/skills/project-manager-weekly-report',
+        },
+      ]
+    }
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+    await user.click(screen.getByRole('button', { name: '开始同步安装' }))
+
+    expect(await screen.findByText('同步完成')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Skill管理 (1)' })).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Skill管理 (1)' }))
+
+    expect(await screen.findByRole('heading', { name: 'Skill管理' })).toBeInTheDocument()
+    expect(screen.getByText('项目周报 Skill')).toBeInTheDocument()
   })
 
   it('renders the current version before the update action in the header', async () => {

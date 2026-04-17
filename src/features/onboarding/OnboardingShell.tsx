@@ -27,6 +27,7 @@ import type {
   FirstRunGuideStep,
   InstalledSkillInfo,
   Locale,
+  OnboardingBatchSyncResult,
   OnboardingEditableUseCaseRecord,
   OnboardingGuideCompletionMap,
   OnboardingGuideId,
@@ -543,6 +544,7 @@ interface OnboardingShellProps {
   locale: Locale
   installedSkills: InstalledSkillInfo[]
   onOpenInstalled: () => void
+  onSyncComplete?: (result: OnboardingBatchSyncResult) => void
   homeRequestToken?: number
   guideReplayToken?: number
   onViewChange?: (view: OnboardingShellView) => void
@@ -554,6 +556,7 @@ export function OnboardingShell({
   locale,
   installedSkills,
   onOpenInstalled,
+  onSyncComplete,
   homeRequestToken = 0,
   guideReplayToken = 0,
   onViewChange,
@@ -943,6 +946,14 @@ export function OnboardingShell({
       setSelectedUseCaseId(state.role_use_case_contents[0]?.use_case_id ?? null)
     }
   }, [selectedUseCaseId, state.role_use_case_contents])
+
+  useEffect(() => {
+    if (!syncResult) {
+      return
+    }
+
+    onSyncComplete?.(syncResult)
+  }, [onSyncComplete, syncResult])
 
   const activeUseCase = useMemo(
     () =>
