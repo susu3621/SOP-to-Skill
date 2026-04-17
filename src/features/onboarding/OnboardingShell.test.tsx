@@ -637,6 +637,35 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '先选岗位' })).toBeInTheDocument()
   })
 
+  it('adds a fourth 工作配置 guide step that points users to 新增用例 for custom use cases', async () => {
+    const user = userEvent.setup()
+    mockControls.configOverride = {
+      preferred_locale: 'zh-CN',
+      onboarding_guides: {
+        'onboarding-home': { completed: true },
+        'onboarding-basic': { completed: true },
+        'onboarding-use-cases': { completed: false },
+        'onboarding-install': { completed: true },
+      },
+    }
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+
+    expect(await screen.findByText('第 1 步 / 共 4 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    expect(screen.getByText('第 2 步 / 共 4 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    expect(screen.getByText('第 3 步 / 共 4 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+
+    expect(screen.getByText('第 4 步 / 共 4 步')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '还可以新增自定义用例' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '新增用例' })).toBeInTheDocument()
+  })
+
   it('auto-opens the 安装 first-run guide on first entry', async () => {
     const user = userEvent.setup()
     mockControls.configOverride = {

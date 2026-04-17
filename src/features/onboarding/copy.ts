@@ -20,8 +20,8 @@ export const onboardingCopy = {
     'en-US': 'Module guide',
   },
   installedCount: {
-    'zh-CN': '已安装',
-    'en-US': 'Installed',
+    'zh-CN': 'Skill管理',
+    'en-US': 'Skill Management',
   },
   backHome: {
     'zh-CN': '返回首页',
@@ -618,6 +618,16 @@ export const onboardingCopy = {
   guideUseCasesStep3Body: {
     'zh-CN': '把工作说明、信息来源和执行要求补完整，再保存这部分内容。',
     'en-US': 'Add the work description, information sources, and execution rules, then save the configuration.',
+  },
+  guideUseCasesStep4Title: {
+    'zh-CN': '还可以新增自定义用例',
+    'en-US': 'You can also add custom use cases',
+  },
+  guideUseCasesStep4Body: {
+    'zh-CN':
+      '如果预设工作还不够，就点击这里的“新增用例”，把你们自己的工作流程和需求补进来。',
+    'en-US':
+      'If the preset work items are not enough, click "Add use case" here to add your own workflow and requirements.',
   },
   guideInstallStep1Title: {
     'zh-CN': '先选要安装到的 AI 工具',

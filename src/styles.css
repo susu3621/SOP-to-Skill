@@ -458,6 +458,11 @@ textarea {
   font-weight: 600;
 }
 
+.app-card__status[data-installed='false'] {
+  background: rgba(74, 49, 30, 0.08);
+  color: rgba(74, 49, 30, 0.82);
+}
+
 .app-card h3,
 .summary-card h3,
 .location-card h3 {

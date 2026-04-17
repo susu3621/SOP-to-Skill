@@ -12,6 +12,15 @@ import type {
   OnboardingState,
 } from './types'
 
+function createDeferred() {
+  let resolve!: () => void
+  const promise = new Promise<void>((nextResolve) => {
+    resolve = nextResolve
+  })
+
+  return { promise, resolve }
+}
+
 const fixtures = vi.hoisted(() => {
   const roleUseCaseContents: OnboardingEditableUseCaseRecord[] = [
     {
@@ -202,6 +211,7 @@ const fixtures = vi.hoisted(() => {
       'onboarding-use-cases': { completed: true },
       'onboarding-install': { completed: true },
     } as Record<string, { completed: boolean }>,
+    onboardingGuideUpdateGate: null as null | ReturnType<typeof createDeferred>,
     updatedLocales: [] as Array<'zh-CN' | 'en-US'>,
     trayNavigateHandler: null as null | ((event: { payload: string }) => void),
     skills: [] as Array<Record<string, unknown>>,
@@ -235,6 +245,31 @@ vi.mock('@tauri-apps/api/core', () => ({
           (skill) =>
             !(skill.skill_id === payload?.skillId && skill.app_id === payload?.appId)
         )
+        const stillInstalled = fixtures.runtime.installed.some(
+          (skill) => skill.skill_id === payload?.skillId
+        )
+        fixtures.runtime.skills = fixtures.runtime.skills
+          .map((skill) => {
+            if (skill.id !== payload?.skillId) {
+              return skill
+            }
+
+            if (stillInstalled) {
+              return skill
+            }
+
+            if (skill.can_install === false) {
+              return null
+            }
+
+            return {
+              ...skill,
+              is_installed: false,
+              installed_version: null,
+              update_status: 'not-installed',
+            }
+          })
+          .filter(Boolean) as Array<Record<string, unknown>>
         return { success: true }
       case 'check_app_update':
         return fixtures.runtime.appUpdate
@@ -262,6 +297,9 @@ vi.mock('@tauri-apps/api/core', () => ({
           fixtures.runtime.updatedLocales.push(payload.preferredLocale)
         }
         if (payload?.onboardingGuides) {
+          if (fixtures.runtime.onboardingGuideUpdateGate) {
+            await fixtures.runtime.onboardingGuideUpdateGate.promise
+          }
           fixtures.runtime.onboardingGuides = payload.onboardingGuides
         }
         return {
@@ -353,11 +391,11 @@ describe('onboarding shell smoke coverage', () => {
     return screen.findByRole('button', { name: '选择公司 IT 工具' })
   }
 
-  async function openSkillLibraryFromMoreMenu(user: ReturnType<typeof userEvent.setup>) {
+  async function openSkillManagementFromMoreMenu(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole('button', { name: '更多操作' }))
     const moreMenuPanel = document.querySelector('.header-menu__panel')
     expect(moreMenuPanel).not.toBeNull()
-    await user.click(within(moreMenuPanel as HTMLElement).getByRole('button', { name: 'Skill 库' }))
+    await user.click(within(moreMenuPanel as HTMLElement).getByRole('button', { name: 'Skill管理' }))
   }
 
   beforeEach(() => {
@@ -379,6 +417,7 @@ describe('onboarding shell smoke coverage', () => {
       'onboarding-use-cases': { completed: true },
       'onboarding-install': { completed: true },
     }
+    fixtures.runtime.onboardingGuideUpdateGate = null
     fixtures.runtime.updatedLocales = []
     fixtures.runtime.trayNavigateHandler = null
     fixtures.runtime.skills = []
@@ -404,7 +443,7 @@ describe('onboarding shell smoke coverage', () => {
     const headerNav = document.querySelector('.header-nav')
     expect(headerNav).not.toBeNull()
     expect(within(headerNav as HTMLElement).queryByRole('button', { name: '返回首页' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Skill 库' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skill管理' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: '更多操作' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '已安装' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '设置' })).not.toBeInTheDocument()
@@ -424,14 +463,14 @@ describe('onboarding shell smoke coverage', () => {
     expect(screen.getByText('Claude Code 或 WorkBuddy')).toHaveClass('masthead__subtitle-nowrap')
   })
 
-  it('uses singular Skill wording in the empty skill library state', async () => {
+  it('uses skill management wording in the empty skill management state', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await waitForOnboardingHome()
-    await openSkillLibraryFromMoreMenu(user)
+    await openSkillManagementFromMoreMenu(user)
 
-    expect(screen.getByRole('heading', { name: '可用 Skill' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Skill管理' })).toBeInTheDocument()
     expect(
       screen.getByText(
         '暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。'
@@ -439,19 +478,17 @@ describe('onboarding shell smoke coverage', () => {
     ).toBeInTheDocument()
   })
 
-  it('uses singular Skill wording in the empty installed state', async () => {
+  it('keeps installed-skill navigation out of the more menu', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await waitForOnboardingHome()
     await user.click(screen.getByRole('button', { name: '更多操作' }))
-    await user.click(screen.getByRole('button', { name: '已安装 Skill' }))
-
-    expect(screen.getByRole('heading', { name: '已安装 Skill' })).toBeInTheDocument()
+    const moreMenuPanel = document.querySelector('.header-menu__panel')
+    expect(moreMenuPanel).not.toBeNull()
     expect(
-      screen.getByText('管理已经安装到各个 AI 工具中的 Skill。')
-    ).toBeInTheDocument()
-    expect(screen.getByText('暂无已安装 Skill。')).toBeInTheDocument()
+      within(moreMenuPanel as HTMLElement).queryByRole('button', { name: '已安装 Skill' })
+    ).not.toBeInTheDocument()
   })
 
   it('shows the version management category for Gerrit and SVN in the skill library', async () => {
@@ -500,14 +537,14 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     await waitForOnboardingHome()
-    await openSkillLibraryFromMoreMenu(user)
+    await openSkillManagementFromMoreMenu(user)
 
     expect(screen.getByText('Gerrit')).toBeInTheDocument()
     expect(screen.getByText('SVN')).toBeInTheDocument()
     expect(screen.getAllByText('版本管理').length).toBeGreaterThan(0)
   })
 
-  it('hides installed-state badges inside the skill library card grid', async () => {
+  it('shows installed-state badges inside the skill management card grid', async () => {
     fixtures.runtime.skills = [
       {
         id: 'jira',
@@ -555,15 +592,15 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     await waitForOnboardingHome()
-    await openSkillLibraryFromMoreMenu(user)
+    await openSkillManagementFromMoreMenu(user)
 
     const grid = document.querySelector('.skills-grid')
     expect(grid).not.toBeNull()
-    expect(within(grid as HTMLElement).queryByText('已安装')).not.toBeInTheDocument()
-    expect(within(grid as HTMLElement).queryByText('未安装')).not.toBeInTheDocument()
+    expect(within(grid as HTMLElement).getByText('已安装')).toBeInTheDocument()
+    expect(within(grid as HTMLElement).getByText('未安装')).toBeInTheDocument()
   })
 
-  it('shows installed-only local skills in the library without exposing a reinstall action', async () => {
+  it('shows installed-only local skills in skill management and deletes them from detail', async () => {
     fixtures.runtime.skills = [
       {
         id: 'project-manager-weekly-report',
@@ -601,15 +638,22 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     await waitForOnboardingHome()
-    await openSkillLibraryFromMoreMenu(user)
+    await openSkillManagementFromMoreMenu(user)
     await user.click(screen.getByText('项目周报 Skill'))
 
     expect(
       screen.getByRole('heading', { name: '项目周报 Skill' })
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '重新安装' })).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: '已安装 Skill' }))
-    expect(screen.getByRole('heading', { name: '已安装 Skill' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '删除 Skill' }))
+
+    expect(fixtures.runtime.uninstallSkillCalls).toEqual([
+      { skillId: 'project-manager-weekly-report', appId: 'codex' },
+    ])
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Skill管理' })).toBeInTheDocument()
+    })
+    expect(screen.getByText('暂无可用 Skill。请将 Skill 目录包放到仓库的 `skills/` 目录，或应用数据目录中的 `skills/` 目录。')).toBeInTheDocument()
   })
 
   it('shows an install action when a newer desktop app update is available', async () => {
@@ -662,7 +706,7 @@ describe('onboarding shell smoke coverage', () => {
     const headerNav = document.querySelector('.header-nav')
     expect(headerNav).not.toBeNull()
     expect(within(headerNav as HTMLElement).queryByRole('button', { name: 'Back to home' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Skill Library' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Skill Management' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'More actions' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Company IT Tools' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Configure AI Work' })).toBeInTheDocument()
@@ -727,21 +771,23 @@ describe('onboarding shell smoke coverage', () => {
     expect(moreMenuPanel).not.toBeNull()
 
     expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: '查看引导' })).toBeInTheDocument()
-    expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: 'Skill 库' })).toBeInTheDocument()
-    expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: '已安装 Skill' })).toBeInTheDocument()
+    expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: 'Skill管理' })).toBeInTheDocument()
+    expect(
+      within(moreMenuPanel as HTMLElement).queryByRole('button', { name: '已安装 Skill' })
+    ).not.toBeInTheDocument()
     expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: '导出日志' })).toBeInTheDocument()
     expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: '中文' })).toBeInTheDocument()
     expect(within(moreMenuPanel as HTMLElement).getByRole('button', { name: 'English' })).toBeInTheDocument()
   })
 
-  it('opens the skill library from the more menu entry', async () => {
+  it('opens the skill management page from the more menu entry', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await waitForOnboardingHome()
-    await openSkillLibraryFromMoreMenu(user)
+    await openSkillManagementFromMoreMenu(user)
 
-    expect(screen.getByRole('heading', { name: '可用 Skill' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Skill管理' })).toBeInTheDocument()
   })
 
   it('replays the floating first-run guide flow from the more menu view-guide action', async () => {
@@ -749,8 +795,8 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     await waitForOnboardingHome()
-    await openSkillLibraryFromMoreMenu(user)
-    expect(screen.getByRole('heading', { name: '可用 Skill' })).toBeInTheDocument()
+    await openSkillManagementFromMoreMenu(user)
+    expect(screen.getByRole('heading', { name: 'Skill管理' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '更多操作' }))
     await user.click(screen.getByRole('button', { name: '查看引导' }))
@@ -769,6 +815,44 @@ describe('onboarding shell smoke coverage', () => {
       'onboarding-basic': { completed: false },
       'onboarding-use-cases': { completed: false },
       'onboarding-install': { completed: false },
+    })
+  })
+
+  it('keeps the completed home guide hidden when returning from skill management before config persistence finishes', async () => {
+    const user = userEvent.setup()
+    const pendingGuideUpdate = createDeferred()
+    fixtures.runtime.onboardingGuides = {
+      'onboarding-home': { completed: false },
+      'onboarding-basic': { completed: true },
+      'onboarding-use-cases': { completed: true },
+      'onboarding-install': { completed: true },
+    }
+    fixtures.runtime.onboardingGuideUpdateGate = pendingGuideUpdate
+
+    render(<App />)
+
+    expect(await screen.findByText('第 1 步 / 共 3 步')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+
+    await waitFor(() => {
+      expect(screen.queryByText('第 3 步 / 共 3 步')).not.toBeInTheDocument()
+    })
+
+    await openSkillManagementFromMoreMenu(user)
+    expect(screen.getByRole('heading', { name: 'Skill管理' })).toBeInTheDocument()
+
+    const mastheadFooter = document.querySelector('.masthead__footer')
+    expect(mastheadFooter).not.toBeNull()
+    await user.click(within(mastheadFooter as HTMLElement).getByRole('button', { name: '返回首页' }))
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    expect(screen.queryByText('第 1 步 / 共 3 步')).not.toBeInTheDocument()
+
+    await act(async () => {
+      pendingGuideUpdate.resolve()
+      await pendingGuideUpdate.promise
     })
   })
 
@@ -847,7 +931,29 @@ describe('onboarding shell smoke coverage', () => {
     expect(await waitForOnboardingHome()).toBeInTheDocument()
   })
 
-  it('deletes an installed skill from the installed view using the existing uninstall flow', async () => {
+  it('deletes an installed skill from skill management using the existing uninstall flow', async () => {
+    fixtures.runtime.skills = [
+      {
+        id: 'jira',
+        name: {
+          'zh-CN': 'Jira',
+          'en-US': 'Jira',
+        },
+        description: {
+          'zh-CN': '问题管理',
+          'en-US': 'Issue tracking',
+        },
+        version: '1.0.0',
+        category: 'version-management',
+        author: null,
+        targets: ['codex'],
+        variables: [],
+        is_installed: true,
+        installed_version: '1.0.0',
+        update_status: 'up-to-date',
+        can_install: true,
+      },
+    ]
     fixtures.runtime.installed = [
       {
         skill_id: 'jira',
@@ -862,16 +968,16 @@ describe('onboarding shell smoke coverage', () => {
     render(<App />)
 
     await waitForOnboardingHome()
-    await user.click(screen.getByRole('button', { name: '更多操作' }))
-    await user.click(screen.getByRole('button', { name: '已安装 Skill' }))
+    await openSkillManagementFromMoreMenu(user)
+    await user.click(screen.getByText('Jira'))
 
-    expect(screen.getByText('jira')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '删除 Skill' }))
 
     expect(fixtures.runtime.uninstallSkillCalls).toEqual([{ skillId: 'jira', appId: 'codex' }])
     await waitFor(() => {
-      expect(screen.getByText('暂无已安装 Skill。')).toBeInTheDocument()
+      expect(screen.getByText('未安装')).toBeInTheDocument()
     })
+    expect(screen.getByRole('button', { name: '安装' })).toBeInTheDocument()
   })
 
   it('shows the hidden sop-to-skill data directory path on the update page', async () => {

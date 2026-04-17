@@ -112,8 +112,8 @@ export const pageCopy = {
     'en-US': 'Back to home',
   },
   navSkills: {
-    'zh-CN': 'Skill 库',
-    'en-US': 'Skill Library',
+    'zh-CN': 'Skill管理',
+    'en-US': 'Skill Management',
   },
   moreActions: {
     'zh-CN': '更多操作',
@@ -132,16 +132,16 @@ export const pageCopy = {
     'en-US': 'Settings',
   },
   skillsLibraryEyebrow: {
-    'zh-CN': 'Skill 库',
-    'en-US': 'Skill Library',
+    'zh-CN': 'Skill管理',
+    'en-US': 'Skill Management',
   },
   skillsLibraryTitle: {
-    'zh-CN': '可用 Skill',
-    'en-US': 'Available Skills',
+    'zh-CN': 'Skill管理',
+    'en-US': 'Skill Management',
   },
   skillsLibraryBody: {
-    'zh-CN': '浏览并安装可用 Skill。',
-    'en-US': 'Browse and install available Skills.',
+    'zh-CN': '浏览、安装和删除 Skill，并直接查看哪些 Skill 已经安装。',
+    'en-US': 'Browse, install, and delete Skills while seeing which Skills are already installed.',
   },
   skillsLibraryEmpty: {
     'zh-CN':
@@ -288,6 +288,10 @@ export const pageCopy = {
   uninstallFailedPrefix: {
     'zh-CN': '删除 Skill 失败',
     'en-US': 'Failed to delete Skill',
+  },
+  installedTargetsTitle: {
+    'zh-CN': '已安装位置',
+    'en-US': 'Installed targets',
   },
   settingsEyebrow: {
     'zh-CN': '设置',

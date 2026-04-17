@@ -10,6 +10,7 @@ import type {
   InstalledSkillInfo,
   InstallWizardState,
   Locale,
+  OnboardingGuideCompletionMap,
   SkillResult,
   SkillInfo,
   ViewType,
@@ -78,6 +79,8 @@ function App() {
   const [onboardingView, setOnboardingView] = useState<OnboardingShellView>('home')
   const [onboardingHomeRequestToken, setOnboardingHomeRequestToken] = useState(0)
   const [onboardingGuideReplayToken, setOnboardingGuideReplayToken] = useState(0)
+  const [onboardingGuideConfigSnapshot, setOnboardingGuideConfigSnapshot] =
+    useState<OnboardingGuideCompletionMap | null>(null)
 
   const {
     skills,
@@ -98,15 +101,20 @@ function App() {
     error: updateError,
   } = useUpdates()
 
+  const handleOpenSkillManagement = useCallback(() => {
+    setSelectedSkill(null)
+    setWizardState(null)
+    setInstallResult(null)
+    setView('skills-list')
+  }, [])
+
   useEffect(() => {
     const unlisten = listen<string>('tray-navigate', (event) => {
       const path = event.payload
-      if (path === '/installed') {
-        setView('installed')
+      if (path === '/installed' || path === '/skills') {
+        setView('skills-list')
       } else if (path === '/settings') {
         setView('settings')
-      } else if (path === '/skills') {
-        setView('skills-list')
       } else {
         setView('onboarding')
       }
@@ -132,6 +140,27 @@ function App() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    if (!selectedSkill) {
+      return
+    }
+
+    const updatedSelectedSkill = skills.find((skill) => skill.id === selectedSkill.id)
+    if (updatedSelectedSkill) {
+      if (updatedSelectedSkill !== selectedSkill) {
+        setSelectedSkill(updatedSelectedSkill)
+      }
+      return
+    }
+
+    if (view === 'skill-detail' || view === 'install-wizard') {
+      setSelectedSkill(null)
+      setWizardState(null)
+      setInstallResult(null)
+      setView('skills-list')
+    }
+  }, [installResult, selectedSkill, skills, view])
 
   useEffect(() => {
     setMoreMenuOpen(false)
@@ -236,7 +265,7 @@ function App() {
       return
     }
 
-    if (view === 'skills-list' || view === 'installed' || view === 'settings') {
+    if (view === 'skills-list' || view === 'settings') {
       setView('onboarding')
     }
   }, [installResult, view])
@@ -285,6 +314,10 @@ function App() {
       setExportingLogs(false)
     }
   }, [locale])
+
+  const selectedSkillInstallations = selectedSkill
+    ? installed.filter((skill) => skill.skill_id === selectedSkill.id)
+    : []
 
   return (
     <main className="shell">
@@ -369,20 +402,10 @@ function App() {
                       type="button"
                       onClick={() => {
                         setMoreMenuOpen(false)
-                        setView('skills-list')
+                        handleOpenSkillManagement()
                       }}
                     >
                       {getCopy(locale, pageCopy.navSkills)}
-                    </button>
-                    <button
-                      className="header-menu__button"
-                      type="button"
-                      onClick={() => {
-                        setMoreMenuOpen(false)
-                        setView('installed')
-                      }}
-                    >
-                      {getCopy(locale, pageCopy.installedLibraryTitle)}
                     </button>
                     <button
                       className="header-menu__button"
@@ -445,12 +468,14 @@ function App() {
                 <div className="page-content__scroll">
                   {view === 'onboarding' && (
                     <OnboardingShell
+                      guideConfigSnapshot={onboardingGuideConfigSnapshot}
                       guideReplayToken={onboardingGuideReplayToken}
                       homeRequestToken={onboardingHomeRequestToken}
                       locale={locale}
+                      onGuideConfigSnapshotChange={setOnboardingGuideConfigSnapshot}
                       installedSkills={installed}
                       onViewChange={setOnboardingView}
-                      onOpenInstalled={() => setView('installed')}
+                      onOpenInstalled={handleOpenSkillManagement}
                     />
                   )}
 
@@ -470,6 +495,14 @@ function App() {
                             className="app-card"
                             onClick={() => handleSelectSkill(skill)}
                           >
+                            <span
+                              className="app-card__status"
+                              data-installed={skill.is_installed ? 'true' : 'false'}
+                            >
+                              {skill.is_installed
+                                ? getCopy(locale, pageCopy.installedStatus)
+                                : getCopy(locale, pageCopy.notInstalledStatus)}
+                            </span>
                             <h3>{skill.name[locale] || skill.name['zh-CN'] || skill.id}</h3>
                             <p>{skill.description?.[locale] || skill.description?.['zh-CN'] || getCopy(locale, pageCopy.noDescription)}</p>
                             <div className="skill-meta">
@@ -533,11 +566,41 @@ function App() {
                         </div>
                       </div>
 
+                      {selectedSkillInstallations.length > 0 ? (
+                        <>
+                          <h3 className="section-title">
+                            {getCopy(locale, pageCopy.installedTargetsTitle)}
+                          </h3>
+                          <div className="installed-list">
+                            {selectedSkillInstallations.map((skill) => (
+                              <section key={`${skill.skill_id}-${skill.app_id}`} className="summary-card">
+                                <div>
+                                  <h3>{skill.app_name}</h3>
+                                  <p className="muted">
+                                    {formatVersionLabel(locale, skill.installed_version)}
+                                  </p>
+                                  <p className="muted" style={{ fontSize: '0.8rem' }}>
+                                    {skill.output_path}
+                                  </p>
+                                </div>
+                                <button
+                                  className="button--ghost"
+                                  type="button"
+                                  onClick={() => void handleUninstall(skill)}
+                                >
+                                  {getCopy(locale, pageCopy.uninstall)}
+                                </button>
+                              </section>
+                            ))}
+                          </div>
+                        </>
+                      ) : null}
+
                       <div className="button-row">
                         <button className="button--ghost" type="button" onClick={goBack}>
                           {getCopy(locale, pageCopy.previous)}
                         </button>
-                        {selectedSkill.can_install !== false ? (
+                        {selectedSkill.can_install !== false && (
                           <button
                             className="button"
                             type="button"
@@ -546,14 +609,6 @@ function App() {
                             {selectedSkill.is_installed
                               ? getCopy(locale, pageCopy.reinstall)
                               : getCopy(locale, pageCopy.install)}
-                          </button>
-                        ) : (
-                          <button
-                            className="button"
-                            type="button"
-                            onClick={() => setView('installed')}
-                          >
-                            {getCopy(locale, pageCopy.installedLibraryTitle)}
                           </button>
                         )}
                       </div>
@@ -729,47 +784,6 @@ function App() {
                           </div>
                         </>
                       )}
-                    </>
-                  )}
-
-                  {view === 'installed' && (
-                    <>
-                      <span className="panel__eyebrow">{getCopy(locale, pageCopy.installedLibraryEyebrow)}</span>
-                      <h2 className="panel__title">{getCopy(locale, pageCopy.installedLibraryTitle)}</h2>
-                      <p className="panel__body">{getCopy(locale, pageCopy.installedLibraryBody)}</p>
-
-                      {installed.length === 0 ? (
-                        <p className="muted">{getCopy(locale, pageCopy.installedLibraryEmpty)}</p>
-                      ) : (
-                        <div className="installed-list">
-                          {installed.map((skill) => (
-                            <section key={`${skill.skill_id}-${skill.app_id}`} className="summary-card">
-                              <div>
-                                <h3>{skill.skill_id}</h3>
-                                <p className="muted">
-                                  {skill.app_name} · {formatVersionLabel(locale, skill.installed_version)}
-                                </p>
-                                <p className="muted" style={{ fontSize: '0.8rem' }}>
-                                  {skill.output_path}
-                                </p>
-                              </div>
-                              <button
-                                className="button--ghost"
-                                type="button"
-                                onClick={() => handleUninstall(skill)}
-                              >
-                                {getCopy(locale, pageCopy.uninstall)}
-                              </button>
-                            </section>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="button-row">
-                        <button className="button--ghost" type="button" onClick={goBack}>
-                          {getCopy(locale, pageCopy.previous)}
-                        </button>
-                      </div>
                     </>
                   )}
 

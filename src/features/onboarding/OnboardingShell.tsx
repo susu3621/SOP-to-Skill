@@ -538,6 +538,8 @@ function InstallModule({
 }
 
 interface OnboardingShellProps {
+  guideConfigSnapshot?: OnboardingGuideCompletionMap | null
+  onGuideConfigSnapshotChange?: (guideConfig: OnboardingGuideCompletionMap) => void
   locale: Locale
   installedSkills: InstalledSkillInfo[]
   onOpenInstalled: () => void
@@ -547,6 +549,8 @@ interface OnboardingShellProps {
 }
 
 export function OnboardingShell({
+  guideConfigSnapshot = null,
+  onGuideConfigSnapshotChange,
   locale,
   installedSkills,
   onOpenInstalled,
@@ -611,9 +615,9 @@ export function OnboardingShell({
   const onboardingHomeEntries = useMemo(() => getOnboardingHomeEntries(locale), [locale])
   const firstRunGuides = useMemo(() => getFirstRunGuideDefinitions(locale), [locale])
   const [guideConfig, setGuideConfig] = useState<OnboardingGuideCompletionMap>(() =>
-    createDefaultOnboardingGuideCompletionMap()
+    guideConfigSnapshot ?? createDefaultOnboardingGuideCompletionMap()
   )
-  const [guideConfigLoaded, setGuideConfigLoaded] = useState(false)
+  const [guideConfigLoaded, setGuideConfigLoaded] = useState(guideConfigSnapshot != null)
   const [activeGuide, setActiveGuide] = useState<ActiveFirstRunGuideState | null>(null)
   const [dismissedGuideId, setDismissedGuideId] = useState<OnboardingGuideId | null>(null)
 
@@ -638,11 +642,30 @@ export function OnboardingShell({
     setActiveGuide({ guideId, stepIndex })
   }
 
+  function applyGuideConfigSnapshot(nextGuideConfig: OnboardingGuideCompletionMap) {
+    setGuideConfig(nextGuideConfig)
+    setGuideConfigLoaded(true)
+    onGuideConfigSnapshotChange?.(nextGuideConfig)
+  }
+
   useEffect(() => {
     onViewChange?.(view)
   }, [onViewChange, view])
 
   useEffect(() => {
+    if (!guideConfigSnapshot) {
+      return
+    }
+
+    setGuideConfig(guideConfigSnapshot)
+    setGuideConfigLoaded(true)
+  }, [guideConfigSnapshot])
+
+  useEffect(() => {
+    if (guideConfigSnapshot) {
+      return
+    }
+
     let cancelled = false
 
     async function loadGuideConfig() {
@@ -650,16 +673,15 @@ export function OnboardingShell({
         const result = await invoke<SkillResult<AppConfig>>('get_config')
 
         if (!cancelled && result.success) {
-          setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
-          setGuideConfigLoaded(true)
+          applyGuideConfigSnapshot(
+            resolveOnboardingGuideCompletionMap(result.success.onboarding_guides)
+          )
         } else if (!cancelled) {
-          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
-          setGuideConfigLoaded(true)
+          applyGuideConfigSnapshot(createDefaultOnboardingGuideCompletionMap())
         }
       } catch {
         if (!cancelled) {
-          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
-          setGuideConfigLoaded(true)
+          applyGuideConfigSnapshot(createDefaultOnboardingGuideCompletionMap())
         }
       }
     }
@@ -669,7 +691,7 @@ export function OnboardingShell({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [guideConfigSnapshot, onGuideConfigSnapshotChange])
 
   useEffect(() => {
     if (homeRequestToken === 0) {
@@ -694,7 +716,7 @@ export function OnboardingShell({
       setView('home')
       setActiveUseCaseTab('role')
       setHoveredHomeEntry(null)
-      setGuideConfig(resetGuides)
+      applyGuideConfigSnapshot(resetGuides)
     })
 
     openGuide('onboarding-home')
@@ -704,7 +726,9 @@ export function OnboardingShell({
     })
       .then((result) => {
         if (result.success) {
-          setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+          applyGuideConfigSnapshot(
+            resolveOnboardingGuideCompletionMap(result.success.onboarding_guides)
+          )
         }
       })
       .catch(() => {})
@@ -1004,7 +1028,7 @@ export function OnboardingShell({
       [activeGuide.guideId]: { completed: true },
     }
 
-    setGuideConfig(nextGuideConfig)
+    applyGuideConfigSnapshot(nextGuideConfig)
     setActiveGuide(null)
 
     try {
@@ -1013,7 +1037,9 @@ export function OnboardingShell({
       })
 
       if (result.success) {
-        setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+        applyGuideConfigSnapshot(
+          resolveOnboardingGuideCompletionMap(result.success.onboarding_guides)
+        )
       } else {
         setDismissedGuideId(activeGuide.guideId)
       }
@@ -1388,19 +1414,25 @@ export function OnboardingShell({
                           {getOnboardingCopy(locale, onboardingCopy.addUseCaseHint)}
                         </p>
                       </div>
-                      <button
-                        className="button--ghost"
-                        type="button"
-                        onClick={() => {
-                          setShowNewUseCaseForm((current) => !current)
-                          setNewUseCaseError(null)
-                          if (showNewUseCaseForm) {
-                            setNewUseCaseName('')
-                          }
-                        }}
+                      <GuideAnchor
+                        anchorId="onboarding-use-cases-add-use-case"
+                        activeStep={activeGuideStep}
+                        bubble={renderGuideBubble()}
                       >
-                        {getOnboardingCopy(locale, onboardingCopy.addUseCase)}
-                      </button>
+                        <button
+                          className="button--ghost"
+                          type="button"
+                          onClick={() => {
+                            setShowNewUseCaseForm((current) => !current)
+                            setNewUseCaseError(null)
+                            if (showNewUseCaseForm) {
+                              setNewUseCaseName('')
+                            }
+                          }}
+                        >
+                          {getOnboardingCopy(locale, onboardingCopy.addUseCase)}
+                        </button>
+                      </GuideAnchor>
                     </div>
                     {showNewUseCaseForm && (
                       <form

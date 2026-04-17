@@ -114,6 +114,13 @@ export function getFirstRunGuideDefinitions(
           placement: 'left',
           before_enter: 'use-cases-work-tab',
         },
+        {
+          anchor_id: 'onboarding-use-cases-add-use-case',
+          title: getOnboardingCopy(locale, onboardingCopy.guideUseCasesStep4Title),
+          body: getOnboardingCopy(locale, onboardingCopy.guideUseCasesStep4Body),
+          placement: 'left',
+          before_enter: 'use-cases-work-tab',
+        },
       ],
     },
     'onboarding-install': {
