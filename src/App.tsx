@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { OnboardingShell } from './features/onboarding/OnboardingShell'
+import { OnboardingShell, type OnboardingShellView } from './features/onboarding/OnboardingShell'
 import { pageCopy, getCopy } from './content/copy'
 import { useLocale, useSkills } from './hooks/useSkills'
 import { useUpdates } from './hooks/useUpdates'
@@ -39,6 +39,25 @@ function getSkillCategoryLabel(category: string, locale: Locale) {
   }
 }
 
+function renderHeroBody(locale: Locale) {
+  if (locale === 'zh-CN') {
+    return (
+      <>
+        先绑定公司 IT 工具、岗位工作和 SOP，再把可执行 Skill 安装到 Codex、
+        <span className="masthead__subtitle-nowrap">Claude Code 或 WorkBuddy</span>。
+      </>
+    )
+  }
+
+  return (
+    <>
+      Connect company IT tools, role-based work, and SOP rules first, then install the
+      resulting Skills into Codex,{' '}
+      <span className="masthead__subtitle-nowrap">Claude Code, or WorkBuddy</span>.
+    </>
+  )
+}
+
 function App() {
   const [view, setView] = useState<ViewType>('onboarding')
   const [selectedSkill, setSelectedSkill] = useState<SkillInfo | null>(null)
@@ -55,6 +74,9 @@ function App() {
     kind: 'success' | 'error'
     message: string
   } | null>(null)
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [onboardingView, setOnboardingView] = useState<OnboardingShellView>('home')
+  const [onboardingHomeRequestToken, setOnboardingHomeRequestToken] = useState(0)
 
   const {
     skills,
@@ -109,6 +131,10 @@ function App() {
       cancelled = true
     }
   }, [])
+
+  useEffect(() => {
+    setMoreMenuOpen(false)
+  }, [locale, view])
 
   useEffect(() => {
     let cancelled = false
@@ -177,6 +203,12 @@ function App() {
     },
     [locale, uninstallSkill]
   )
+
+  const handleOpenOnboardingHome = useCallback(() => {
+    setView('onboarding')
+    setOnboardingView('home')
+    setOnboardingHomeRequestToken((current) => current + 1)
+  }, [])
 
   const goBack = useCallback(() => {
     if (view === 'skill-detail') {
@@ -247,9 +279,9 @@ function App() {
     <main className="shell">
       <div className="shell__inner">
         <header className="masthead">
-          <div>
+          <div className="masthead__copy">
             <h1 className="masthead__title">{getCopy(locale, pageCopy.appTitle)}</h1>
-            <p className="masthead__subtitle">{getCopy(locale, pageCopy.heroBody)}</p>
+            <p className="masthead__subtitle">{renderHeroBody(locale)}</p>
           </div>
           <div className="masthead__actions">
             <div className="masthead__utility">
@@ -285,40 +317,6 @@ function App() {
                     </p>
                   ) : null}
                 </div>
-                <button
-                  className="button--ghost"
-                  disabled={exportingLogs}
-                  type="button"
-                  onClick={() => {
-                    void handleExportLogs()
-                  }}
-                >
-                  {exportingLogs
-                    ? getCopy(locale, pageCopy.exportingLogs)
-                    : getCopy(locale, pageCopy.exportLogs)}
-                </button>
-                <div className="locale-switcher" role="group" aria-label="Locale switcher">
-                  <button
-                    className="button--ghost"
-                    type="button"
-                    aria-pressed={locale === 'zh-CN'}
-                    onClick={() => {
-                      void setLocale('zh-CN')
-                    }}
-                  >
-                    {getCopy(locale, pageCopy.localeZh)}
-                  </button>
-                  <button
-                    className="button--ghost"
-                    type="button"
-                    aria-pressed={locale === 'en-US'}
-                    onClick={() => {
-                      void setLocale('en-US')
-                    }}
-                  >
-                    {getCopy(locale, pageCopy.localeEn)}
-                  </button>
-                </div>
               </div>
               {logExportFeedback ? (
                 <p className="masthead__utility-feedback" data-kind={logExportFeedback.kind}>
@@ -326,16 +324,105 @@ function App() {
                 </p>
               ) : null}
             </div>
+          </div>
+          <div className="masthead__footer">
+            <div className="masthead__footer-home">
+              <button className="button--ghost" type="button" onClick={handleOpenOnboardingHome}>
+                {getCopy(locale, pageCopy.navBackHome)}
+              </button>
+            </div>
             <div className="header-nav">
-              <button className="button--ghost" type="button" onClick={() => setView('onboarding')}>
-                {getCopy(locale, pageCopy.navOnboarding)}
-              </button>
-              <button className="button--ghost" type="button" onClick={() => setView('skills-list')}>
-                {getCopy(locale, pageCopy.navSkills)}
-              </button>
-              <button className="button--ghost" type="button" onClick={() => setView('installed')}>
-                {getCopy(locale, pageCopy.navInstalled)}
-              </button>
+              <div className="header-menu">
+                <button
+                  aria-expanded={moreMenuOpen}
+                  className="button--ghost"
+                  type="button"
+                  onClick={() => setMoreMenuOpen((current) => !current)}
+                >
+                  {getCopy(locale, pageCopy.moreActions)}
+                </button>
+                {moreMenuOpen ? (
+                  <div className="header-menu__panel">
+                    <button
+                      className="header-menu__button"
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        handleOpenOnboardingHome()
+                      }}
+                    >
+                      {getCopy(locale, pageCopy.viewGuide)}
+                    </button>
+                    <button
+                      className="header-menu__button"
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        setView('skills-list')
+                      }}
+                    >
+                      {getCopy(locale, pageCopy.navSkills)}
+                    </button>
+                    <button
+                      className="header-menu__button"
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        setView('installed')
+                      }}
+                    >
+                      {getCopy(locale, pageCopy.installedLibraryTitle)}
+                    </button>
+                    <button
+                      className="header-menu__button"
+                      disabled={exportingLogs}
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        void handleExportLogs()
+                      }}
+                    >
+                      {exportingLogs
+                        ? getCopy(locale, pageCopy.exportingLogs)
+                        : getCopy(locale, pageCopy.exportLogs)}
+                    </button>
+                    <div className="header-menu__divider" />
+                    <button
+                      aria-pressed={locale === 'zh-CN'}
+                      className="header-menu__button"
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        void setLocale('zh-CN')
+                      }}
+                    >
+                      {getCopy(locale, pageCopy.localeZh)}
+                    </button>
+                    <button
+                      aria-pressed={locale === 'en-US'}
+                      className="header-menu__button"
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        void setLocale('en-US')
+                      }}
+                    >
+                      {getCopy(locale, pageCopy.localeEn)}
+                    </button>
+                    <div className="header-menu__divider" />
+                    <button
+                      className="header-menu__button"
+                      type="button"
+                      onClick={() => {
+                        setMoreMenuOpen(false)
+                        setView('settings')
+                      }}
+                    >
+                      {getCopy(locale, pageCopy.navSettings)}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         </header>
@@ -347,8 +434,10 @@ function App() {
                 <div className="page-content__scroll">
                   {view === 'onboarding' && (
                     <OnboardingShell
+                      homeRequestToken={onboardingHomeRequestToken}
                       locale={locale}
                       installedSkills={installed}
+                      onViewChange={setOnboardingView}
                       onOpenInstalled={() => setView('installed')}
                     />
                   )}
@@ -369,11 +458,6 @@ function App() {
                             className="app-card"
                             onClick={() => handleSelectSkill(skill)}
                           >
-                            <span className="app-card__status">
-                              {skill.is_installed
-                                ? getCopy(locale, pageCopy.installedStatus)
-                                : getCopy(locale, pageCopy.notInstalledStatus)}
-                            </span>
                             <h3>{skill.name[locale] || skill.name['zh-CN'] || skill.id}</h3>
                             <p>{skill.description?.[locale] || skill.description?.['zh-CN'] || getCopy(locale, pageCopy.noDescription)}</p>
                             <div className="skill-meta">
@@ -441,15 +525,25 @@ function App() {
                         <button className="button--ghost" type="button" onClick={goBack}>
                           {getCopy(locale, pageCopy.previous)}
                         </button>
-                        <button
-                          className="button"
-                          type="button"
-                          onClick={() => handleStartInstall(selectedSkill)}
-                        >
-                          {selectedSkill.is_installed
-                            ? getCopy(locale, pageCopy.reinstall)
-                            : getCopy(locale, pageCopy.install)}
-                        </button>
+                        {selectedSkill.can_install !== false ? (
+                          <button
+                            className="button"
+                            type="button"
+                            onClick={() => handleStartInstall(selectedSkill)}
+                          >
+                            {selectedSkill.is_installed
+                              ? getCopy(locale, pageCopy.reinstall)
+                              : getCopy(locale, pageCopy.install)}
+                          </button>
+                        ) : (
+                          <button
+                            className="button"
+                            type="button"
+                            onClick={() => setView('installed')}
+                          >
+                            {getCopy(locale, pageCopy.installedLibraryTitle)}
+                          </button>
+                        )}
                       </div>
                     </>
                   )}

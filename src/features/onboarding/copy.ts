@@ -115,6 +115,10 @@ export const onboardingCopy = {
     'zh-CN': '新增用例',
     'en-US': 'Add use case',
   },
+  addUseCaseHint: {
+    'zh-CN': '有新的想法？点击“新增用例”把新的 SO / 需求记录进来。',
+    'en-US': 'Have a new idea? Click “Add use case” to capture the new SO or requirement.',
+  },
   newUseCaseName: {
     'zh-CN': '新用例名称',
     'en-US': 'New use case name',

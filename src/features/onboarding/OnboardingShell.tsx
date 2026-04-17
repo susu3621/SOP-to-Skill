@@ -13,7 +13,6 @@ import { InstallSelectionStep } from './steps/InstallSelectionStep'
 import { UseCaseConfigStep } from './steps/UseCaseConfigStep'
 import { useOnboarding } from './useOnboarding'
 import {
-  buildGeneratedSkillIdsForRoleUseCase,
   getBaseSkillNameById,
   getOnboardingAgentNameById,
   getOnboardingBaseSkillGroupOptions,
@@ -37,6 +36,8 @@ import { getOnboardingCopy, getOnboardingList, onboardingCopy } from './copy'
 
 type OnboardingView = 'home' | 'basic' | 'useCases' | 'install'
 type UseCaseTab = 'role' | 'work'
+
+export type OnboardingShellView = OnboardingView
 
 interface EntryCopy {
   title: string
@@ -88,7 +89,6 @@ interface ModuleHeaderProps {
   title?: string
   description: string
   installedCount: number
-  onBack: () => void
   onOpenInstalled: () => void
 }
 
@@ -98,15 +98,11 @@ function ModuleHeader({
   title,
   description,
   installedCount,
-  onBack,
   onOpenInstalled,
 }: ModuleHeaderProps) {
   return (
     <div className="onboarding-section__header">
       <div className="field-stack onboarding-module-header__copy">
-        <button className="button--ghost onboarding-back-button" type="button" onClick={onBack}>
-          {getOnboardingCopy(locale, onboardingCopy.backHome)}
-        </button>
         <div>
           <span className="panel__eyebrow">{eyebrow}</span>
           {title ? <h2 className="panel__title">{title}</h2> : null}
@@ -208,16 +204,8 @@ interface GuideAnchorProps {
 
 interface HomeSummaryGroup {
   label: string
-  kind?: 'values' | 'installTable'
   fullWidth?: boolean
   values?: string[]
-  rows?: HomeInstallSummaryRow[]
-}
-
-interface HomeInstallSummaryRow {
-  useCaseName: string
-  productionLabel: string
-  testLabel: string
 }
 
 function DetailPanel({
@@ -280,46 +268,7 @@ function HomeSummarySection({ groups, locale }: { groups: HomeSummaryGroup[]; lo
             key={group.label}
           >
             <p className="onboarding-home-summary__label">{group.label}</p>
-            {group.kind === 'installTable' ? (
-              group.rows && group.rows.length > 0 ? (
-                <div className="onboarding-home-install-table-wrap">
-                  <table
-                    aria-label={getOnboardingCopy(locale, onboardingCopy.homeInstalledSkillsTable)}
-                    className="onboarding-home-install-table"
-                  >
-                    <thead>
-                      <tr>
-                        <th scope="col">{getOnboardingCopy(locale, onboardingCopy.useCaseColumn)}</th>
-                        <th scope="col">{getOnboardingCopy(locale, onboardingCopy.productionColumn)}</th>
-                        <th scope="col">{getOnboardingCopy(locale, onboardingCopy.testColumn)}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.rows.map((row) => (
-                        <tr key={row.useCaseName}>
-                          <th
-                            data-label={getOnboardingCopy(locale, onboardingCopy.useCaseColumn)}
-                            scope="row"
-                          >
-                            {row.useCaseName}
-                          </th>
-                          <td data-label={getOnboardingCopy(locale, onboardingCopy.productionColumn)}>
-                            {row.productionLabel}
-                          </td>
-                          <td data-label={getOnboardingCopy(locale, onboardingCopy.testColumn)}>
-                            {row.testLabel}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="onboarding-home-summary__empty">
-                  {getOnboardingCopy(locale, onboardingCopy.empty)}
-                </p>
-              )
-            ) : group.values && group.values.length > 0 ? (
+            {group.values && group.values.length > 0 ? (
               <div className="onboarding-home-summary__values">
                 {group.values.map((value) => (
                   <span className="onboarding-home-summary__value" key={`${group.label}-${value}`}>
@@ -477,7 +426,6 @@ interface InstallModuleProps {
   installCandidateGroups: ReturnType<typeof useOnboarding>['installCandidateGroups']
   installedCount: number
   onOpenInstalled: () => void
-  onBack: () => void
   preview: ReturnType<typeof useOnboarding>['preview']
   previewError: string | null
   selectedAgentIds: string[]
@@ -501,7 +449,6 @@ function InstallModule({
   installCandidateGroups,
   installedCount,
   onOpenInstalled,
-  onBack,
   preview,
   previewError,
   selectedAgentIds,
@@ -526,7 +473,6 @@ function InstallModule({
           description={getOnboardingCopy(locale, onboardingCopy.installModuleDescription)}
           eyebrow={getOnboardingCopy(locale, onboardingCopy.homeEntries.install.title)}
           installedCount={installedCount}
-          onBack={onBack}
           onOpenInstalled={onOpenInstalled}
         />
         <SaveFeedbackBanner feedback={saveFeedback} />
@@ -595,9 +541,17 @@ interface OnboardingShellProps {
   locale: Locale
   installedSkills: InstalledSkillInfo[]
   onOpenInstalled: () => void
+  homeRequestToken?: number
+  onViewChange?: (view: OnboardingShellView) => void
 }
 
-export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: OnboardingShellProps) {
+export function OnboardingShell({
+  locale,
+  installedSkills,
+  onOpenInstalled,
+  homeRequestToken = 0,
+  onViewChange,
+}: OnboardingShellProps) {
   const {
     completion,
     connectionTests,
@@ -616,7 +570,6 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     previewError,
     saveFeedbacks,
     saveState,
-    savedResolvedSelectedInstallSkillIds,
     savingScope,
     state,
     savedState,
@@ -675,6 +628,21 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
       setActiveUseCaseTab('work')
     }
   }
+
+  useEffect(() => {
+    onViewChange?.(view)
+  }, [onViewChange, view])
+
+  useEffect(() => {
+    if (homeRequestToken === 0) {
+      return
+    }
+
+    startTransition(() => {
+      setView('home')
+      setActiveUseCaseTab('role')
+    })
+  }, [homeRequestToken])
 
   const openView = (nextView: OnboardingView) => {
     startTransition(() => {
@@ -888,59 +856,35 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
     () => [
       {
         label: getOnboardingCopy(locale, onboardingCopy.homeSelectedRole),
-        kind: 'values',
         values: savedState.selected_role_id ? [getRoleNameById(savedState.selected_role_id, locale)] : [],
       },
       {
         label: getOnboardingCopy(locale, onboardingCopy.homeBaseSkills),
-        kind: 'values',
         values: savedState.selected_base_skill_ids.map((skillId) =>
           getBaseSkillNameById(skillId, locale)
         ),
       },
       {
         label: getOnboardingCopy(locale, onboardingCopy.homeConfiguredWork),
-        kind: 'values',
         values: savedState.role_use_case_contents
           .filter((useCase) => completion.useCaseIds[useCase.use_case_id])
           .map((useCase) => getOnboardingUseCaseNameById(useCase.use_case_id, locale) || useCase.use_case_name),
       },
       {
         label: getOnboardingCopy(locale, onboardingCopy.homeInstallTargets),
-        kind: 'values',
         values: savedState.selected_agent_ids.map((agentId) =>
           getOnboardingAgentNameById(agentId, locale)
         ),
       },
       {
         label: getOnboardingCopy(locale, onboardingCopy.homeInstalledSkills),
-        kind: 'installTable',
         fullWidth: true,
-        rows: savedState.selected_role_id
-          ? savedState.role_use_case_contents.map((useCase) => {
-              const generatedSkillIds = buildGeneratedSkillIdsForRoleUseCase(
-                savedState.selected_role_id,
-                useCase.use_case_id
-              )
-              return {
-                useCaseName:
-                  getOnboardingUseCaseNameById(useCase.use_case_id, locale) || useCase.use_case_name,
-                productionLabel: savedResolvedSelectedInstallSkillIds.includes(
-                  generatedSkillIds.production_skill_id
-                )
-                  ? generatedSkillIds.production_skill_id
-                  : getOnboardingCopy(locale, onboardingCopy.notInstalled),
-                testLabel: savedResolvedSelectedInstallSkillIds.includes(
-                  generatedSkillIds.test_skill_id
-                )
-                  ? generatedSkillIds.test_skill_id
-                  : getOnboardingCopy(locale, onboardingCopy.notInstalled),
-              }
-            })
-          : [],
+        values: installedSkills.map(
+          (skill) => `${skill.skill_id} · ${skill.app_name} · ${skill.installed_version}`
+        ),
       },
     ],
-    [completion.useCaseIds, locale, savedResolvedSelectedInstallSkillIds, savedState]
+    [completion.useCaseIds, installedSkills, locale, savedState]
   )
 
   if (loading) {
@@ -1076,7 +1020,6 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
             description={getOnboardingCopy(locale, onboardingCopy.basicModuleDescription)}
             eyebrow={getOnboardingCopy(locale, onboardingCopy.homeEntries.basic.title)}
             installedCount={installedSkills.length}
-            onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
           />
 
@@ -1160,7 +1103,6 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
             description={getOnboardingCopy(locale, onboardingCopy.useCasesModuleDescription)}
             eyebrow={getOnboardingCopy(locale, onboardingCopy.homeEntries.useCases.title)}
             installedCount={installedSkills.length}
-            onBack={() => setView('home')}
             onOpenInstalled={onOpenInstalled}
           />
 
@@ -1256,6 +1198,9 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
                       <div>
                         <h3>{getOnboardingCopy(locale, onboardingCopy.useCasePanelTitle)}</h3>
                         <p>{getOnboardingCopy(locale, onboardingCopy.useCasePanelBody)}</p>
+                        <p className="onboarding-use-case-panel-hint">
+                          {getOnboardingCopy(locale, onboardingCopy.addUseCaseHint)}
+                        </p>
                       </div>
                       <button
                         className="button--ghost"
@@ -1396,7 +1341,6 @@ export function OnboardingShell({ locale, installedSkills, onOpenInstalled }: On
       syncError={syncError}
       syncing={syncing}
       syncResult={syncResult}
-      onBack={() => setView('home')}
       onOpenInstalled={onOpenInstalled}
       onSave={() => void saveState('install')}
       onStartSync={startSync}

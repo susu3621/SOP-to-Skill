@@ -65,6 +65,7 @@ export interface SkillInfo {
   is_installed: boolean
   installed_version?: string
   update_status: 'up-to-date' | 'update-available' | 'not-installed' | 'unknown'
+  can_install?: boolean
 }
 
 export interface InstalledSkillInfo {

@@ -2,10 +2,11 @@ use crate::models::{InstallStrategy, InstalledSkill, SkillError, SkillTemplate, 
 use crate::template::{
     copy_directory, delete_skill_path, ensure_directories, get_default_variables,
     get_installed_dir, get_output_dir, get_output_path, get_skills_dir, load_all_templates,
-    load_skill_template, load_template_file, render_template, validate_variables, write_skill_file,
+    load_skill_template, load_skill_template_from_dir, load_template_file, render_template,
+    validate_variables, write_skill_file,
 };
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -51,6 +52,7 @@ pub struct SkillInfo {
     pub is_installed: bool,
     pub installed_version: Option<String>,
     pub update_status: String,
+    pub can_install: bool,
 }
 
 /// Variable info for frontend
@@ -73,7 +75,7 @@ pub struct OptionInfo {
 }
 
 /// Installed skill info for frontend
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct InstalledSkillInfo {
     pub skill_id: String,
     pub app_id: String,
@@ -81,6 +83,13 @@ pub struct InstalledSkillInfo {
     pub installed_version: String,
     pub installed_at: String,
     pub output_path: String,
+}
+
+fn duplicate_text(value: &str) -> HashMap<String, String> {
+    let mut localized = HashMap::new();
+    localized.insert("zh-CN".to_string(), value.to_string());
+    localized.insert("en-US".to_string(), value.to_string());
+    localized
 }
 
 /// Convert template to frontend info
@@ -139,6 +148,7 @@ fn template_to_info(template: SkillTemplate, installed: Option<&InstalledSkill>)
             }
             None => "not-installed".to_string(),
         },
+        can_install: true,
     }
 }
 
@@ -165,6 +175,104 @@ pub(crate) fn parse_target_app_id(app_id: &str) -> Result<TargetAppId, SkillErro
 
 fn path_for_template(path: &Path) -> String {
     path.to_string_lossy().replace('\\', "/")
+}
+
+fn scan_installed_skills_from_dir(installed_dir: &Path) -> Result<Vec<InstalledSkillInfo>, SkillError> {
+    let mut installed_skills = Vec::new();
+
+    if !installed_dir.exists() {
+        return Ok(installed_skills);
+    }
+
+    for app_entry in fs::read_dir(installed_dir)? {
+        let app_entry = app_entry?;
+        let app_path = app_entry.path();
+
+        if !app_path.is_dir() {
+            continue;
+        }
+
+        let Some(app_id_str) = app_path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+
+        let target_app_id = match app_id_str {
+            "claude-code" => TargetAppId::ClaudeCode,
+            "codex" => TargetAppId::Codex,
+            "workbuddy" => TargetAppId::WorkBuddy,
+            _ => continue,
+        };
+
+        for skill_entry in fs::read_dir(&app_path)? {
+            let skill_entry = skill_entry?;
+            let skill_path = skill_entry.path();
+
+            if !skill_path.extension().map(|e| e == "json").unwrap_or(false) {
+                continue;
+            }
+
+            if let Ok(content) = fs::read_to_string(&skill_path) {
+                if let Ok(installed) = serde_json::from_str::<InstalledSkill>(&content) {
+                    installed_skills.push(InstalledSkillInfo {
+                        skill_id: installed.skill_id,
+                        app_id: installed.app_id.as_str().to_string(),
+                        app_name: get_app_name(&target_app_id),
+                        installed_version: installed.installed_version,
+                        installed_at: installed.installed_at.to_rfc3339(),
+                        output_path: installed.output_path,
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(installed_skills)
+}
+
+fn installed_only_to_info(installed_entries: &[InstalledSkillInfo]) -> SkillInfo {
+    let first = installed_entries
+        .first()
+        .expect("installed_only_to_info requires installed entries");
+    let mut targets: Vec<String> = installed_entries
+        .iter()
+        .map(|entry| entry.app_id.clone())
+        .collect();
+    targets.sort();
+    targets.dedup();
+
+    let display_template = installed_entries.iter().find_map(|entry| {
+        let output_path = PathBuf::from(&entry.output_path);
+        if output_path.is_dir() {
+            load_skill_template_from_dir(&entry.skill_id, &output_path).ok()
+        } else {
+            None
+        }
+    });
+
+    let (name, description, category, author) = match display_template {
+        Some(template) => (
+            template.name,
+            template.description,
+            template.category,
+            template.author,
+        ),
+        None => (duplicate_text(&first.skill_id), None, None, None),
+    };
+
+    SkillInfo {
+        id: first.skill_id.clone(),
+        name,
+        description,
+        version: first.installed_version.clone(),
+        category,
+        author,
+        targets,
+        variables: Vec::new(),
+        is_installed: true,
+        installed_version: Some(first.installed_version.clone()),
+        update_status: "unknown".to_string(),
+        can_install: false,
+    }
 }
 
 pub(crate) fn install_directory_package_at_path(
@@ -292,9 +400,19 @@ pub async fn list_skills() -> SkillResult<Vec<SkillInfo>> {
     let result = || -> Result<Vec<SkillInfo>, SkillError> {
         ensure_directories()?;
         let templates = load_all_templates()?;
+        let installed_entries = scan_installed_skills_from_dir(&get_installed_dir())?;
+        let mut installed_by_skill_id: HashMap<String, Vec<InstalledSkillInfo>> = HashMap::new();
+        for installed in installed_entries {
+            installed_by_skill_id
+                .entry(installed.skill_id.clone())
+                .or_default()
+                .push(installed);
+        }
 
         let mut skills = Vec::new();
+        let mut template_skill_ids = HashSet::new();
         for template in templates {
+            template_skill_ids.insert(template.id.clone());
             // Check if installed for any target
             let installed = template
                 .targets
@@ -302,6 +420,12 @@ pub async fn list_skills() -> SkillResult<Vec<SkillInfo>> {
                 .find_map(|t| load_installed_skill(&template.id, &t.app_id));
 
             skills.push(template_to_info(template, installed.as_ref()));
+        }
+
+        for (skill_id, installed_entries) in installed_by_skill_id {
+            if !template_skill_ids.contains(&skill_id) {
+                skills.push(installed_only_to_info(&installed_entries));
+            }
         }
 
         Ok(skills)
@@ -315,7 +439,23 @@ pub async fn list_skills() -> SkillResult<Vec<SkillInfo>> {
 pub async fn get_skill(skill_id: String) -> SkillResult<SkillInfo> {
     let result = || -> Result<SkillInfo, SkillError> {
         ensure_directories()?;
-        let template = load_skill_template(&skill_id)?;
+        let template = match load_skill_template(&skill_id) {
+            Ok(template) => template,
+            Err(SkillError::TemplateNotFound(_)) => {
+                let installed_only: Vec<InstalledSkillInfo> =
+                    scan_installed_skills_from_dir(&get_installed_dir())?
+                        .into_iter()
+                        .filter(|installed| installed.skill_id == skill_id)
+                        .collect();
+
+                if !installed_only.is_empty() {
+                    return Ok(installed_only_to_info(&installed_only));
+                }
+
+                return Err(SkillError::TemplateNotFound(skill_id));
+            }
+            Err(error) => return Err(error),
+        };
 
         // Check if installed for any target
         let installed = template
@@ -438,53 +578,7 @@ pub async fn uninstall_skill(skill_id: String, app_id: String) -> SkillResult<()
 pub async fn list_installed() -> SkillResult<Vec<InstalledSkillInfo>> {
     let result = || -> Result<Vec<InstalledSkillInfo>, SkillError> {
         ensure_directories()?;
-
-        let installed_dir = get_installed_dir();
-        let mut installed_skills = Vec::new();
-
-        if !installed_dir.exists() {
-            return Ok(installed_skills);
-        }
-
-        for app_entry in fs::read_dir(&installed_dir)? {
-            let app_entry = app_entry?;
-            let app_path = app_entry.path();
-
-            if app_path.is_dir() {
-                if let Some(app_id_str) = app_path.file_name().and_then(|n| n.to_str()) {
-                    let target_app_id = match app_id_str {
-                        "claude-code" => TargetAppId::ClaudeCode,
-                        "codex" => TargetAppId::Codex,
-                        "workbuddy" => TargetAppId::WorkBuddy,
-                        _ => continue,
-                    };
-
-                    for skill_entry in fs::read_dir(&app_path)? {
-                        let skill_entry = skill_entry?;
-                        let skill_path = skill_entry.path();
-
-                        if skill_path.extension().map(|e| e == "json").unwrap_or(false) {
-                            if let Ok(content) = fs::read_to_string(&skill_path) {
-                                if let Ok(installed) =
-                                    serde_json::from_str::<InstalledSkill>(&content)
-                                {
-                                    installed_skills.push(InstalledSkillInfo {
-                                        skill_id: installed.skill_id,
-                                        app_id: installed.app_id.as_str().to_string(),
-                                        app_name: get_app_name(&target_app_id),
-                                        installed_version: installed.installed_version,
-                                        installed_at: installed.installed_at.to_rfc3339(),
-                                        output_path: installed.output_path,
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(installed_skills)
+        scan_installed_skills_from_dir(&get_installed_dir())
     };
 
     result().into()
@@ -528,7 +622,11 @@ mod tests {
     use super::*;
     use crate::models::SkillManifestEntry;
     use crate::template::load_skill_template_from_dir_with_manifest;
+    use std::sync::{Mutex, OnceLock};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    const DATA_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_DATA_DIR";
+    const SKILLS_DIR_ENV_VAR: &str = "SKILL_CONFIGURATOR_SKILLS_DIR";
 
     fn temp_dir(prefix: &str) -> PathBuf {
         let unique = SystemTime::now()
@@ -538,6 +636,78 @@ mod tests {
         let path = std::env::temp_dir().join(format!("skill-configurator-{prefix}-{unique}"));
         fs::create_dir_all(&path).expect("create temp dir");
         path
+    }
+
+    fn env_lock() -> &'static Mutex<()> {
+        static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+        LOCK.get_or_init(|| Mutex::new(()))
+    }
+
+    fn restore_env_var(key: &str, value: Option<String>) {
+        match value {
+            Some(value) => std::env::set_var(key, value),
+            None => std::env::remove_var(key),
+        }
+    }
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn list_skills_includes_installed_only_local_packages_and_marks_them_non_installable() {
+        let _guard = env_lock().lock().unwrap();
+        let skills_dir = temp_dir("list-skills-templates");
+        let data_dir = temp_dir("list-skills-data");
+        let installed_source_dir = temp_dir("list-skills-installed-source");
+        let installed_output_dir = temp_dir("list-skills-installed-output");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+        let original_skills_dir = std::env::var(SKILLS_DIR_ENV_VAR).ok();
+
+        let jira_dir = skills_dir.join("jira");
+        fs::create_dir_all(&jira_dir).unwrap();
+        fs::write(jira_dir.join("SKILL.md"), "# Jira\n").unwrap();
+
+        fs::create_dir_all(&installed_source_dir).unwrap();
+        fs::write(
+            installed_source_dir.join("SKILL.md"),
+            "# Weekly Report Skill\n",
+        )
+        .unwrap();
+
+        install_directory_package_at_path(
+            "project-manager-weekly-report",
+            &TargetAppId::Codex,
+            &installed_source_dir,
+            &installed_output_dir,
+            "local",
+            &HashMap::new(),
+            true,
+            Some(&data_dir),
+        )
+        .unwrap();
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        std::env::set_var(SKILLS_DIR_ENV_VAR, &skills_dir);
+
+        let result = list_skills().await;
+
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+        restore_env_var(SKILLS_DIR_ENV_VAR, original_skills_dir);
+
+        let SkillResult::Success { success: skills } = result else {
+            panic!("expected list_skills success");
+        };
+
+        let jira = skills
+            .iter()
+            .find(|skill| skill.id == "jira")
+            .expect("template-backed skill should be listed");
+        assert!(jira.can_install);
+
+        let generated = skills
+            .iter()
+            .find(|skill| skill.id == "project-manager-weekly-report")
+            .expect("installed-only local skill should be listed");
+        assert!(generated.is_installed);
+        assert_eq!(generated.name.get("zh-CN").map(String::as_str), Some("Weekly Report Skill"));
+        assert!(!generated.can_install);
     }
 
     #[test]

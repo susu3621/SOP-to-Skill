@@ -7,6 +7,7 @@ import {
   getOnboardingUseCaseOptionById,
 } from '../../content/workbuddy'
 import type {
+  InstalledSkillInfo,
   OnboardingAgentSyncResult,
   OnboardingBatchSyncResult,
   OnboardingEditableUseCaseRecord,
@@ -234,6 +235,7 @@ const mockControls = vi.hoisted(() => ({
       log_line: string | null
     }>
   >,
+  installed: [] as InstalledSkillInfo[],
   eventHandlers: new Map<string, (event: { payload: unknown }) => void>(),
 }))
 
@@ -263,6 +265,7 @@ beforeEach(() => {
   mockControls.environmentCheckSequences = {}
   mockControls.environmentInstallResults = {}
   mockControls.environmentInstallProgressEvents = {}
+  mockControls.installed = []
   mockControls.eventHandlers.clear()
   invokeMock.mockReset()
   invokeMock.mockImplementation(async (command: string, payload?: any) => {
@@ -271,7 +274,7 @@ beforeEach(() => {
       case 'list_skills':
         return { success: [] }
       case 'list_installed':
-        return { success: [] }
+        return { success: mockControls.installed }
       case 'get_target_apps':
         return []
       case 'check_skill_updates':
@@ -852,7 +855,7 @@ describe('OnboardingShell', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('lists configured onboarding details on the home screen', async () => {
+  it('lists configured onboarding details on the home screen while keeping installed skills empty until local metadata exists', async () => {
     render(<App />)
 
     expect(await waitForOnboardingHome()).toBeInTheDocument()
@@ -884,15 +887,11 @@ describe('OnboardingShell', () => {
     expect(within(installTargetsGroup).getByText('Codex')).toBeInTheDocument()
     expect(within(installTargetsGroup).getByText('Claude Code')).toBeInTheDocument()
     expect(within(summary).getByText('安装技能')).toBeInTheDocument()
-    expect(installSkillsGroup).toHaveClass('onboarding-home-summary__group--full-width')
-    const installSkillTable = within(installSkillsGroup).getByRole('table', { name: '安装技能汇总' })
-    expect(within(installSkillTable).getByRole('columnheader', { name: '岗位用例' })).toBeInTheDocument()
-    expect(within(installSkillTable).getByRole('columnheader', { name: '生产用' })).toBeInTheDocument()
-    expect(within(installSkillTable).getByRole('columnheader', { name: '测试用' })).toBeInTheDocument()
-    const weeklyReportRow = within(installSkillTable).getByText('项目周报').closest('tr') as HTMLTableRowElement
-    expect(weeklyReportRow).not.toBeNull()
-    expect(within(weeklyReportRow).getByText('project-manager-weekly-report')).toBeInTheDocument()
-    expect(within(weeklyReportRow).getByText('test-project-manager-weekly-report')).toBeInTheDocument()
+    expect(within(installSkillsGroup).getByText('未设置')).toBeInTheDocument()
+    expect(within(installSkillsGroup).queryByText('project-manager-weekly-report')).not.toBeInTheDocument()
+    expect(
+      within(installSkillsGroup).queryByText('test-project-manager-weekly-report')
+    ).not.toBeInTheDocument()
   })
 
   it('shows 未设置 for empty summary groups when no values are selected', async () => {
@@ -920,8 +919,43 @@ describe('OnboardingShell', () => {
     const installSkillsGroup = within(summary)
       .getByText('安装技能')
       .closest('.onboarding-home-summary__group') as HTMLElement
-    const installSkillTable = within(installSkillsGroup).getByRole('table', { name: '安装技能汇总' })
-    expect(within(installSkillTable).getAllByText('未安装').length).toBeGreaterThan(0)
+    expect(within(installSkillsGroup).getByText('未设置')).toBeInTheDocument()
+  })
+
+  it('renders only locally installed skills in the home summary installed-skill group', async () => {
+    mockControls.installed = [
+      {
+        skill_id: 'jira',
+        app_id: 'codex',
+        app_name: 'Codex',
+        installed_version: '1.0.0',
+        installed_at: '2026-04-17T14:00:00Z',
+        output_path: '~/.codex/skills/jira',
+      },
+      {
+        skill_id: 'project-manager-daily-log',
+        app_id: 'claude-code',
+        app_name: 'Claude Code',
+        installed_version: 'local',
+        installed_at: '2026-04-17T14:05:00Z',
+        output_path: '~/.claude/skills/project-manager-daily-log',
+      },
+    ]
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    const summary = screen.getByRole('region', { name: '已设置内容' })
+    const installSkillsGroup = within(summary)
+      .getByText('安装技能')
+      .closest('.onboarding-home-summary__group') as HTMLElement
+
+    expect(within(installSkillsGroup).getByText(/jira/i)).toBeInTheDocument()
+    expect(within(installSkillsGroup).getByText(/Codex/i)).toBeInTheDocument()
+    expect(within(installSkillsGroup).getByText(/project-manager-daily-log/i)).toBeInTheDocument()
+    expect(within(installSkillsGroup).getByText(/Claude Code/i)).toBeInTheDocument()
+    expect(within(installSkillsGroup).queryByText('未设置')).not.toBeInTheDocument()
   })
 
   it('opens 公司 IT 工具 as a direct editor without a second-level entry card', async () => {
@@ -953,6 +987,23 @@ describe('OnboardingShell', () => {
     expect(
       screen.queryByText('先选择“选择公司 IT 工具”，再进入对应的编辑界面。')
     ).not.toBeInTheDocument()
+  })
+
+  it('shows a persistent hint for creating a new custom use case', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+    expect(await waitForUseCasesModule()).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
+
+    expect(
+      screen.getByText('有新的想法？点击“新增用例”把新的 SO / 需求记录进来。')
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '新增用例' })).toBeInTheDocument()
   })
 
   it('renders company IT tool cards with a separate title line and read-write descriptions', async () => {

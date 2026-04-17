@@ -107,13 +107,29 @@ export const pageCopy = {
     'zh-CN': '开始设置',
     'en-US': 'Start setup',
   },
+  navBackHome: {
+    'zh-CN': '返回首页',
+    'en-US': 'Back to home',
+  },
   navSkills: {
     'zh-CN': 'Skill 库',
     'en-US': 'Skill Library',
   },
+  moreActions: {
+    'zh-CN': '更多操作',
+    'en-US': 'More actions',
+  },
+  viewGuide: {
+    'zh-CN': '查看引导',
+    'en-US': 'View guide',
+  },
   navInstalled: {
     'zh-CN': '已安装',
     'en-US': 'Installed',
+  },
+  navSettings: {
+    'zh-CN': '设置',
+    'en-US': 'Settings',
   },
   skillsLibraryEyebrow: {
     'zh-CN': 'Skill 库',
@@ -266,12 +282,12 @@ export const pageCopy = {
     'en-US': 'Installation failed',
   },
   uninstall: {
-    'zh-CN': '卸载',
-    'en-US': 'Uninstall',
+    'zh-CN': '删除 Skill',
+    'en-US': 'Delete Skill',
   },
   uninstallFailedPrefix: {
-    'zh-CN': '卸载失败',
-    'en-US': 'Uninstall failed',
+    'zh-CN': '删除 Skill 失败',
+    'en-US': 'Failed to delete Skill',
   },
   settingsEyebrow: {
     'zh-CN': '设置',
