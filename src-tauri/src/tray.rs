@@ -1,11 +1,16 @@
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
+    tray::{TrayIcon, TrayIconBuilder},
     AppHandle, Runtime,
 };
 
+const DEFAULT_TRAY_ID: &str = "main";
 const TRAY_QUIT_ITEM_ID: &str = "quit";
 const TRAY_MENU_ENTRIES: [(&str, &str); 1] = [(TRAY_QUIT_ITEM_ID, "退出")];
+
+fn default_tray_id() -> &'static str {
+    DEFAULT_TRAY_ID
+}
 
 fn tray_menu_entries() -> &'static [(&'static str, &'static str)] {
     &TRAY_MENU_ENTRIES
@@ -25,19 +30,34 @@ pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, Box<dyn std
     Ok(menu)
 }
 
+fn bind_tray_menu<R: Runtime>(
+    tray: &TrayIcon<R>,
+    menu: Menu<R>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    tray.set_menu(Some(menu))?;
+    tray.set_show_menu_on_left_click(true)?;
+    tray.on_menu_event(|app, event| match event.id.as_ref() {
+        id if id == tray_quit_item_id() => {
+            app.exit(0);
+        }
+        _ => {}
+    });
+
+    Ok(())
+}
+
 /// Setup the system tray
 pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error>> {
     let menu = build_tray(app)?;
 
-    let mut tray = TrayIconBuilder::new()
+    if let Some(existing_tray) = app.tray_by_id(default_tray_id()) {
+        tracing::info!("Reusing default tray icon and attaching application menu");
+        return bind_tray_menu(&existing_tray, menu);
+    }
+
+    let mut tray = TrayIconBuilder::with_id(default_tray_id())
         .menu(&menu)
-        .show_menu_on_left_click(true)
-        .on_menu_event(|app, event| match event.id.as_ref() {
-            id if id == tray_quit_item_id() => {
-                app.exit(0);
-            }
-            _ => {}
-        });
+        .show_menu_on_left_click(true);
 
     if let Some(icon) = app.default_window_icon() {
         tray = tray.icon(icon.clone());
@@ -45,14 +65,16 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::err
         tracing::warn!("Default window icon not available; building tray without custom icon");
     }
 
-    let _tray = tray.build(app)?;
+    let created_tray = tray.build(app)?;
+    bind_tray_menu(&created_tray, menu)?;
 
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{tray_menu_entries, tray_quit_item_id};
+    use super::{default_tray_id, tray_menu_entries, tray_quit_item_id};
+    use serde_json::Value;
 
     #[test]
     fn tray_menu_only_keeps_quit_action() {
@@ -62,5 +84,17 @@ mod tests {
     #[test]
     fn tray_quit_item_id_stays_stable() {
         assert_eq!(tray_quit_item_id(), "quit");
+    }
+
+    #[test]
+    fn tauri_default_tray_id_matches_runtime_lookup_id() {
+        let config: Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).expect("valid tauri config");
+        let configured_id = config
+            .pointer("/app/trayIcon/id")
+            .and_then(Value::as_str)
+            .unwrap_or("main");
+
+        assert_eq!(configured_id, default_tray_id());
     }
 }
