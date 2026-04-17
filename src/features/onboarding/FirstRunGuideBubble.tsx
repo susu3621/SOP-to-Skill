@@ -106,12 +106,12 @@ export function FirstRunGuideBubble({
 
   return (
     <section
+      aria-label={title}
       aria-live="polite"
       className="first-run-guide-bubble"
       data-placement={layout?.placement ?? placement}
       ref={bubbleRef}
       role="dialog"
-      aria-label={title}
       style={bubbleStyle}
     >
       <p className="first-run-guide-bubble__eyebrow">

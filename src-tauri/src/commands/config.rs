@@ -57,6 +57,35 @@ fn export_current_log_with_dialog(app: &AppHandle) -> Result<String, String> {
     Ok(destination_path.to_string_lossy().to_string())
 }
 
+fn normalize_external_url(url: &str) -> Result<String, String> {
+    let normalized = url.trim();
+
+    if normalized.is_empty() {
+        return Err("External URL cannot be empty.".to_string());
+    }
+
+    if !(normalized.starts_with("https://") || normalized.starts_with("http://")) {
+        return Err("Only http:// and https:// URLs can be opened externally.".to_string());
+    }
+
+    Ok(normalized.to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn external_open_command(url: &str) -> (&'static str, Vec<String>) {
+    ("/usr/bin/open", vec![url.to_string()])
+}
+
+#[cfg(target_os = "windows")]
+fn external_open_command(url: &str) -> (&'static str, Vec<String>) {
+    ("cmd", vec!["/C".to_string(), "start".to_string(), "".to_string(), url.to_string()])
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
+fn external_open_command(url: &str) -> (&'static str, Vec<String>) {
+    ("xdg-open", vec![url.to_string()])
+}
+
 /// Load configuration from disk
 pub fn load_config() -> AppConfig {
     let config_path = get_config_path();
@@ -170,6 +199,26 @@ pub fn open_data_directory() -> SkillResult<()> {
 }
 
 #[tauri::command]
+pub fn open_external_url(_app: AppHandle, url: String) -> SkillResult<()> {
+    let normalized = match normalize_external_url(&url) {
+        Ok(url) => url,
+        Err(error) => return SkillResult::Error { error },
+    };
+
+    let (program, args) = external_open_command(&normalized);
+
+    match std::process::Command::new(program).args(&args).status() {
+        Ok(status) if status.success() => SkillResult::Success { success: () },
+        Ok(status) => SkillResult::Error {
+            error: format!("Failed to open external URL with status: {status}"),
+        },
+        Err(error) => SkillResult::Error {
+            error: format!("Failed to open external URL: {error}"),
+        },
+    }
+}
+
+#[tauri::command]
 pub async fn export_current_log(app: AppHandle) -> SkillResult<String> {
     match tokio::task::spawn_blocking(move || export_current_log_with_dialog(&app)).await {
         Ok(Ok(path)) => SkillResult::Success { success: path },
@@ -182,7 +231,7 @@ pub async fn export_current_log(app: AppHandle) -> SkillResult<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{load_config, save_config};
+    use super::{external_open_command, load_config, normalize_external_url, save_config};
     use crate::models::AppConfig;
     use std::collections::HashMap;
     use std::fs;
@@ -211,6 +260,61 @@ mod tests {
         match value {
             Some(value) => std::env::set_var(key, value),
             None => std::env::remove_var(key),
+        }
+    }
+
+    #[test]
+    fn normalize_external_url_accepts_http_and_https_urls() {
+        assert_eq!(
+            normalize_external_url(" https://www.codebuddy.cn/work/ ").unwrap(),
+            "https://www.codebuddy.cn/work/"
+        );
+        assert_eq!(
+            normalize_external_url("http://localhost:3000").unwrap(),
+            "http://localhost:3000"
+        );
+    }
+
+    #[test]
+    fn normalize_external_url_rejects_empty_or_non_web_urls() {
+        assert_eq!(
+            normalize_external_url(" ").unwrap_err(),
+            "External URL cannot be empty."
+        );
+        assert_eq!(
+            normalize_external_url("file:///tmp/test").unwrap_err(),
+            "Only http:// and https:// URLs can be opened externally."
+        );
+    }
+
+    #[test]
+    fn external_open_command_uses_platform_default_launcher() {
+        let (program, args) = external_open_command("https://www.codebuddy.cn/work/");
+
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(program, "/usr/bin/open");
+            assert_eq!(args, vec!["https://www.codebuddy.cn/work/".to_string()]);
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            assert_eq!(program, "cmd");
+            assert_eq!(
+                args,
+                vec![
+                    "/C".to_string(),
+                    "start".to_string(),
+                    "".to_string(),
+                    "https://www.codebuddy.cn/work/".to_string()
+                ]
+            );
+        }
+
+        #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+        {
+            assert_eq!(program, "xdg-open");
+            assert_eq!(args, vec!["https://www.codebuddy.cn/work/".to_string()]);
         }
     }
 
@@ -313,6 +417,7 @@ mod tests {
     fn save_config_persists_onboarding_guide_completion_without_clobbering_locale() {
         let _guard = env_lock().lock().unwrap();
         let data_dir = temp_dir("save-guides");
+        let config_path = data_dir.join("config.json");
         let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
 
         std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
@@ -342,6 +447,7 @@ mod tests {
         .expect("save config with onboarding guides");
 
         let loaded = load_config();
+        let persisted = fs::read_to_string(&config_path).expect("read saved config");
         restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
 
         assert_eq!(loaded.preferred_locale.as_deref(), Some("en-US"));
@@ -350,6 +456,10 @@ mod tests {
             loaded.onboarding_guides.get("onboarding-home").map(|guide| guide.completed),
             Some(true)
         );
+        assert!(persisted.contains("\"preferred_locale\": \"en-US\""));
+        assert!(persisted.contains("\"update_check_interval_hours\": 4"));
+        assert!(persisted.contains("\"onboarding-home\": {"));
+        assert!(persisted.contains("\"completed\": true"));
     }
 
     #[test]

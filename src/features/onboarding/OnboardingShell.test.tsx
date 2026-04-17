@@ -240,9 +240,14 @@ const mockControls = vi.hoisted(() => ({
 }))
 
 const invokeMock = vi.hoisted(() => vi.fn())
+const openUrlMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: invokeMock,
+}))
+
+vi.mock('@tauri-apps/plugin-opener', () => ({
+  openUrl: openUrlMock,
 }))
 
 vi.mock('@tauri-apps/api/event', () => ({
@@ -268,6 +273,7 @@ beforeEach(() => {
   mockControls.installed = []
   mockControls.eventHandlers.clear()
   invokeMock.mockReset()
+  openUrlMock.mockReset()
   invokeMock.mockImplementation(async (command: string, payload?: any) => {
     const currentState = mockControls.stateOverride ?? fixtures.onboardingState
     switch (command) {
@@ -470,6 +476,18 @@ function getSyncCalls() {
   return invokeMock.mock.calls.filter(([command]) => command === 'sync_onboarding_installation')
 }
 
+function getConfigUpdateCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'update_config')
+}
+
+function getOpenUrlCalls() {
+  return openUrlMock.mock.calls
+}
+
+function getOpenExternalUrlCalls() {
+  return invokeMock.mock.calls.filter(([command]) => command === 'open_external_url')
+}
+
 async function waitForOnboardingHome() {
   return screen.findByRole('button', { name: '选择公司 IT 工具' })
 }
@@ -550,7 +568,6 @@ describe('OnboardingShell', () => {
     expect(screen.getByRole('heading', { name: '先选公司 IT 工具' })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: 'Jira' })).not.toBeInTheDocument()
   })
-
   it('marks the homepage first-run guide complete only after the final step', async () => {
     const user = userEvent.setup()
     mockControls.configOverride = {
@@ -594,13 +611,11 @@ describe('OnboardingShell', () => {
     }
 
     render(<App />)
-    await waitForOnboardingHome()
 
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
 
-    expect(
-      await screen.findByRole('heading', { name: '先选你们公司正在使用的 IT 工具' })
-    ).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: '先选你们公司正在使用的 IT 工具' })).toBeInTheDocument()
   })
 
   it('auto-opens the 工作配置 first-run guide on first entry', async () => {
@@ -616,8 +631,7 @@ describe('OnboardingShell', () => {
     }
 
     render(<App />)
-    await waitForOnboardingHome()
-
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
 
     expect(await screen.findByRole('heading', { name: '先选岗位' })).toBeInTheDocument()
@@ -636,8 +650,7 @@ describe('OnboardingShell', () => {
     }
 
     render(<App />)
-    await waitForOnboardingHome()
-
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
     expect(await screen.findByRole('heading', { name: '先选要安装到的 AI 工具' })).toBeInTheDocument()
@@ -2407,18 +2420,55 @@ describe('OnboardingShell', () => {
     await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
 
     expect(await waitForInstallModule()).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Codex 官网' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Codex 点此打开官网' })).toHaveAttribute(
       'href',
       'https://openai.com/codex'
     )
-    expect(screen.getByRole('link', { name: 'Claude Code 官网' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Claude Code 点此打开官网' })).toHaveAttribute(
       'href',
       'https://www.anthropic.com/claude-code'
     )
-    expect(screen.getByRole('link', { name: 'WorkBuddy 官网' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'WorkBuddy 点此打开官网' })).toHaveAttribute(
       'href',
-      'https://susu3621.github.io/skills-for-no-engineer/'
+      'https://www.codebuddy.cn/work/'
     )
+    expect(screen.getByRole('link', { name: 'WorkBuddy 点此打开官网' })).toHaveTextContent(
+      '点此打开官网'
+    )
+  })
+
+  it('opens the official product link with the Tauri opener plugin', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'WorkBuddy 点此打开官网' }))
+
+    expect(getOpenUrlCalls()).toEqual([['https://www.codebuddy.cn/work/']])
+  })
+
+  it('falls back to the desktop open command when the Tauri opener plugin fails', async () => {
+    const user = userEvent.setup()
+    openUrlMock.mockRejectedValueOnce(new Error('opener blocked'))
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'WorkBuddy 点此打开官网' }))
+
+    expect(getOpenUrlCalls()).toEqual([['https://www.codebuddy.cn/work/']])
+    expect(getOpenExternalUrlCalls()).toEqual([
+      ['open_external_url', { url: 'https://www.codebuddy.cn/work/' }],
+    ])
   })
 
   it('lets users add a custom use case from 选择工作 and carries it into install skills', async () => {

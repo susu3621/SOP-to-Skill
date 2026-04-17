@@ -284,8 +284,8 @@ export const onboardingCopy = {
     'en-US': 'Choose AI apps',
   },
   officialSite: {
-    'zh-CN': '官网',
-    'en-US': 'Official site',
+    'zh-CN': '点此打开官网',
+    'en-US': 'Open official site',
   },
   noCredentials: {
     'zh-CN': '当前没有需要补充的凭证字段。',

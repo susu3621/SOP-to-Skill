@@ -64,6 +64,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(logging_state)
         .manage(SkillState::default())
@@ -117,6 +118,7 @@ pub fn run() {
             commands::config::update_config,
             commands::config::get_data_directory,
             commands::config::open_data_directory,
+            commands::config::open_external_url,
             commands::config::export_current_log,
             // Update commands
             update::app::get_app_build_info,

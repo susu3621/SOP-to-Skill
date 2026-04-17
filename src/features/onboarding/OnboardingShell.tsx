@@ -542,6 +542,7 @@ interface OnboardingShellProps {
   installedSkills: InstalledSkillInfo[]
   onOpenInstalled: () => void
   homeRequestToken?: number
+  guideReplayToken?: number
   onViewChange?: (view: OnboardingShellView) => void
 }
 
@@ -550,6 +551,7 @@ export function OnboardingShell({
   installedSkills,
   onOpenInstalled,
   homeRequestToken = 0,
+  guideReplayToken = 0,
   onViewChange,
 }: OnboardingShellProps) {
   const {
@@ -629,9 +631,45 @@ export function OnboardingShell({
     }
   }
 
+  function openGuide(guideId: OnboardingGuideId, stepIndex = 0) {
+    const nextStep = firstRunGuides[guideId].steps[stepIndex]
+    applyGuideStepBeforeEnter(nextStep)
+    setDismissedGuideId(null)
+    setActiveGuide({ guideId, stepIndex })
+  }
+
   useEffect(() => {
     onViewChange?.(view)
   }, [onViewChange, view])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadGuideConfig() {
+      try {
+        const result = await invoke<SkillResult<AppConfig>>('get_config')
+
+        if (!cancelled && result.success) {
+          setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+          setGuideConfigLoaded(true)
+        } else if (!cancelled) {
+          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
+          setGuideConfigLoaded(true)
+        }
+      } catch {
+        if (!cancelled) {
+          setGuideConfig(createDefaultOnboardingGuideCompletionMap())
+          setGuideConfigLoaded(true)
+        }
+      }
+    }
+
+    void loadGuideConfig()
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     if (homeRequestToken === 0) {
@@ -641,8 +679,76 @@ export function OnboardingShell({
     startTransition(() => {
       setView('home')
       setActiveUseCaseTab('role')
+      setHoveredHomeEntry(null)
     })
   }, [homeRequestToken])
+
+  useEffect(() => {
+    if (!guideConfigLoaded || guideReplayToken === 0) {
+      return
+    }
+
+    const resetGuides = createDefaultOnboardingGuideCompletionMap()
+
+    startTransition(() => {
+      setView('home')
+      setActiveUseCaseTab('role')
+      setHoveredHomeEntry(null)
+      setGuideConfig(resetGuides)
+    })
+
+    openGuide('onboarding-home')
+
+    void invoke<SkillResult<AppConfig>>('update_config', {
+      onboardingGuides: resetGuides,
+    })
+      .then((result) => {
+        if (result.success) {
+          setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+        }
+      })
+      .catch(() => {})
+  }, [guideConfigLoaded, guideReplayToken, firstRunGuides])
+
+  useEffect(() => {
+    setDismissedGuideId(null)
+  }, [view])
+
+  useEffect(() => {
+    if (!guideConfigLoaded) {
+      return
+    }
+
+    const guideId = getGuideIdForView(view)
+
+    if (dismissedGuideId === guideId) {
+      return
+    }
+
+    if (guideConfig[guideId]?.completed) {
+      if (activeGuide?.guideId === guideId) {
+        setActiveGuide(null)
+      }
+      return
+    }
+
+    if (!activeGuide || activeGuide.guideId !== guideId) {
+      openGuide(guideId)
+    }
+  }, [activeGuide, dismissedGuideId, guideConfig, guideConfigLoaded, view, firstRunGuides])
+
+  useEffect(() => {
+    if (!activeGuideStep) {
+      return
+    }
+
+    const element = document.querySelector<HTMLElement>(
+      `[data-guide-anchor="${activeGuideStep.anchor_id}"]`
+    )
+    if (typeof element?.scrollIntoView === 'function') {
+      element.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    }
+  }, [activeGuideStep])
 
   const openView = (nextView: OnboardingView) => {
     startTransition(() => {
@@ -852,6 +958,86 @@ export function OnboardingShell({
     setNewUseCaseError(null)
     setShowNewUseCaseForm(false)
   }
+
+  const handleGuideClose = () => {
+    if (!activeGuide) {
+      return
+    }
+
+    setDismissedGuideId(activeGuide.guideId)
+    setActiveGuide(null)
+  }
+
+  const handleGuideBack = () => {
+    if (!activeGuide || activeGuide.stepIndex === 0) {
+      return
+    }
+
+    const nextStepIndex = activeGuide.stepIndex - 1
+    const nextStep = firstRunGuides[activeGuide.guideId].steps[nextStepIndex]
+    applyGuideStepBeforeEnter(nextStep)
+    setActiveGuide({
+      guideId: activeGuide.guideId,
+      stepIndex: nextStepIndex,
+    })
+  }
+
+  const handleGuideNext = async () => {
+    if (!activeGuide || !activeGuideDefinition) {
+      return
+    }
+
+    const nextStepIndex = activeGuide.stepIndex + 1
+
+    if (nextStepIndex < activeGuideDefinition.steps.length) {
+      const nextStep = activeGuideDefinition.steps[nextStepIndex]
+      applyGuideStepBeforeEnter(nextStep)
+      setActiveGuide({
+        guideId: activeGuide.guideId,
+        stepIndex: nextStepIndex,
+      })
+      return
+    }
+
+    const nextGuideConfig: OnboardingGuideCompletionMap = {
+      ...guideConfig,
+      [activeGuide.guideId]: { completed: true },
+    }
+
+    setGuideConfig(nextGuideConfig)
+    setActiveGuide(null)
+
+    try {
+      const result = await invoke<SkillResult<AppConfig>>('update_config', {
+        onboardingGuides: nextGuideConfig,
+      })
+
+      if (result.success) {
+        setGuideConfig(resolveOnboardingGuideCompletionMap(result.success.onboarding_guides))
+      } else {
+        setDismissedGuideId(activeGuide.guideId)
+      }
+    } catch {
+      setDismissedGuideId(activeGuide.guideId)
+    }
+  }
+
+  const renderGuideBubble = () =>
+    activeGuide && activeGuideStep && activeGuideDefinition ? (
+      <FirstRunGuideBubble
+        locale={locale}
+        currentStep={activeGuide.stepIndex + 1}
+        totalSteps={activeGuideDefinition.steps.length}
+        title={activeGuideStep.title}
+        body={activeGuideStep.body}
+        canGoBack={activeGuide.stepIndex > 0}
+        placement={activeGuideStep.placement}
+        onBack={handleGuideBack}
+        onClose={handleGuideClose}
+        onNext={handleGuideNext}
+      />
+    ) : null
+
   const homeSummaryGroups = useMemo<HomeSummaryGroup[]>(
     () => [
       {

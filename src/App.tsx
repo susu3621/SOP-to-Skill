@@ -77,6 +77,7 @@ function App() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [onboardingView, setOnboardingView] = useState<OnboardingShellView>('home')
   const [onboardingHomeRequestToken, setOnboardingHomeRequestToken] = useState(0)
+  const [onboardingGuideReplayToken, setOnboardingGuideReplayToken] = useState(0)
 
   const {
     skills,
@@ -208,6 +209,16 @@ function App() {
     setView('onboarding')
     setOnboardingView('home')
     setOnboardingHomeRequestToken((current) => current + 1)
+  }, [])
+
+  const handleOpenGuide = useCallback(() => {
+    setSelectedSkill(null)
+    setWizardState(null)
+    setInstallResult(null)
+    setView('onboarding')
+    setOnboardingView('home')
+    setOnboardingHomeRequestToken((current) => current + 1)
+    setOnboardingGuideReplayToken((current) => current + 1)
   }, [])
 
   const goBack = useCallback(() => {
@@ -348,7 +359,7 @@ function App() {
                       type="button"
                       onClick={() => {
                         setMoreMenuOpen(false)
-                        handleOpenOnboardingHome()
+                        handleOpenGuide()
                       }}
                     >
                       {getCopy(locale, pageCopy.viewGuide)}
@@ -434,6 +445,7 @@ function App() {
                 <div className="page-content__scroll">
                   {view === 'onboarding' && (
                     <OnboardingShell
+                      guideReplayToken={onboardingGuideReplayToken}
                       homeRequestToken={onboardingHomeRequestToken}
                       locale={locale}
                       installedSkills={installed}

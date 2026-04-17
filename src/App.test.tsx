@@ -744,7 +744,7 @@ describe('onboarding shell smoke coverage', () => {
     expect(screen.getByRole('heading', { name: '可用 Skill' })).toBeInTheDocument()
   })
 
-  it('returns to the onboarding home from the more menu view-guide action', async () => {
+  it('replays the floating first-run guide flow from the more menu view-guide action', async () => {
     const user = userEvent.setup()
     render(<App />)
 
@@ -756,6 +756,20 @@ describe('onboarding shell smoke coverage', () => {
     await user.click(screen.getByRole('button', { name: '查看引导' }))
 
     expect(await waitForOnboardingHome()).toBeInTheDocument()
+    expect(screen.getByText('第 1 步 / 共 3 步')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '先选公司 IT 工具' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '下一步' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: '开始设置' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+
+    expect(screen.getByText('第 2 步 / 共 3 步')).toBeInTheDocument()
+    expect(fixtures.runtime.onboardingGuides).toEqual({
+      'onboarding-home': { completed: false },
+      'onboarding-basic': { completed: false },
+      'onboarding-use-cases': { completed: false },
+      'onboarding-install': { completed: false },
+    })
   })
 
   it('renders the current version before the update action in the header', async () => {
