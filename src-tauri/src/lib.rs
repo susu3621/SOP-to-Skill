@@ -8,12 +8,22 @@ mod tray;
 mod update;
 
 use commands::skill::SkillState;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
 use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use update::app::{updater_is_configured, PendingAppUpdate};
 
 struct LoggingState {
     _guard: Option<tracing_appender::non_blocking::WorkerGuard>,
+}
+
+#[derive(Default)]
+struct AppLifecycleState {
+    is_quitting: AtomicBool,
+}
+
+fn should_hide_on_close(window_label: &str, is_quitting: bool) -> bool {
+    window_label == "main" && !is_quitting
 }
 
 fn initialize_logging() -> LoggingState {
@@ -69,6 +79,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(logging_state)
+        .manage(AppLifecycleState::default())
         .manage(SkillState::default())
         .manage(PendingAppUpdate::default());
 
@@ -131,11 +142,36 @@ pub fn run() {
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                // Hide window instead of closing (for tray-only mode)
-                window.hide().ok();
-                api.prevent_close();
+                let state = window.state::<AppLifecycleState>();
+                let is_quitting = state.is_quitting.load(Ordering::SeqCst);
+
+                if should_hide_on_close(window.label(), is_quitting) {
+                    // Keep the app alive in the tray until the user chooses the explicit quit action.
+                    let _ = window.hide();
+                    api.prevent_close();
+                }
             }
         })
         .run(context)
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::should_hide_on_close;
+
+    #[test]
+    fn close_request_is_hidden_for_main_window_when_not_quitting() {
+        assert!(should_hide_on_close("main", false));
+    }
+
+    #[test]
+    fn close_request_is_not_hidden_once_app_is_quitting() {
+        assert!(!should_hide_on_close("main", true));
+    }
+
+    #[test]
+    fn close_request_is_not_hidden_for_non_main_windows() {
+        assert!(!should_hide_on_close("settings", false));
+    }
 }

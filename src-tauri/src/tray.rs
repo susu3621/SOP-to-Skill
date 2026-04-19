@@ -1,12 +1,16 @@
+use crate::AppLifecycleState;
+use std::sync::atomic::Ordering;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{TrayIcon, TrayIconBuilder},
-    AppHandle, Runtime,
+    AppHandle, Manager, Runtime,
 };
 
 const DEFAULT_TRAY_ID: &str = "main";
+const TRAY_OPEN_ITEM_ID: &str = "open";
 const TRAY_QUIT_ITEM_ID: &str = "quit";
-const TRAY_MENU_ENTRIES: [(&str, &str); 1] = [(TRAY_QUIT_ITEM_ID, "退出")];
+const TRAY_MENU_ENTRIES: [(&str, &str); 2] =
+    [(TRAY_OPEN_ITEM_ID, "打开"), (TRAY_QUIT_ITEM_ID, "退出")];
 
 fn default_tray_id() -> &'static str {
     DEFAULT_TRAY_ID
@@ -16,16 +20,36 @@ fn tray_menu_entries() -> &'static [(&'static str, &'static str)] {
     &TRAY_MENU_ENTRIES
 }
 
+fn tray_open_item_id() -> &'static str {
+    TRAY_OPEN_ITEM_ID
+}
+
 fn tray_quit_item_id() -> &'static str {
     TRAY_QUIT_ITEM_ID
 }
 
+fn open_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window(default_tray_id()) {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
+}
+
+fn mark_app_as_quitting<R: Runtime>(app: &AppHandle<R>) {
+    app.state::<AppLifecycleState>()
+        .is_quitting
+        .store(true, Ordering::SeqCst);
+}
+
 /// Build the system tray menu
 pub fn build_tray<R: Runtime>(app: &AppHandle<R>) -> Result<Menu<R>, Box<dyn std::error::Error>> {
-    let (quit_id, quit_label) = tray_menu_entries()[0];
+    let (open_id, open_label) = tray_menu_entries()[0];
+    let (quit_id, quit_label) = tray_menu_entries()[1];
+    let open = MenuItem::with_id(app, open_id, open_label, true, None::<&str>)?;
     let quit = MenuItem::with_id(app, quit_id, quit_label, true, None::<&str>)?;
 
-    let menu = Menu::with_items(app, &[&quit])?;
+    let menu = Menu::with_items(app, &[&open, &quit])?;
 
     Ok(menu)
 }
@@ -37,7 +61,11 @@ fn bind_tray_menu<R: Runtime>(
     tray.set_menu(Some(menu))?;
     tray.set_show_menu_on_left_click(true)?;
     tray.on_menu_event(|app, event| match event.id.as_ref() {
+        id if id == tray_open_item_id() => {
+            open_main_window(app);
+        }
         id if id == tray_quit_item_id() => {
+            mark_app_as_quitting(app);
             app.exit(0);
         }
         _ => {}
@@ -73,12 +101,17 @@ pub fn setup_tray<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::err
 
 #[cfg(test)]
 mod tests {
-    use super::{default_tray_id, tray_menu_entries, tray_quit_item_id};
+    use super::{default_tray_id, tray_menu_entries, tray_open_item_id, tray_quit_item_id};
     use serde_json::Value;
 
     #[test]
-    fn tray_menu_only_keeps_quit_action() {
-        assert_eq!(tray_menu_entries(), &[("quit", "退出")]);
+    fn tray_menu_keeps_open_then_quit_actions() {
+        assert_eq!(tray_menu_entries(), &[("open", "打开"), ("quit", "退出")]);
+    }
+
+    #[test]
+    fn tray_open_item_id_stays_stable() {
+        assert_eq!(tray_open_item_id(), "open");
     }
 
     #[test]
