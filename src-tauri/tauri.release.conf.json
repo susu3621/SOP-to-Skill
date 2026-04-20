@@ -6,7 +6,7 @@
     "updater": {
       "pubkey": "__UPDATER_PUBLIC_KEY__",
       "endpoints": [
-        "https://github.com/susu3621/skills-for-no-engineer/releases/latest/download/latest.json"
+        "https://github.com/susu3621/SOP-to-Skill/releases/latest/download/latest.json"
       ],
       "windows": {
         "installMode": "passive"

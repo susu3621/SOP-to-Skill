@@ -754,6 +754,25 @@ describe('build desktop all workflow dispatch', () => {
     expect(verifyScript).toContain("test -f scripts/install-sop-to-skill.ps1")
   })
 
+  it('keeps release metadata aligned to the v0.3.0 rollout', () => {
+    const tauriConfig = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'src-tauri/tauri.conf.json'), 'utf8'),
+    ) as {
+      version?: string
+    }
+    const cargoToml = fs.readFileSync(path.join(process.cwd(), 'src-tauri/Cargo.toml'), 'utf8')
+    const releaseConfig = fs.readFileSync(
+      path.join(process.cwd(), 'src-tauri/tauri.release.conf.json'),
+      'utf8',
+    )
+
+    expect(tauriConfig.version).toBe('0.3.0')
+    expect(cargoToml).toContain('version = "0.3.0"')
+    expect(releaseConfig).toContain(
+      'https://github.com/susu3621/SOP-to-Skill/releases/latest/download/latest.json',
+    )
+  })
+
   it('keeps push macOS builds on ad-hoc signing while allowing tag releases to fall back to ad-hoc signing', () => {
     const workflow = fs.readFileSync(
       path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
