@@ -6,6 +6,7 @@ test -f docs/.vitepress/config.mts
 test -f docs/.vitepress/theme/index.ts
 test -f docs/.vitepress/theme/custom.css
 
+rm -rf docs/.vitepress/.temp docs/.vitepress/dist
 npm run docs:build
 
 test -f docs/.vitepress/dist/index.html

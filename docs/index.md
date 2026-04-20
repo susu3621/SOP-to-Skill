@@ -1,305 +1,193 @@
 ---
 layout: doc
-title: 给普通员工的 AI 工作方式邀请
+title: 企业 AI，先做 Skill。
 aside: false
 outline: false
 lastUpdated: false
 ---
 
-<div class="hero-panel">
-
-<p class="eyebrow">AI Workstyle Invitation</p>
-
-<h1>AI 时代先受益的，是每天被重复工作困住的人。</h1>
-
-<p class="hero-copy">如果你是传统公司里的普通员工，AI 最先带来的不是遥远的组织战略，而是更少的重复劳动、更轻的沟通压力、和更快把事情做成的能力。</p>
-
-<p class="hero-copy subtle">这不是一页写给高管的 AI 口号，也不是一张产品参数表。它只回答一件事：AI 会怎样先让普通人的工作轻一点、快一点、清楚一点。</p>
-
-<nav class="hero-nav" aria-label="页面导航">
-<a href="#pain-points">你的烦恼</a>
-<a href="#workstyle-shift">工作方式变化</a>
-<a href="#day-contrast">一天对比</a>
-<a href="#benefits">你会得到什么</a>
-<a href="#roles">谁都能用</a>
-<a href="#proof-points">先从哪里开始</a>
-<a href="#role-details">岗位说明</a>
-<a href="#closing">最后一句话</a>
-</nav>
-
+<div class="blueprint-page">
+<section class="hero-blueprint">
+<div class="hero-blueprint__copy">
+<p class="eyebrow">Enterprise AI Through Skills</p>
+<h1>企业 AI，先做 Skill。</h1>
+<div class="hero-signals">
+<span>资产</span>
+<span>执行</span>
+<span>成长</span>
 </div>
-
-<span id="pain-points"></span>
-
-## 这些麻烦，你大概每天都在碰
-
-传统公司的低效，不一定来自你不努力，更多时候是因为大量时间被消耗在重复表达、信息搬运和跨人沟通上。
-
-<div class="card-grid">
-
-<div class="info-card">
-<strong>会前 10 分钟疯狂找资料</strong>
-<span>临时翻聊天记录、找旧文档、补项目上下文，真正讨论开始前人已经先累了。</span>
 </div>
-
-<div class="info-card">
-<strong>同一件事写三遍</strong>
-<span>给同事一版，给领导一版，给客户一版，内容差不多，表达却要反复重写。</span>
+<div class="hero-blueprint__visual" aria-hidden="true">
+<div class="blueprint-scene">
+<div class="blueprint-grid"></div>
+<div class="blueprint-plane blueprint-plane--back"></div>
+<div class="blueprint-plane blueprint-plane--mid"></div>
+<div class="blueprint-plane blueprint-plane--front"></div>
+<div class="blueprint-orbit blueprint-orbit--asset">
+<strong>企业资产</strong>
+<small>SOP · 系统 · 模板</small>
 </div>
-
-<div class="info-card">
-<strong>时间花在追人，不花在做事</strong>
-<span>很多工作并不难，难的是把分散在不同人手里的信息拼起来。</span>
+<div class="blueprint-orbit blueprint-orbit--skill">
+<strong>Skill</strong>
+<small>工作接口</small>
 </div>
-
-<div class="info-card">
-<strong>明明做了很多，周报还是难写</strong>
-<span>不是你没有产出，而是整理、抽象、表达本身又成了一份额外工作。</span>
+<div class="blueprint-orbit blueprint-orbit--worker">
+<strong>员工执行</strong>
+<small>判断 · 推进</small>
 </div>
-
-<div class="info-card">
-<strong>事情一多，脑子先被切碎</strong>
-<span>刚处理完一个群消息，就去改文档；刚整理完文档，又被拉进另一个会议。</span>
+<div class="blueprint-tag blueprint-tag--output">结果沉淀</div>
+<div class="blueprint-tag blueprint-tag--growth">能力强化</div>
+<div class="blueprint-link blueprint-link--1"></div>
+<div class="blueprint-link blueprint-link--2"></div>
+<div class="blueprint-link blueprint-link--3"></div>
+<div class="blueprint-link blueprint-link--4"></div>
 </div>
-
-<div class="info-card">
-<strong>越忙越难体现价值</strong>
-<span>重复劳动会吞掉你的注意力，让你难以把精力用在真正有判断力的部分。</span>
 </div>
-
+</section>
+<section class="solution-stack">
+<div class="section-label">Problems</div>
+<div class="section-heading">
+<h2>项目解决的问题</h2>
+<p>把分散资产、岗位执行和工具接入，变成可安装、可迭代的 Skill。</p>
 </div>
-
-<span id="workstyle-shift"></span>
-
-## AI 帮你的，不只是写几句话
-
-真正的变化不是多一个聊天窗口，而是你可以先把任务说清楚，再让 AI 帮你整理信息、组织表达、补全上下文、生成第一稿。
-
-<div class="diagram-shell">
-
-```mermaid
-flowchart LR
-  A[旧方式: 先自己找全资料] --> B[手动拼上下文]
-  B --> C[从空白页开始组织表达]
-  C --> D[做完后再重复解释]
-
-  E[AI 协作: 先说清任务] --> F[AI 汇总上下文]
-  F --> G[AI 生成结构化初稿]
-  G --> H[你负责判断与修正]
-```
-
-</div>
-
-<ul class="bullet-stack">
-<li>先说出任务，而不是先自己把所有材料凑齐。</li>
-<li>先拿到一个结构化草稿，再花精力修正和判断。</li>
-<li>让 AI 接管重复整理，你把时间留给沟通和决策。</li>
-</ul>
-
-<span id="day-contrast"></span>
-
-## 没有 AI 的一天，和有 AI 协作的一天
-
-抽象地说“效率提升”很难让人代入。把一天拆开看，你就能更直观地看到差别。
-
-<div class="contrast-grid">
-
-<article class="timeline-card low">
-<div class="timeline-head">
-<h3>没有 AI 的一天</h3>
-<p>信息散、表达慢、上下文全靠人脑拼。</p>
-</div>
-<ul class="timeline-list">
-<li><strong>09:10</strong> 刚到工位先补上下文，翻昨天群聊、找会议纪要、看表格最新版本，半小时过去还没进入真正工作。</li>
-<li><strong>11:20</strong> 回应别人前先切四个窗口，问你进度的人很多，但答案散在不同地方，每次回复都像临时拼图。</li>
-<li><strong>15:00</strong> 开始写材料时从空白页发呆，项目更新、客户说明、方案摘要都知道大概要写什么，但很难快速落成。</li>
-<li><strong>18:40</strong> 下班前还在补一份能发出去的总结，真正让人疲惫的不是工作本身，而是做完以后还要再解释一遍。</li>
-</ul>
+<div class="solution-stack__rows">
+<article>
+<strong>01 / 资产分散</strong>
+<p>把 SOP、模板和案例整理成 AI 可用输入。</p>
 </article>
-
-<article class="timeline-card high">
-<div class="timeline-head">
-<h3>有 AI 协作的一天</h3>
-<p>先把任务说出来，再把重复和整理交给 AI。</p>
-</div>
-<ul class="timeline-list">
-<li><strong>09:10</strong> 先让 AI 汇总上下文，把任务目标说清楚，先拿到关键背景、待办重点和缺失信息，再开始行动。</li>
-<li><strong>11:20</strong> 先出结构化回复，再补你的判断，进度说明、风险同步、会议回答先有框架，你只需要校正最关键的部分。</li>
-<li><strong>15:00</strong> 从第一稿开始，而不是从空白开始，AI 先把素材整理成提纲、摘要或草稿，你把精力留给修正、取舍和定调。</li>
-<li><strong>18:40</strong> 让收尾工作不再拖垮你，日报、周报、纪要、待办汇总先自动成形，下班前更多是在确认，而不是硬撑。</li>
-</ul>
+<article>
+<strong>02 / 岗位断层</strong>
+<p>按岗位、规则和来源把工作映射成 Skill 场景。</p>
 </article>
-
+<article>
+<strong>03 / 工具脱节</strong>
+<p>把 Skill 放进 Codex、Claude Code 和 WorkBuddy。</p>
+</article>
+<article>
+<strong>04 / 经验流失</strong>
+<p>让真实任务暴露缺口，再把经验回灌到 Skill。</p>
+</article>
 </div>
-
-<span id="benefits"></span>
-
-## 这对你自己的好处，比公司宣传里写得更具体
-
-如果你只是把 AI 理解成“帮公司提效”，那很难真正开始。真正能推动一个人行动的，往往是那些他每天马上就能感受到的变化。
-
-<div class="card-grid four-up">
-
-<div class="info-card numbered">
-<span class="index">01</span>
-<strong>节省时间</strong>
-<span>把搜索、整理、改写、汇总这些重复动作压缩掉，让真正需要判断的部分占据你的工作日。</span>
+<div class="proof-strip">
+<div>
+<span>岗位工作包</span>
+<p>已覆盖项目、质量、IT 等岗位。</p>
 </div>
-
-<div class="info-card numbered">
-<span class="index">02</span>
-<strong>降低精神消耗</strong>
-<span>很多疲惫感来自频繁切换和无休止复述。AI 先接住这些碎片劳动，人会轻很多。</span>
+<div>
+<span>基础技能库</span>
+<p>内置 Jira、Gerrit、SVN、Linux 等能力。</p>
 </div>
-
-<div class="info-card numbered">
-<span class="index">03</span>
-<strong>提升表达质量</strong>
-<span>不是每个人天生擅长结构化表达，但大多数岗位都需要它。AI 能先把表达门槛拉低。</span>
+<div>
+<span>引导式配置</span>
+<p>按岗位、来源和规则生成 Skill。</p>
 </div>
-
-<div class="info-card numbered">
-<span class="index">04</span>
-<strong>增加职业价值</strong>
-<span>未来更稀缺的不是最会埋头重复的人，而是能更快整合信息、组织行动、推动结果的人。</span>
+<div>
+<span>安装与同步</span>
+<p>可同步到 Codex、Claude Code、WorkBuddy。</p>
 </div>
-
+<div>
+<span>环境检测</span>
+<p>支持自动检测和手动连通测试。</p>
 </div>
-
-<span id="roles"></span>
-
-## 这不是程序员专属，而是绝大多数岗位都能开始用
-
-只要你的工作包含搜索信息、整理材料、沟通协作、汇报总结、标准化输出，AI 就能先帮你减掉一部分重复劳动。
-
-<div class="role-grid">
-
-<div class="role-card">
-<strong>销售</strong>
-<span>整理客户背景、组织跟进话术、生成会后总结，减少大量机械重复。</span>
+<div>
+<span>持续试点</span>
+<p>版本、日志和迁移链路已打通。</p>
 </div>
-
-<div class="role-card">
-<strong>运营</strong>
-<span>从分散信息里提炼重点，把日报、活动复盘、跨团队同步做得更快。</span>
 </div>
-
-<div class="role-card">
-<strong>HR</strong>
-<span>整理岗位说明、培训材料、面试反馈和制度答疑，让沟通更标准。</span>
+</section>
+<section class="support-interface">
+<div class="section-label">Interface</div>
+<div class="section-heading">
+<h2>Skill 连接两端</h2>
+<p>把企业资产接到员工执行。</p>
 </div>
-
-<div class="role-card">
-<strong>项目经理</strong>
-<span>快速汇总进度、风险、待办和会议结论，让项目状态更容易讲清楚。</span>
+<div class="support-interface__cards">
+<article>
+<span>对企业</span>
+<h3>经验可复制</h3>
+<p>把方法沉淀成可复用的组织资产。</p>
+</article>
+<article>
+<span>对员工</span>
+<h3>任务可起步</h3>
+<p>让工作从可调用上下文开始，而不是空白页。</p>
+</article>
+<article>
+<span>对团队</span>
+<h3>协作更一致</h3>
+<p>让交接、同步和推进基于同一套结构。</p>
+</article>
 </div>
-
-<div class="role-card">
-<strong>交付 / 实施</strong>
-<span>查找历史方案、整理客户问题、生成交付说明，减少反复找资料。</span>
+</section>
+<section class="challenge-flow">
+<div class="section-label">Bottleneck</div>
+<div class="section-heading">
+<h2>员工卡住的，不是模型</h2>
+<p>更多问题出在上下文、表达和方法沉淀。</p>
 </div>
-
-<div class="role-card">
-<strong>财务</strong>
-<span>汇总报销说明、审批材料、预算说明，让规则解释和文本整理更省力。</span>
+<div class="challenge-flow__list">
+<article>
+<span class="challenge-index">01</span>
+<div>
+<h3>信息太散</h3>
+<p>聊天、邮件、表格和旧文档很难快速拼成上下文。</p>
 </div>
-
-<div class="role-card">
-<strong>行政</strong>
-<span>把通知、会议安排、制度整理、跨部门确认变成更轻的例行工作。</span>
+</article>
+<article>
+<span class="challenge-index">02</span>
+<div>
+<h3>没有现成 Skill</h3>
+<p>岗位要求、公司规则和个人经验没有接成一条工作路径。</p>
 </div>
-
-<div class="role-card">
-<strong>客服 / 支持</strong>
-<span>快速整合问题背景、标准答案和跟进记录，让回复既快又稳。</span>
+</article>
+<article>
+<span class="challenge-index">03</span>
+<div>
+<h3>反复重写</h3>
+<p>同一件事要不断重述，时间被消耗在重复表达上。</p>
 </div>
-
+</article>
+<article>
+<span class="challenge-index">04</span>
+<div>
+<h3>方法不成型</h3>
+<p>会一点 AI 不等于形成稳定、可复用的工作方式。</p>
 </div>
-
-<span id="proof-points"></span>
-
-## 你不需要先变成专家，先从最烦的环节开始就够了
-
-公开页面最重要的不是许诺一个遥远的新世界，而是让人看到自己下周就可以开始改变什么。
-
-<ul class="bullet-stack">
-<li>先从写作最痛的地方开始，让 AI 帮你先起草邮件、总结、会议纪要和汇报提纲，不再每次都从零开始。</li>
-<li>再从找资料最慢的地方开始，把你常用的文档、说明、问题记录喂给 AI，让它先帮你聚合，再由你判断。</li>
-<li>最后把协作最耗神的地方交出去，对于状态同步、进度说明、答疑回复这类高频动作，先让 AI 生成第一版。</li>
-</ul>
-
-## 当前版本已经支持什么
-
-如果你直接体验当前 `SOP to Skill v0.2.0`，能看到的能力不只是“一个概念”，而是一套已经能落地试点的角色和基础技能组合。
-
-<div class="card-grid">
-
-<div class="info-card">
-<strong>项目经理</strong>
-<span>支持需求评估、记录计划、项目周报、问题跟踪等日常高频工作配置。</span>
+</article>
 </div>
-
-<div class="info-card">
-<strong>质量经理</strong>
-<span>支持质量异常闭环、客诉分析、变更质量影响检查、质量周报和供应商质量跟踪。</span>
+</section>
+<section class="growth-steps">
+<div class="section-label">Growth</div>
+<div class="section-heading">
+<h2>人在用 Skill，也在变强</h2>
+<p>Skill 先接住重复工作，把人的精力留给判断和协作。</p>
 </div>
-
-<div class="info-card">
-<strong>IT经理</strong>
-<span>支持服务台分析、权限开通跟踪、基础软件安装、运维巡检和项目立项配置建立。</span>
+<div class="growth-steps__grid">
+<article>
+<span>01</span>
+<h3>任务表达</h3>
+<p>目标、输入和约束会更清楚。</p>
+</article>
+<article>
+<span>02</span>
+<h3>结果判断</h3>
+<p>第一稿更快出现，取舍仍由人完成。</p>
+</article>
+<article>
+<span>03</span>
+<h3>方法沉淀</h3>
+<p>高质量范例会持续回流到 Skill。</p>
+</article>
+<article>
+<span>04</span>
+<h3>协作推进</h3>
+<p>交接和跨部门沟通会更顺畅。</p>
+</article>
 </div>
-
-<div class="info-card">
-<strong>基础技能</strong>
-<span>当前内置 Jira、Confluence、Gerrit、SVN、Linux 和腾讯企业邮箱，可在引导流程里直接配置；其中 Linux 支持多设备，SVN 支持多仓库。</span>
+</section>
+<section class="closing-call">
+<div class="section-label">Closing</div>
+<blockquote>企业沉淀方法，员工积累能力。</blockquote>
+<p>先让 Skill 进入真实工作，再让经验持续回流到 Skill。</p>
+</section>
 </div>
-
-<div class="info-card">
-<strong>环境检测</strong>
-<span>勾选基础技能后会自动检测运行环境；凭证填写完成后可按服务手动测试连接，并在支持的场景里提示自动安装缺失环境。</span>
-</div>
-
-<div class="info-card">
-<strong>发布准备</strong>
-<span>桌面端已经支持显示当前版本、导出日志、应用升级提示，以及带版本号的本地持久化迁移。</span>
-</div>
-
-</div>
-
-<span id="role-details"></span>
-
-## v0.2.0 新增岗位说明
-
-`v0.2.0` 新增的两个岗位，不是泛泛地“多了两个标签”，而是各自带了一套更贴近实际协作场景的默认工作包。
-
-<div class="card-grid">
-
-<div class="info-card">
-<strong>质量经理</strong>
-<span>更适合把质量异常闭环、客诉分析、变更质量影响检查、质量周报和供应商质量跟踪这类跨系统、强流程、需要持续跟催的工作交给 AI 先做整理和初稿。</span>
-<span>内置工作包括：质量异常汇总与闭环跟进、客诉售后问题分析与回复草稿、变更评审里的质量影响检查、质量周报、供应商质量问题跟踪。</span>
-</div>
-
-<div class="info-card">
-<strong>IT经理</strong>
-<span>更适合把服务台分析、账号权限开通、基础软件安装、运维巡检和立项配置建立这类标准化但跨系统的信息搬运和状态跟踪工作交给 AI 先做汇总和推进。</span>
-<span>内置工作包括：IT 服务台工单分析与周报、账号权限申请审核与开通跟踪、基础应用程序的安装、运维巡检异常汇总、项目立项配置建立。</span>
-</div>
-
-</div>
-
-<span id="closing"></span>
-
-## 未来拉开差距的，往往不是最忙的人
-
-<blockquote class="closing-quote">
-AI 时代真正先拉开差距的，往往不是最忙的人，而是最先学会与 AI 协作的人。
-</blockquote>
-
-你不需要一下子把全部工作都交给 AI，也不需要先变成技术专家。你只需要比昨天更早一步，把那些最消耗你、最重复、最容易被标准化的部分，交给 AI 做你的搭档。
-
-<ul class="bullet-stack">
-<li>你会更快进入真正重要的工作，而不是一直卡在准备阶段。</li>
-<li>你会更容易把做过的事说清楚，而不是总在收尾时焦虑。</li>
-<li>你会逐渐把价值放回判断、沟通和推动结果，而不是反复搬运信息。</li>
-</ul>
