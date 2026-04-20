@@ -8,8 +8,10 @@ node_modules/
 
 # Build outputs
 dist/
+artifacts/
 artifacts/desktop/
 docs/.vitepress/dist/
+docs/superpowers/
 src-tauri/target/
 test-output/
 
