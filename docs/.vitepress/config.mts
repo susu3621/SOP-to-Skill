@@ -1,12 +1,16 @@
 import { defineConfig } from 'vitepress'
 
-const repoUrl = 'https://github.com/susu3621/skills-for-no-engineer'
+const [repoOwner = 'susu3621', repoSlug = 'SOP-to-Skill'] = (
+  process.env.GITHUB_REPOSITORY ?? 'susu3621/SOP-to-Skill'
+).split('/')
+const repoUrl = `https://github.com/${repoOwner}/${repoSlug}`
+const docsBase = process.env.NODE_ENV === 'production' ? `/${repoSlug}/` : '/'
 
 export default defineConfig({
   lang: 'zh-CN',
   title: 'AI 工作方式转型',
   description: '面向普通员工的 AI 工作方式公开文档',
-  base: '/skills-for-no-engineer/',
+  base: docsBase,
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {
