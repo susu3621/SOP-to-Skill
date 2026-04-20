@@ -8,7 +8,7 @@ const docsBase = process.env.NODE_ENV === 'production' ? `/${repoSlug}/` : '/'
 
 export default defineConfig({
   lang: 'zh-CN',
-  title: 'AI 工作方式转型',
+  title: 'SOP to Skill',
   description: '把公司的 SOP、模板和系统配置整理成可安装到 AI 工具里的 Skill',
   base: docsBase,
   cleanUrls: true,

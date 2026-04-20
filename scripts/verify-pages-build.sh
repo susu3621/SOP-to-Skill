@@ -14,6 +14,9 @@ npm run docs:build
 test -f docs/.vitepress/dist/index.html
 test -f docs/.vitepress/dist/download.html
 test -f docs/.vitepress/dist/product-docs/index.html
+grep -q 'SOP to Skill' docs/.vitepress/dist/index.html
+grep -q 'SOP to Skill' docs/.vitepress/dist/download.html
+grep -q 'SOP to Skill' docs/.vitepress/dist/product-docs/index.html
 grep -q 'https://github.com/susu3621/SOP-to-Skill' docs/.vitepress/dist/index.html
 grep -q '/SOP-to-Skill/assets/' docs/.vitepress/dist/index.html
 ! grep -q '/skills-for-no-engineer/assets/' docs/.vitepress/dist/index.html
