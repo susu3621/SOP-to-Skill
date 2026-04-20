@@ -183,15 +183,12 @@ jobs:
           releaseDraft: false
           prerelease: false
       - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest'
-        name: Upload macOS updater bundle assets to GitHub Release
+        name: Prepare macOS updater bundle workflow artifact
         shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
-          release_tag="v$version"
           arch="$(uname -m)"
           case "$arch" in
             arm64) arch='aarch64' ;;
@@ -206,12 +203,8 @@ jobs:
 
           upload_dir="$RUNNER_TEMP/macos-updater-assets"
           mkdir -p "$upload_dir"
-          release_tarball="$upload_dir/SOP-to-Skill_${version}_${arch}.app.tar.gz"
-          release_signature="$upload_dir/SOP-to-Skill_${version}_${arch}.app.tar.gz.sig"
-          cp "$tarball" "$release_tarball"
-          cp "$signature" "$release_signature"
-
-          gh release upload "$release_tag" "$release_tarball" "$release_signature" --clobber
+          cp "$tarball" "$upload_dir/SOP-to-Skill_${version}_${arch}.app.tar.gz"
+          cp "$signature" "$upload_dir/SOP-to-Skill_${version}_${arch}.app.tar.gz.sig"
       - if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build != 'true')) && !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-latest'
         name: Build macOS desktop bundle on push with ad-hoc signing
         uses: tauri-apps/tauri-action@v0.6.2
@@ -244,6 +237,12 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.bundle_path }}
           if-no-files-found: error
+      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-updater
+          path: ${{ runner.temp }}/macos-updater-assets/SOP-to-Skill_*.app.tar.gz*
+          if-no-files-found: error
 
   publish-updater-manifest:
     needs: build-desktop
@@ -251,7 +250,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Merge release updater manifest
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-macos-updater
+          path: ${{ runner.temp }}/macos-updater
+      - name: Publish macOS updater assets and merge release updater manifest
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -262,15 +265,19 @@ jobs:
           release_tag="v$version"
           workdir="$RUNNER_TEMP/updater-manifest"
           mkdir -p "$workdir"
+          mac_asset_dir="$RUNNER_TEMP/macos-updater"
 
-          gh release download "$release_tag" -p latest.json -p 'SOP-to-Skill_*.app.tar.gz.sig' -D "$workdir"
-
-          latest_path="$workdir/latest.json"
-          mac_sig_path="$(find "$workdir" -maxdepth 1 -type f -name 'SOP-to-Skill_*.app.tar.gz.sig' | head -n 1)"
-          if [ -z "$mac_sig_path" ]; then
-            echo 'No macOS updater signature found in release assets' >&2
+          mac_tarball_path="$(find "$mac_asset_dir" -maxdepth 1 -type f -name 'SOP-to-Skill_*.app.tar.gz' | head -n 1)"
+          mac_sig_path="$(find "$mac_asset_dir" -maxdepth 1 -type f -name 'SOP-to-Skill_*.app.tar.gz.sig' | head -n 1)"
+          if [ -z "$mac_tarball_path" ] || [ -z "$mac_sig_path" ]; then
+            echo 'Missing macOS updater bundle artifact from workflow run' >&2
             exit 1
           fi
+
+          gh release upload "$release_tag" "$mac_tarball_path" "$mac_sig_path" --clobber
+          gh release download "$release_tag" -p latest.json -D "$workdir"
+
+          latest_path="$workdir/latest.json"
 
           mac_asset_name="$(basename "$mac_sig_path" .sig)"
           mac_arch="$(basename "$mac_sig_path" | sed -E 's/^SOP-to-Skill_[0-9]+\.[0-9]+\.[0-9]+_([^.]+)\.app\.tar\.gz\.sig$/\1/')"
@@ -304,7 +311,6 @@ jobs:
 
           latest.platforms ||= {}
           latest.platforms[process.env.MAC_TARGET] = entry
-          latest.platforms[`${process.env.MAC_TARGET}-app`] = entry
           fs.writeFileSync(process.env.LATEST_PATH, `${JSON.stringify(latest, null, 2)}\n`)
           EOF
 

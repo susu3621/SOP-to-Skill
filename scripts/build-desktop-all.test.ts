@@ -797,8 +797,10 @@ describe('build desktop all workflow dispatch', () => {
       'utf8',
     )
 
-    expect(workflow).toContain('Upload macOS updater bundle assets to GitHub Release')
-    expect(workflow).toContain('Merge release updater manifest')
+    expect(workflow).toContain('Prepare macOS updater bundle workflow artifact')
+    expect(workflow).toContain('desktop-macos-updater')
+    expect(workflow).toContain('actions/download-artifact@v4')
+    expect(workflow).toContain('Publish macOS updater assets and merge release updater manifest')
     expect(workflow).toContain('SOP-to-Skill.app.tar.gz')
     expect(workflow).toContain('darwin-aarch64')
     expect(workflow).toContain('gh release upload "$release_tag"')
