@@ -242,39 +242,6 @@ export interface OnboardingState {
   svn_repositories?: OnboardingSvnRepositoryRecord[]
 }
 
-export type OnboardingGuideId =
-  | 'onboarding-home'
-  | 'onboarding-basic'
-  | 'onboarding-use-cases'
-  | 'onboarding-install'
-
-export interface OnboardingGuideCompletionState {
-  completed: boolean
-}
-
-export type OnboardingGuideCompletionMap = Record<
-  OnboardingGuideId,
-  OnboardingGuideCompletionState
->
-
-export interface FirstRunGuideStep {
-  anchor_id: string
-  title: string
-  body: string
-  placement?: 'right' | 'left' | 'bottom'
-  before_enter?: 'use-cases-role-tab' | 'use-cases-work-tab'
-}
-
-export interface FirstRunGuideDefinition {
-  id: OnboardingGuideId
-  steps: FirstRunGuideStep[]
-}
-
-export interface ActiveFirstRunGuideState {
-  guideId: OnboardingGuideId
-  stepIndex: number
-}
-
 export interface OnboardingInstallCandidateGroup {
   use_case_id: string
   use_case_name: string
