@@ -32,7 +32,10 @@ rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
 rg -n 'bundle/dmg/sop-to-skill-.*\.dmg' .github/workflows/build-desktop.yml
 rg -n 'target/release/sop-to-skill\.exe' .github/workflows/build-desktop.yml
 rg -n '"productName": "SOP-to-Skill"' src-tauri/tauri.conf.json
-! rg -n 'desktop-macos\.tar\.gz' .github/workflows/build-desktop.yml
+rg -n 'Upload macOS updater bundle assets to GitHub Release' .github/workflows/build-desktop.yml
+rg -n 'Merge release updater manifest' .github/workflows/build-desktop.yml
+rg -n 'SOP-to-Skill\.app\.tar\.gz' .github/workflows/build-desktop.yml
+rg -n 'darwin-aarch64' .github/workflows/build-desktop.yml
 rg -n 'workflow_dispatch:' .github/workflows/build-desktop.yml
 rg -n 'release_build:' .github/workflows/build-desktop.yml
 rg -n 'default:\s*false' .github/workflows/build-desktop.yml

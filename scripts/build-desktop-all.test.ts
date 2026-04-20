@@ -787,6 +787,25 @@ describe('build desktop all workflow dispatch', () => {
     expect(workflow).toContain("APPLE_SIGNING_IDENTITY: '-'")
   })
 
+  it('publishes macOS updater bundles and merges darwin entries into latest.json', () => {
+    const workflow = fs.readFileSync(
+      path.join(process.cwd(), '.github/workflows/build-desktop.yml'),
+      'utf8',
+    )
+    const verifyScript = fs.readFileSync(
+      path.join(process.cwd(), 'scripts/verify-desktop-scaffold.sh'),
+      'utf8',
+    )
+
+    expect(workflow).toContain('Upload macOS updater bundle assets to GitHub Release')
+    expect(workflow).toContain('Merge release updater manifest')
+    expect(workflow).toContain('SOP-to-Skill.app.tar.gz')
+    expect(workflow).toContain('darwin-aarch64')
+    expect(workflow).toContain('gh release upload "$release_tag"')
+    expect(verifyScript).toContain("rg -n 'SOP-to-Skill\\.app\\.tar\\.gz' .github/workflows/build-desktop.yml")
+    expect(verifyScript).toContain("rg -n 'darwin-aarch64' .github/workflows/build-desktop.yml")
+  })
+
   it('exposes a tauri npm script for tauri-action builds', () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.join(process.cwd(), 'package.json'), 'utf8'),
