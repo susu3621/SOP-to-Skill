@@ -135,7 +135,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: --config src-tauri/tauri.release.conf.json
+          args: --config src-tauri/tauri.release.conf.json --bundles app,dmg
           includeUpdaterJson: true
           tagName: v__VERSION__
           releaseName: SOP to Skill v__VERSION__
@@ -174,7 +174,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_SIGNING_IDENTITY: '-'
         with:
-          args: --config src-tauri/tauri.release.conf.json
+          args: --config src-tauri/tauri.release.conf.json --bundles app,dmg
           includeUpdaterJson: true
           tagName: v__VERSION__
           releaseName: SOP to Skill v__VERSION__
@@ -182,29 +182,6 @@ jobs:
             Automated desktop release from `${{ github.ref_name }}` at `${{ github.sha }}`.
           releaseDraft: false
           prerelease: false
-      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest'
-        name: Prepare macOS updater bundle workflow artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
-          arch="$(uname -m)"
-          case "$arch" in
-            arm64) arch='aarch64' ;;
-            x86_64) arch='x86_64' ;;
-          esac
-
-          bundle_dir='src-tauri/target/release/bundle/macos'
-          tarball="$bundle_dir/SOP-to-Skill.app.tar.gz"
-          signature="$tarball.sig"
-          test -f "$tarball"
-          test -f "$signature"
-
-          upload_dir="$RUNNER_TEMP/macos-updater-assets"
-          mkdir -p "$upload_dir"
-          cp "$tarball" "$upload_dir/SOP-to-Skill_${version}_${arch}.app.tar.gz"
-          cp "$signature" "$upload_dir/SOP-to-Skill_${version}_${arch}.app.tar.gz.sig"
       - if: (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build != 'true')) && !startsWith(github.ref, 'refs/tags/v') && matrix.os == 'macos-latest'
         name: Build macOS desktop bundle on push with ad-hoc signing
         uses: tauri-apps/tauri-action@v0.6.2
@@ -237,81 +214,3 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.bundle_path }}
           if-no-files-found: error
-      - if: ((github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')) && matrix.os == 'macos-latest'
-        uses: actions/upload-artifact@v4
-        with:
-          name: desktop-macos-updater
-          path: ${{ runner.temp }}/macos-updater-assets/SOP-to-Skill_*.app.tar.gz*
-          if-no-files-found: error
-
-  publish-updater-manifest:
-    needs: build-desktop
-    if: (github.event_name == 'workflow_dispatch' && github.event.inputs.release_build == 'true') || startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/download-artifact@v4
-        with:
-          name: desktop-macos-updater
-          path: ${{ runner.temp }}/macos-updater
-      - name: Publish macOS updater assets and merge release updater manifest
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
-          release_tag="v$version"
-          workdir="$RUNNER_TEMP/updater-manifest"
-          mkdir -p "$workdir"
-          mac_asset_dir="$RUNNER_TEMP/macos-updater"
-
-          mac_tarball_path="$(find "$mac_asset_dir" -maxdepth 1 -type f -name 'SOP-to-Skill_*.app.tar.gz' | head -n 1)"
-          mac_sig_path="$(find "$mac_asset_dir" -maxdepth 1 -type f -name 'SOP-to-Skill_*.app.tar.gz.sig' | head -n 1)"
-          if [ -z "$mac_tarball_path" ] || [ -z "$mac_sig_path" ]; then
-            echo 'Missing macOS updater bundle artifact from workflow run' >&2
-            exit 1
-          fi
-
-          gh release upload "$release_tag" "$mac_tarball_path" "$mac_sig_path" --clobber
-          gh release download "$release_tag" -p latest.json -D "$workdir"
-
-          latest_path="$workdir/latest.json"
-
-          mac_asset_name="$(basename "$mac_sig_path" .sig)"
-          mac_arch="$(basename "$mac_sig_path" | sed -E 's/^SOP-to-Skill_[0-9]+\.[0-9]+\.[0-9]+_([^.]+)\.app\.tar\.gz\.sig$/\1/')"
-          if [ -z "$mac_arch" ] || [ "$mac_arch" = "$(basename "$mac_sig_path")" ]; then
-            echo "Failed to parse macOS updater architecture from $mac_sig_path" >&2
-            exit 1
-          fi
-          case "$mac_arch" in
-            aarch64) mac_target='darwin-aarch64' ;;
-            x86_64) mac_target='darwin-x86_64' ;;
-            *)
-              echo "Unsupported macOS updater architecture: $mac_arch" >&2
-              exit 1
-              ;;
-          esac
-
-          export LATEST_PATH="$latest_path"
-          export MAC_ASSET_NAME="$mac_asset_name"
-          export MAC_SIGNATURE="$(tr -d '\r\n' < "$mac_sig_path")"
-          export MAC_TARGET="$mac_target"
-          export RELEASE_TAG="$release_tag"
-
-          node <<'EOF'
-          const fs = require('node:fs')
-
-          const latest = JSON.parse(fs.readFileSync(process.env.LATEST_PATH, 'utf8'))
-          const entry = {
-            signature: process.env.MAC_SIGNATURE,
-            url: `https://github.com/susu3621/SOP-to-Skill/releases/download/${process.env.RELEASE_TAG}/${process.env.MAC_ASSET_NAME}`,
-          }
-
-          latest.platforms ||= {}
-          latest.platforms[process.env.MAC_TARGET] = entry
-          fs.writeFileSync(process.env.LATEST_PATH, `${JSON.stringify(latest, null, 2)}\n`)
-          EOF
-
-          gh release upload "$release_tag" "$latest_path" --clobber

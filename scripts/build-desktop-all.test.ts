@@ -797,15 +797,10 @@ describe('build desktop all workflow dispatch', () => {
       'utf8',
     )
 
-    expect(workflow).toContain('Prepare macOS updater bundle workflow artifact')
-    expect(workflow).toContain('desktop-macos-updater')
-    expect(workflow).toContain('actions/download-artifact@v4')
-    expect(workflow).toContain('Publish macOS updater assets and merge release updater manifest')
-    expect(workflow).toContain('SOP-to-Skill.app.tar.gz')
-    expect(workflow).toContain('darwin-aarch64')
-    expect(workflow).toContain('gh release upload "$release_tag"')
-    expect(verifyScript).toContain("rg -n 'SOP-to-Skill\\.app\\.tar\\.gz' .github/workflows/build-desktop.yml")
-    expect(verifyScript).toContain("rg -n 'darwin-aarch64' .github/workflows/build-desktop.yml")
+    expect(workflow).toContain('args: --config src-tauri/tauri.release.conf.json --bundles app,dmg')
+    expect(workflow).not.toContain('desktop-macos-updater')
+    expect(workflow).not.toContain('actions/download-artifact@v4')
+    expect(verifyScript).toContain("rg -n 'args:\\s*--config src-tauri/tauri.release.conf.json --bundles app,dmg' .github/workflows/build-desktop.yml")
   })
 
   it('exposes a tauri npm script for tauri-action builds', () => {
