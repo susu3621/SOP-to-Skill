@@ -9,13 +9,15 @@ const docsBase = process.env.NODE_ENV === 'production' ? `/${repoSlug}/` : '/'
 export default defineConfig({
   lang: 'zh-CN',
   title: 'AI 工作方式转型',
-  description: '面向普通员工的 AI 工作方式公开文档',
+  description: '把公司的 SOP、模板和系统配置整理成可安装到 AI 工具里的 Skill',
   base: docsBase,
   cleanUrls: true,
   lastUpdated: true,
   themeConfig: {
     nav: [
       { text: '首页', link: '/' },
+      { text: '下载', link: '/download' },
+      { text: '产品文档', link: '/product-docs/' },
       { text: '仓库', link: repoUrl }
     ],
     socialLinks: [
@@ -25,14 +27,5 @@ export default defineConfig({
     search: {
       provider: 'local'
     }
-  },
-  head: [
-    [
-      'script',
-      {
-        defer: '',
-        src: 'https://cdn.jsdelivr.net/npm/mermaid@8.8.0/dist/mermaid.min.js'
-      }
-    ]
-  ]
+  }
 })
