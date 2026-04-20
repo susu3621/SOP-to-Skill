@@ -479,6 +479,30 @@ export const onboardingCopy = {
     'zh-CN': '系统内置说明',
     'en-US': 'Built-in guidance',
   },
+  previewCurrentContent: {
+    'zh-CN': '预览当前内容',
+    'en-US': 'Preview current content',
+  },
+  previewDialogTitle: {
+    'zh-CN': '当前内容预览',
+    'en-US': 'Current content preview',
+  },
+  previewBuiltInTemplateTitle: {
+    'zh-CN': '当前内置模板',
+    'en-US': 'Current built-in template',
+  },
+  closePreview: {
+    'zh-CN': '关闭预览',
+    'en-US': 'Close preview',
+  },
+  previewEmptyValue: {
+    'zh-CN': '未填写',
+    'en-US': 'Not filled in',
+  },
+  previewUsesBuiltInTemplate: {
+    'zh-CN': '未填写，当前将使用内置模板',
+    'en-US': 'Not filled in. The built-in template will be used.',
+  },
   useCaseQuestionsTitle: {
     'zh-CN': '你需要填写的问题',
     'en-US': 'Questions to answer',

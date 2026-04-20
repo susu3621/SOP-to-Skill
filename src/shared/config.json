@@ -104,6 +104,8 @@
       "useCases": [
         "质量异常汇总与闭环跟进",
         "客诉售后问题分析与回复草稿",
+        "ISO9001资料包出具",
+        "8D报告出具",
         "变更评审里的质量影响检查",
         "质量周报",
         "供应商质量问题跟踪",
@@ -894,8 +896,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: output severity, owner, current status, and expected completion date consistently, and flag overdue items for escalation.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "汇总质量异常、明确责任人与截止时间，并持续跟进直到闭环。\n\n适合配置成每日或每周整理质量异常台账并推动闭环的助手。\n\n建议写清异常分级规则、超期升级条件、责任人口径和闭环标准。\n\n输入（每次执行都需要提供给Skill的信息）：本次需要跟进的时间范围、产品线或异常范围。",
-        "en-US": "Summarize quality issues, confirm owners and due dates, then keep tracking until closure.\n\nBest used as a Skill that maintains the quality issue tracker and drives closure on a daily or weekly cadence.\n\nClarify issue severity rules, overdue escalation criteria, owner conventions, and closure standards.\n\nInput (information required every run): the time window, product line, or issue scope to track in this run."
+        "zh-CN": "汇总质量异常、明确责任人与截止时间，并持续跟进直到闭环。\n\n适合配置成每日或每周整理质量异常台账并推动闭环的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 异常概览：编号、严重度、产品线、当前状态\n2. 问题说明：发现时间、问题现象、影响范围、当前风险\n3. 责任与进展：责任人、当前动作、阻塞项、预计完成时间\n4. 升级与闭环：超期状态、升级对象、关闭标准、验证结论\n5. 待办提醒：下一动作、更新时间、需要协同的团队\n\n输入（每次执行都需要提供给Skill的信息）：本次需要跟进的时间范围、产品线或异常范围。",
+        "en-US": "Summarize quality issues, confirm owners and due dates, then keep tracking until closure.\n\nBest used as a Skill that maintains the quality issue tracker and drives closure on a daily or weekly cadence.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Issue overview: ID, severity, product line, and current status\n2. Issue details: discovery time, symptom, impact scope, and current risk\n3. Owners and progress: owner, current action, blockers, and target date\n4. Escalation and closure: overdue status, escalation target, closure standard, and validation result\n5. Next actions: follow-up item, latest update time, and supporting teams\n\nInput (information required every run): the time window, product line, or issue scope to track in this run."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -989,8 +991,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: summarize the issue and current conclusion first, then provide actions taken, next steps, and an external reply draft.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "基于客诉和售后问题记录，整理原因分析、处理进展和对外回复草稿。\n\n适合配置成质量经理准备客诉分析和回复草稿的助手。\n\n建议写清对外回复口径、敏感信息边界、审批人和历史案例引用规则。\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的客户问题或售后事件。",
-        "en-US": "Use complaint and after-sales records to prepare root-cause analysis, progress summaries, and an external reply draft.\n\nBest used as a Skill that helps quality managers prepare complaint analysis and response drafts.\n\nClarify the external communication tone, sensitive-information boundaries, approvers, and historical-case citation rules.\n\nInput (information required every run): the customer issue or after-sales case that needs handling."
+        "zh-CN": "基于客诉和售后问题记录，整理原因分析、处理进展和对外回复草稿。\n\n适合配置成质量经理准备客诉分析和回复草稿的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 事件摘要：客户、产品 / 批次、投诉内容、影响范围\n2. 原因分析：当前结论、关键证据、待确认项、责任团队\n3. 已采取动作：围堵措施、补救进展、内部审批状态\n4. 对外回复草稿：结论、已采取动作、后续计划、承诺时间\n5. 内部跟进：下一节点、责任人、更新时间、风险提醒\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的客户问题或售后事件。",
+        "en-US": "Use complaint and after-sales records to prepare root-cause analysis, progress summaries, and an external reply draft.\n\nBest used as a Skill that helps quality managers prepare complaint analysis and response drafts.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Case summary: customer, product or batch, complaint, and impact scope\n2. Root-cause analysis: current conclusion, key evidence, open questions, and responsible team\n3. Actions taken: containment action, recovery progress, and approval status\n4. External reply draft: conclusion, actions taken, next steps, and committed timing\n5. Internal follow-up: next checkpoint, owner, latest update, and risk reminder\n\nInput (information required every run): the customer issue or after-sales case that needs handling."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -1051,6 +1053,208 @@
         }
       ]
     },
+    "ISO9001资料包出具": {
+      "name": {
+        "zh-CN": "ISO9001资料包出具",
+        "en-US": "ISO9001 Package Preparation"
+      },
+      "directory": "iso9001-package-preparation",
+      "description": {
+        "zh-CN": "基于现有体系文件和记录，整理一套可直接提交、审核或归档的 ISO9001 资料包。",
+        "en-US": "Prepare an ISO9001 package from the current quality-system documents and records so it can be submitted, audited, or archived."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成质量经理按审核范围快速整理体系资料、识别缺口并给出补件清单的助手。",
+          "en-US": "Best used as a Skill that helps a QA manager assemble system evidence for a specific audit scope, spot gaps, and list follow-up actions."
+        },
+        {
+          "zh-CN": "默认内置一份 ISO9001 资料包模板；如果用户填写了模板链接，则优先采用用户模板。",
+          "en-US": "A built-in ISO9001 package template is included by default; if the user provides a template link, follow the user template first."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次要出具的审核范围、客户 / 工厂 / 项目名称，以及时间范围。",
+        "en-US": "Input (information required every run): the audit scope, customer, plant or project name, and time window for this package."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：质量手册、程序文件清单、记录表单库、内审报告、管理评审资料、培训记录、校准记录。",
+        "en-US": "Examples: quality manual, procedure index, record library, internal audit reports, management review materials, training records, and calibration records."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，按内置资料包模板整理基础信息、体系文件、运行记录、缺口项和交付说明；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, organize the package with the built-in structure for basic information, system documents, evidence records, gap items, and delivery notes; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "基于现有体系文件和记录，整理一套可直接提交、审核或归档的 ISO9001 资料包。\n\n适合配置成质量经理按审核范围快速整理体系资料、识别缺口并给出补件清单的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n1. 基本信息：客户 / 审核范围 / 版本 / 编制日期\n2. 体系文件清单：质量手册、程序文件、作业指导书、记录表单目录\n3. 运行记录：内审、管理评审、纠正预防措施、培训、校准、供应商管理等证明材料\n4. 缺口与待补项：缺失文件、过期记录、责任人、预计补齐时间\n5. 交付说明：资料路径、命名规则、是否可直接外发 / 审核\n\n输入（每次执行都需要提供给Skill的信息）：本次要出具的审核范围、客户 / 工厂 / 项目名称，以及时间范围。",
+        "en-US": "Prepare an ISO9001 package from the current quality-system documents and records so it can be submitted, audited, or archived.\n\nBest used as a Skill that helps a QA manager assemble system evidence for a specific audit scope, spot gaps, and list follow-up actions.\n\nIf the user provides a template link, follow the user template first. Otherwise, use this built-in template:\n1. Basic information: customer, audit scope, revision, prepared date\n2. System document list: quality manual, procedures, work instructions, and record index\n3. Evidence records: internal audit, management review, CAPA, training, calibration, supplier management, and similar proof\n4. Gaps and follow-up items: missing files, expired records, owners, and target dates\n5. Delivery notes: package path, naming rules, and whether it is ready for external submission or audit\n\nInput (information required every run): the audit scope, customer, plant or project name, and time window for this package."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "iso9001-scope-source",
+          "label": {
+            "zh-CN": "从哪里获取本次 ISO9001 资料包对应的审核范围和要求？",
+            "en-US": "Where can AI get the audit scope and requirements for this ISO9001 package?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：审核通知、客户要求或认证范围说明",
+            "en-US": "Example: audit notice, customer requirement, or certification scope reference"
+          },
+          "required": true
+        },
+        {
+          "id": "iso9001-material-source",
+          "label": {
+            "zh-CN": "从哪里获取当前体系文件和过程记录？",
+            "en-US": "Where can AI find the current system documents and process records?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：体系文件目录、表单库或记录归档目录",
+            "en-US": "Example: document index, form library, or records archive"
+          },
+          "required": true
+        },
+        {
+          "id": "iso9001-template-source",
+          "label": {
+            "zh-CN": "如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 资料包模板？",
+            "en-US": "If the built-in template should be overridden, where can AI find the user-provided ISO9001 package template?"
+          },
+          "placeholder": {
+            "zh-CN": "可留空；留空时使用内置模板，例如：客户模板链接或公司标准模板 Wiki",
+            "en-US": "Optional. Leave blank to use the built-in template. Example: customer template link or company standard template wiki"
+          },
+          "required": false
+        },
+        {
+          "id": "iso9001-history-package-source",
+          "label": {
+            "zh-CN": "如果要参考历史资料包，从哪里获取历史 ISO9001 资料？",
+            "en-US": "If historical packages should be referenced, where can AI find previous ISO9001 materials?"
+          },
+          "placeholder": {
+            "zh-CN": "可留空；例如：去年的外审资料包或历史提交目录",
+            "en-US": "Optional. Example: last year's audit package or historical submission folder"
+          },
+          "required": false
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
+    "8D报告出具": {
+      "name": {
+        "zh-CN": "8D报告出具",
+        "en-US": "8D Report Preparation"
+      },
+      "directory": "eight-d-report-preparation",
+      "description": {
+        "zh-CN": "基于质量异常或客诉记录，生成一份结构完整、可继续补充证据的 8D 报告草稿。",
+        "en-US": "Use quality issues or complaint records to prepare a complete 8D report draft that can be extended with evidence."
+      },
+      "guidance": [
+        {
+          "zh-CN": "适合配置成质量经理快速组织跨部门问题分析、纠正措施和防再发行动的助手。",
+          "en-US": "Best used as a Skill that helps a QA manager organize cross-functional analysis, corrective actions, and recurrence prevention."
+        },
+        {
+          "zh-CN": "默认内置一份 8D 报告模板；如果用户填写了模板链接，则优先采用用户模板。",
+          "en-US": "A built-in 8D report template is included by default; if the user provides a template link, follow the user template first."
+        }
+      ],
+      "descriptionPrompt": {
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次需要处理的质量异常、客诉或批次信息。",
+        "en-US": "Input (information required every run): the quality issue, complaint, or batch information that needs this 8D report."
+      },
+      "infoSourcesPrompt": {
+        "zh-CN": "例如：异常单、客诉记录、检验数据、围堵措施记录、5Why / 鱼骨图分析、验证结果。",
+        "en-US": "Examples: issue tickets, complaint records, inspection data, containment records, 5 Whys or fishbone analysis, and validation results."
+      },
+      "rulesPrompt": {
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，按内置 8D 结构输出 D1-D8；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, produce D1-D8 using the built-in 8D structure; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
+      },
+      "defaultDescription": {
+        "zh-CN": "基于质量异常或客诉记录，生成一份结构完整、可继续补充证据的 8D 报告草稿。\n\n适合配置成质量经理快速组织跨部门问题分析、纠正措施和防再发行动的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\nD1 团队与职责\nD2 问题描述与影响范围\nD3 临时遏制措施\nD4 根本原因分析\nD5 永久纠正措施\nD6 实施验证与效果确认\nD7 防再发措施\nD8 团队结项与经验沉淀\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的质量异常、客诉或批次信息。",
+        "en-US": "Use quality issues or complaint records to prepare a complete 8D report draft that can be extended with evidence.\n\nBest used as a Skill that helps a QA manager organize cross-functional analysis, corrective actions, and recurrence prevention.\n\nIf the user provides a template link, follow the user template first. Otherwise, use this built-in structure:\nD1 Team and responsibilities\nD2 Problem statement and impact scope\nD3 Interim containment actions\nD4 Root cause analysis\nD5 Permanent corrective actions\nD6 Implementation verification and effectiveness confirmation\nD7 Recurrence prevention\nD8 Team closure and knowledge capture\n\nInput (information required every run): the quality issue, complaint, or batch information that needs this 8D report."
+      },
+      "defaultInfoSources": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "defaultRules": {
+        "zh-CN": "",
+        "en-US": ""
+      },
+      "structuredQuestions": [
+        {
+          "id": "eight-d-issue-source",
+          "label": {
+            "zh-CN": "从哪里获取本次 8D 的问题记录和影响范围？",
+            "en-US": "Where can AI get the issue record and impact scope for this 8D report?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：客诉单、异常单或批次追溯记录",
+            "en-US": "Example: complaint ticket, issue report, or batch traceability record"
+          },
+          "required": true
+        },
+        {
+          "id": "eight-d-analysis-source",
+          "label": {
+            "zh-CN": "从哪里可以知道临时措施、根因分析和验证结果？",
+            "en-US": "Where can AI find containment actions, root-cause analysis, and validation results?"
+          },
+          "placeholder": {
+            "zh-CN": "例如：围堵记录、5Why / 鱼骨图分析或验证报告",
+            "en-US": "Example: containment record, 5 Whys or fishbone analysis, or validation report"
+          },
+          "required": true
+        },
+        {
+          "id": "eight-d-template-source",
+          "label": {
+            "zh-CN": "如果要覆盖内置模板，从哪里获取用户指定的 8D 模板？",
+            "en-US": "If the built-in template should be overridden, where can AI find the user-provided 8D template?"
+          },
+          "placeholder": {
+            "zh-CN": "可留空；留空时使用内置模板，例如：客户 8D 模板或公司标准模板链接",
+            "en-US": "Optional. Leave blank to use the built-in template. Example: customer 8D template or company standard template link"
+          },
+          "required": false
+        },
+        {
+          "id": "other",
+          "label": {
+            "zh-CN": "其他",
+            "en-US": "Other"
+          },
+          "placeholder": {
+            "zh-CN": "其他补充链接或说明",
+            "en-US": "Other supporting link or note"
+          },
+          "required": false
+        }
+      ]
+    },
     "变更评审里的质量影响检查": {
       "name": {
         "zh-CN": "变更评审里的质量影响检查",
@@ -1084,8 +1288,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: identify the change scope first, then check impacts on inspection items, release standards, process capability, and customer requirements, and finally output risks and recommended actions.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "在变更评审时检查变更对质量要求、检验方案和放行条件的影响。\n\n适合配置成变更评审前的质量影响检查助手。\n\n建议写清需要覆盖的质量维度、必须引用的标准文件，以及什么情况必须升级评审。\n\n输入（每次执行都需要提供给Skill的信息）：本次待评审的变更申请或版本范围。",
-        "en-US": "Check how a proposed change affects quality requirements, inspection methods, and release conditions.\n\nBest used as a Skill that reviews quality impact before a change review meeting.\n\nClarify which quality dimensions must be covered, which standards must be referenced, and when escalation is required.\n\nInput (information required every run): the change request or release scope under review."
+        "zh-CN": "在变更评审时检查变更对质量要求、检验方案和放行条件的影响。\n\n适合配置成变更评审前的质量影响检查助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 变更摘要：变更对象、版本、原因、生效时间\n2. 质量影响评估：受影响项目、风险等级、依据文件\n3. 检验与放行调整：新增 / 变更检验项、验证要求、放行条件\n4. 风险与措施：潜在失效、控制动作、责任人、完成时间\n5. 评审结论：是否通过、待补资料、是否需要升级评审\n\n输入（每次执行都需要提供给Skill的信息）：本次待评审的变更申请或版本范围。",
+        "en-US": "Check how a proposed change affects quality requirements, inspection methods, and release conditions.\n\nBest used as a Skill that reviews quality impact before a change review meeting.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Change summary: object, revision, reason, and effective timing\n2. Quality impact assessment: affected items, risk level, and reference documents\n3. Inspection and release updates: new or changed inspections, validation needs, and release conditions\n4. Risks and actions: potential failures, control actions, owners, and due dates\n5. Review conclusion: approved or not, missing materials, and whether escalation is required\n\nInput (information required every run): the change request or release scope under review."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -1179,8 +1383,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: organize the report into quality issues, risk trends, corrective-action progress, and next-week priorities, with major risks highlighted separately.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "汇总本周质量异常、风险、整改进展和重点事项，形成标准化质量周报。\n\n适合配置成固定节奏产出质量周报的助手。\n\n建议写清周报结构、关注指标、升级条件和需要抄送的对象。\n\n输入（每次执行都需要提供给Skill的信息）：本周时间范围、产品线或工厂范围。",
-        "en-US": "Summarize quality issues, risks, corrective-action progress, and highlights into a standardized weekly report.\n\nBest used as a Skill that produces a weekly quality report on a fixed cadence.\n\nClarify the report structure, monitored metrics, escalation criteria, and the audience.\n\nInput (information required every run): the weekly time window, product line, or plant scope."
+        "zh-CN": "汇总本周质量异常、风险、整改进展和重点事项，形成标准化质量周报。\n\n适合配置成固定节奏产出质量周报的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 本周概览：时间范围、产品线 / 工厂、核心结论\n2. 异常与风险：新增异常、重大风险、趋势变化、影响范围\n3. 整改进展：重点 CAPA、超期项、责任部门、预计完成时间\n4. 下周重点：优先事项、资源需求、升级事项\n5. 需要同步：管理关注点、客户影响、支持请求\n\n输入（每次执行都需要提供给Skill的信息）：本周时间范围、产品线或工厂范围。",
+        "en-US": "Summarize quality issues, risks, corrective-action progress, and highlights into a standardized weekly report.\n\nBest used as a Skill that produces a weekly quality report on a fixed cadence.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Weekly overview: time window, product line or plant, and headline conclusion\n2. Issues and risks: new issues, major risks, trend changes, and impact scope\n3. Corrective-action progress: key CAPA items, overdue actions, owner teams, and target dates\n4. Next-week priorities: top priorities, resource needs, and escalation items\n5. Stakeholder sync: management attention points, customer impact, and support requests\n\nInput (information required every run): the weekly time window, product line, or plant scope."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -1274,8 +1478,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: output issue description, supplier owner window, corrective-action status, risk level, and target close date consistently, and flag recurrence separately.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "跟踪供应商质量异常、整改进展和重复发生风险，推动问题闭环。\n\n适合配置成供应商质量问题台账和跟催助手。\n\n建议写清供应商分级规则、升级路径、回复时限和关闭标准。\n\n输入（每次执行都需要提供给Skill的信息）：本次需要跟踪的供应商、物料或时间范围。",
-        "en-US": "Track supplier quality issues, corrective-action progress, and recurrence risk until closure.\n\nBest used as a Skill that maintains the supplier quality issue tracker and follows up on actions.\n\nClarify supplier severity rules, escalation paths, response deadlines, and closure standards.\n\nInput (information required every run): the supplier, material, or time window to track in this run."
+        "zh-CN": "跟踪供应商质量异常、整改进展和重复发生风险，推动问题闭环。\n\n适合配置成供应商质量问题台账和跟催助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 问题概览：供应商、物料、异常描述、风险等级\n2. 当前进展：责任窗口、临时措施、8D / 整改状态、最新更新时间\n3. 重复发生与影响：历史重复、影响批次、库存 / 产线风险\n4. 升级与关闭：升级节点、预计关闭时间、验证结论\n5. 待办事项：下一动作、责任人、催办节奏\n\n输入（每次执行都需要提供给Skill的信息）：本次需要跟踪的供应商、物料或时间范围。",
+        "en-US": "Track supplier quality issues, corrective-action progress, and recurrence risk until closure.\n\nBest used as a Skill that maintains the supplier quality issue tracker and follows up on actions.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Issue overview: supplier, material, issue description, and risk level\n2. Current progress: owner window, containment actions, 8D or corrective-action status, and latest update\n3. Recurrence and impact: historical repeats, affected batches, and inventory or line risk\n4. Escalation and closure: escalation checkpoints, target close date, and validation result\n5. Next actions: follow-up item, owner, and chase cadence\n\nInput (information required every run): the supplier, material, or time window to track in this run."
       },
       "defaultInfoSources": {
         "zh-CN": "",

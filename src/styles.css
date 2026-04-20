@@ -1624,10 +1624,24 @@ textarea {
   background: rgba(255, 255, 255, 0.42);
 }
 
-.onboarding-use-case-card h3,
+.onboarding-use-case-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.onboarding-use-case-card__header h3,
 .onboarding-preview-card__title {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 1.1rem;
+}
+
+.onboarding-use-case-card__preview {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  white-space: nowrap;
 }
 
 .onboarding-use-case-section {
@@ -1685,6 +1699,95 @@ textarea {
 .onboarding-question-card__actions {
   justify-content: flex-end;
   margin-top: 0;
+}
+
+.onboarding-use-case-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(22, 48, 41, 0.34);
+  backdrop-filter: blur(2px);
+}
+
+.onboarding-use-case-preview-dialog {
+  position: fixed;
+  inset: 50% auto auto 50%;
+  z-index: 41;
+  width: min(720px, calc(100vw - 32px));
+  max-height: min(80vh, 760px);
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border: 1px solid rgba(22, 48, 41, 0.14);
+  border-radius: 24px;
+  background: #fffaf5;
+  box-shadow: 0 24px 64px rgba(22, 48, 41, 0.24);
+}
+
+.onboarding-use-case-preview-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.onboarding-use-case-preview-dialog__header h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #163029;
+}
+
+.onboarding-use-case-preview-dialog__content {
+  display: grid;
+  gap: 14px;
+}
+
+.onboarding-use-case-preview-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(22, 48, 41, 0.08);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.onboarding-use-case-preview-section__body {
+  margin: 0;
+  color: rgba(22, 48, 41, 0.84);
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.onboarding-use-case-preview-question-list {
+  display: grid;
+  gap: 12px;
+}
+
+.onboarding-use-case-preview-question-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: rgba(235, 246, 243, 0.62);
+}
+
+.onboarding-use-case-preview-question-card__label,
+.onboarding-use-case-preview-question-card__answer {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.onboarding-use-case-preview-question-card__label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #163029;
+}
+
+.onboarding-use-case-preview-question-card__answer {
+  color: rgba(22, 48, 41, 0.78);
+  line-height: 1.6;
 }
 
 .onboarding-install-layout {

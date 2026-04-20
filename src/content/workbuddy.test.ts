@@ -220,6 +220,8 @@ describe('workbuddy agent apps', () => {
     expect(sharedConfig.roles['qa-manager']?.useCases).toEqual([
       '质量异常汇总与闭环跟进',
       '客诉售后问题分析与回复草稿',
+      'ISO9001资料包出具',
+      '8D报告出具',
       '变更评审里的质量影响检查',
       '质量周报',
       '供应商质量问题跟踪',
@@ -233,6 +235,8 @@ describe('workbuddy agent apps', () => {
     expect(qaDefaults.map((useCase) => useCase.use_case_name)).toEqual([
       '质量异常汇总与闭环跟进',
       '客诉售后问题分析与回复草稿',
+      'ISO9001资料包出具',
+      '8D报告出具',
       '变更评审里的质量影响检查',
       '质量周报',
       '供应商质量问题跟踪',
@@ -241,6 +245,119 @@ describe('workbuddy agent apps', () => {
       '项目周报',
     ])
     expect(qaDefaults.every((useCase) => useCase.description_locked)).toBe(true)
+  })
+
+  it('defines template-aware onboarding questions for the new qa-manager document skills', () => {
+    const isoPackage = getOnboardingUseCaseOptionById('iso9001-package-preparation')
+    const eightDReport = getOnboardingUseCaseOptionById('eight-d-report-preparation')
+    const qaDefaults = createDefaultRoleUseCaseContents('qa-manager')
+    const isoPackageDefault = qaDefaults.find(
+      (useCase) => useCase.use_case_id === 'iso9001-package-preparation'
+    )
+    const eightDReportDefault = qaDefaults.find(
+      (useCase) => useCase.use_case_id === 'eight-d-report-preparation'
+    )
+
+    expect(isoPackage?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'iso9001-scope-source',
+        label: '从哪里获取本次 ISO9001 资料包对应的审核范围和要求？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'iso9001-material-source',
+        label: '从哪里获取当前体系文件和过程记录？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'iso9001-template-source',
+        label: '如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 资料包模板？',
+        required: false,
+      }),
+      expect.objectContaining({
+        id: 'iso9001-history-package-source',
+        label: '如果要参考历史资料包，从哪里获取历史 ISO9001 资料？',
+        required: false,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+
+    expect(eightDReport?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'eight-d-issue-source',
+        label: '从哪里获取本次 8D 的问题记录和影响范围？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'eight-d-analysis-source',
+        label: '从哪里可以知道临时措施、根因分析和验证结果？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'eight-d-template-source',
+        label: '如果要覆盖内置模板，从哪里获取用户指定的 8D 模板？',
+        required: false,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
+
+    expect(isoPackageDefault?.description).toContain('如果用户填写了模板链接，则优先采用用户模板')
+    expect(isoPackageDefault?.description).toContain('默认按以下模板整理')
+    expect(isoPackageDefault?.description).toContain('缺口与待补项')
+    expect(eightDReportDefault?.description).toContain('如果用户填写了模板链接，则优先采用用户模板')
+    expect(eightDReportDefault?.description).toContain('D4 根本原因分析')
+    expect(eightDReportDefault?.description).toContain('D8 团队结项与经验沉淀')
+  })
+
+  it('adds built-in fallback templates to the remaining qa-manager quality use cases', () => {
+    const qaDefaults = createDefaultRoleUseCaseContents('qa-manager')
+
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'quality-issue-closure')?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'quality-issue-closure')?.description
+    ).toContain('异常概览：编号、严重度、产品线、当前状态')
+
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'customer-complaint-reply-draft')
+        ?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'customer-complaint-reply-draft')
+        ?.description
+    ).toContain('对外回复草稿：结论、已采取动作、后续计划、承诺时间')
+
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'change-review-quality-impact')
+        ?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'change-review-quality-impact')
+        ?.description
+    ).toContain('质量影响评估：受影响项目、风险等级、依据文件')
+
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'quality-weekly-report')?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'quality-weekly-report')?.description
+    ).toContain('下周重点：优先事项、资源需求、升级事项')
+
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'supplier-quality-tracking')?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      qaDefaults.find((useCase) => useCase.use_case_id === 'supplier-quality-tracking')?.description
+    ).toContain('升级与关闭：升级节点、预计关闭时间、验证结论')
   })
 
   it('assigns IT-management use cases plus generic logging, planning, and weekly report defaults to it-manager', () => {
