@@ -34,7 +34,6 @@ rg -n 'bundle/dmg/sop-to-skill-.*\.dmg' .github/workflows/build-desktop.yml
 rg -n 'target/release/sop-to-skill\.exe' .github/workflows/build-desktop.yml
 rg -n '"productName": "SOP-to-Skill"' src-tauri/tauri.conf.json
 ! rg -n 'desktop-macos-updater' .github/workflows/build-desktop.yml
-rg -n 'args:\s*--config src-tauri/tauri.release.conf.json --bundles app,dmg' .github/workflows/build-desktop.yml
 rg -n 'workflow_dispatch:' .github/workflows/build-desktop.yml
 rg -n 'release_build:' .github/workflows/build-desktop.yml
 rg -n 'default:\s*false' .github/workflows/build-desktop.yml
@@ -61,6 +60,52 @@ rg -n 'APPLE_API_ISSUER' .github/workflows/build-desktop.yml
 rg -n 'APPLE_API_KEY_PATH' .github/workflows/build-desktop.yml
 rg -n 'TAURI_SIGNING_PRIVATE_KEY' .github/workflows/build-desktop.yml
 rg -n 'TAURI_UPDATER_PUBLIC_KEY' .github/workflows/build-desktop.yml
+
+node <<'EOF'
+const fs = require('node:fs')
+
+const workflow = fs.readFileSync('.github/workflows/build-desktop.yml', 'utf8')
+const windowsReleaseSection =
+  workflow.match(/name: Build release desktop bundle[\s\S]*?releaseDraft: false/)?.[0] ?? ''
+const macAppleReleaseSection =
+  workflow.match(
+    /name: Build release macOS desktop bundle with Apple signing[\s\S]*?releaseDraft: false/,
+  )?.[0] ?? ''
+const macAdhocReleaseSection =
+  workflow.match(
+    /name: Build release macOS desktop bundle with ad-hoc signing[\s\S]*?releaseDraft: false/,
+  )?.[0] ?? ''
+const macUpdaterBundleMatches =
+  workflow.match(/args: --config src-tauri\/tauri\.release\.conf\.json --bundles app,dmg/g) ?? []
+
+if (!windowsReleaseSection.includes('args: --config src-tauri/tauri.release.conf.json')) {
+  throw new Error('windows release step must keep the default release config args')
+}
+
+if (windowsReleaseSection.includes('--bundles app,dmg')) {
+  throw new Error('windows release step must not request macOS app/dmg bundles')
+}
+
+if (
+  !macAppleReleaseSection.includes(
+    'args: --config src-tauri/tauri.release.conf.json --bundles app,dmg',
+  )
+) {
+  throw new Error('apple-signed macOS release step must build app and dmg bundles')
+}
+
+if (
+  !macAdhocReleaseSection.includes(
+    'args: --config src-tauri/tauri.release.conf.json --bundles app,dmg',
+  )
+) {
+  throw new Error('ad-hoc macOS release step must build app and dmg bundles')
+}
+
+if (macUpdaterBundleMatches.length !== 2) {
+  throw new Error(`expected exactly 2 macOS updater bundle args lines, found ${macUpdaterBundleMatches.length}`)
+}
+EOF
 
 test -f index.html
 test -f src/main.tsx

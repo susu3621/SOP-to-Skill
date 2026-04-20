@@ -796,11 +796,35 @@ describe('build desktop all workflow dispatch', () => {
       path.join(process.cwd(), 'scripts/verify-desktop-scaffold.sh'),
       'utf8',
     )
+    const windowsReleaseSection =
+      workflow.match(/name: Build release desktop bundle[\s\S]*?releaseDraft: false/)?.[0] ?? ''
+    const macAppleReleaseSection =
+      workflow.match(
+        /name: Build release macOS desktop bundle with Apple signing[\s\S]*?releaseDraft: false/,
+      )?.[0] ?? ''
+    const macAdhocReleaseSection =
+      workflow.match(
+        /name: Build release macOS desktop bundle with ad-hoc signing[\s\S]*?releaseDraft: false/,
+      )?.[0] ?? ''
+    const macUpdaterBundleMatches =
+      workflow.match(
+        /args: --config src-tauri\/tauri\.release\.conf\.json --bundles app,dmg/g,
+      ) ?? []
 
-    expect(workflow).toContain('args: --config src-tauri/tauri.release.conf.json --bundles app,dmg')
+    expect(windowsReleaseSection).toContain('args: --config src-tauri/tauri.release.conf.json')
+    expect(windowsReleaseSection).not.toContain('--bundles app,dmg')
+    expect(macAppleReleaseSection).toContain(
+      'args: --config src-tauri/tauri.release.conf.json --bundles app,dmg',
+    )
+    expect(macAdhocReleaseSection).toContain(
+      'args: --config src-tauri/tauri.release.conf.json --bundles app,dmg',
+    )
+    expect(macUpdaterBundleMatches).toHaveLength(2)
     expect(workflow).not.toContain('desktop-macos-updater')
     expect(workflow).not.toContain('actions/download-artifact@v4')
-    expect(verifyScript).toContain("rg -n 'args:\\s*--config src-tauri/tauri.release.conf.json --bundles app,dmg' .github/workflows/build-desktop.yml")
+    expect(verifyScript).toContain('Build release desktop bundle')
+    expect(verifyScript).toContain('Build release macOS desktop bundle with Apple signing')
+    expect(verifyScript).toContain('Build release macOS desktop bundle with ad-hoc signing')
   })
 
   it('exposes a tauri npm script for tauri-action builds', () => {

@@ -135,7 +135,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          args: --config src-tauri/tauri.release.conf.json --bundles app,dmg
+          args: --config src-tauri/tauri.release.conf.json
           includeUpdaterJson: true
           tagName: v__VERSION__
           releaseName: SOP to Skill v__VERSION__
@@ -157,7 +157,7 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
         with:
-          args: --config src-tauri/tauri.release.conf.json
+          args: --config src-tauri/tauri.release.conf.json --bundles app,dmg
           includeUpdaterJson: true
           tagName: v__VERSION__
           releaseName: SOP to Skill v__VERSION__
