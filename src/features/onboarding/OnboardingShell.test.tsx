@@ -2399,6 +2399,38 @@ describe('OnboardingShell', () => {
     expect(within(weeklyReportItem).getByText('已设置')).toBeInTheDocument()
   })
 
+  it('treats a built-in template-backed use case as configured when the SOP answer is blank', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      role_use_case_contents: fixtures.onboardingState.role_use_case_contents.map((useCase) => ({
+        ...useCase,
+        ...(useCase.use_case_id === 'daily-log'
+          ? {
+              info_sources: '',
+              rules: '',
+              questions: buildStructuredQuestionAnswers('daily-log', {
+                'information-source': 'https://wiki.example.com/project-log-inputs',
+                'workflow-sop': '',
+              }),
+            }
+          : {}),
+      })),
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '配置要交给 AI 的工作' }))
+
+    await user.click(screen.getByRole('tab', { name: '选择工作' }))
+    const dailyLogItem = await screen.findByRole('button', { name: '记录日志' })
+
+    expect(within(dailyLogItem).getByText('已设置')).toBeInTheDocument()
+  })
+
   it('auto-saves install changes before syncing and keeps sync results inside the module', async () => {
     const user = userEvent.setup()
 

@@ -2,6 +2,10 @@ import { useState } from 'react'
 import type { Locale, OnboardingEditableUseCaseRecord } from '../../../types'
 import { getOnboardingUseCaseOptionById } from '../../../content/workbuddy'
 import { getOnboardingCopy, onboardingCopy } from '../copy'
+import {
+  getBuiltInTemplateValue,
+  usesBuiltInTemplateFallback,
+} from '../useCaseTemplate'
 
 interface UseCaseConfigStepProps {
   locale: Locale
@@ -34,56 +38,17 @@ function getPreviewValue(value: string, locale: Locale) {
     : getOnboardingCopy(locale, onboardingCopy.previewEmptyValue)
 }
 
-function getBuiltInTemplateValue(description: string, locale: Locale) {
-  const startMarkers =
-    locale === 'zh-CN'
-      ? [
-          '如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n',
-          '如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n',
-        ]
-      : [
-          'If the user provides a template link, follow the user template first. Otherwise, use this built-in template:\n',
-          'If the user provides a template link, follow the user template first. Otherwise, use this built-in structure:\n',
-          'If the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n',
-        ]
-  const endMarkers =
-    locale === 'zh-CN'
-      ? ['\n\n输入（每次执行都需要提供给Skill的信息）：']
-      : ['\n\nInput (information required every run):']
-
-  for (const startMarker of startMarkers) {
-    const startIndex = description.indexOf(startMarker)
-
-    if (startIndex === -1) {
-      continue
-    }
-
-    const templateStart = startIndex + startMarker.length
-    const endIndex = endMarkers
-      .map((marker) => description.indexOf(marker, templateStart))
-      .find((index) => index !== -1)
-
-    return description.slice(templateStart, endIndex === undefined ? undefined : endIndex).trim()
-  }
-
-  return ''
-}
-
-function isBuiltInTemplateQuestion(questionId: string) {
-  return /(template-source|sop(?:-source)?)$/u.test(questionId)
-}
-
 function getPreviewQuestionAnswer(
   questionId: string,
   value: string,
   locale: Locale,
-  builtInTemplateValue: string
+  description: string
 ) {
   if (value.trim().length > 0) {
     return value
   }
 
-  if (builtInTemplateValue && isBuiltInTemplateQuestion(questionId)) {
+  if (usesBuiltInTemplateFallback(questionId, value, description)) {
     return getOnboardingCopy(locale, onboardingCopy.previewUsesBuiltInTemplate)
   }
 
@@ -105,7 +70,7 @@ function UseCasePreviewDialog({
 }: UseCasePreviewDialogProps) {
   const dialogTitle = `${displayName} ${getOnboardingCopy(locale, onboardingCopy.previewDialogTitle)}`
   const questions = useCase.questions ?? []
-  const builtInTemplateValue = getBuiltInTemplateValue(useCase.description, locale)
+  const builtInTemplateValue = getBuiltInTemplateValue(useCase.description)
 
   return (
     <>
@@ -163,7 +128,7 @@ function UseCasePreviewDialog({
                         question.id,
                         question.answer,
                         locale,
-                        builtInTemplateValue
+                        useCase.description
                       )}
                     </p>
                   </article>

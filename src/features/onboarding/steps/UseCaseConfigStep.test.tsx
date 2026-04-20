@@ -375,6 +375,41 @@ describe('UseCaseConfigStep', () => {
 
   it.each([
     {
+      title: '需求评估',
+      useCaseId: 'requirement-assessment',
+      templateQuestionId: 'workflow-sop',
+      templateQuestionLabel: '从哪里获取需求评估的 SOP？',
+      templateSnippet: '初步结论：可做 / 不可做 / 待确认项',
+    },
+    {
+      title: '记录日志',
+      useCaseId: 'daily-log',
+      templateQuestionId: 'workflow-sop',
+      templateQuestionLabel: '从哪里获取记录日志的 SOP？',
+      templateSnippet: '日志记录：时间、事件、结论、责任人',
+    },
+    {
+      title: '记录计划',
+      useCaseId: 'planning',
+      templateQuestionId: 'workflow-sop',
+      templateQuestionLabel: '从哪里获取记录计划的 SOP？',
+      templateSnippet: '计划总览：阶段、里程碑、当前状态、预计日期',
+    },
+    {
+      title: '项目周报',
+      useCaseId: 'weekly-report',
+      templateQuestionId: 'weekly-report-sop',
+      templateQuestionLabel: '从哪里获取周报 SOP？',
+      templateSnippet: '下周计划：关键动作、责任人、目标时间',
+    },
+    {
+      title: '问题跟踪',
+      useCaseId: 'issue-tracking',
+      templateQuestionId: 'workflow-sop',
+      templateQuestionLabel: '从哪里获取问题跟踪的 SOP？',
+      templateSnippet: '问题闭环：当前状态、责任人、预计关闭时间、升级条件',
+    },
+    {
       title: '质量异常汇总与闭环跟进',
       useCaseId: 'quality-issue-closure',
       templateQuestionId: 'issue-closure-sop',

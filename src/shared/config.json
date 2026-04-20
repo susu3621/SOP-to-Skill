@@ -484,8 +484,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template:\nStrong examples:\nTechnical knowledge base:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "梳理售前需求、企业技术积累和约束边界，形成初步评估结论。\n\n适合配置成帮你做售前需求初评的助手。\n\n需要提前说明它会读取哪些公司现有技术积累、历史方案或 SOP。\n\n输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字。",
-        "en-US": "Review the incoming requirement, internal technical assets, and boundary constraints to form an initial assessment.\n\nBest used as a Skill that performs an initial pre-sales requirement assessment.\n\nClarify which internal technical assets, historical solutions, or SOPs it should rely on.\n\nInput (information required every run): the name of the requirement to assess."
+        "zh-CN": "梳理售前需求、企业技术积累和约束边界，形成初步评估结论。\n\n适合配置成帮你做售前需求初评的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 需求摘要：客户目标、应用场景、交付边界、时间要求\n2. 现状与约束：已有方案、依赖系统、资源限制、待确认信息\n3. 技术匹配：可复用能力、缺口模块、关键风险、预估投入\n4. 初步结论：可做 / 不可做 / 待确认项、建议路径、下一步动作\n\n输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字。",
+        "en-US": "Review the incoming requirement, internal technical assets, and boundary constraints to form an initial assessment.\n\nBest used as a Skill that performs an initial pre-sales requirement assessment.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Requirement summary: customer goals, target scenario, delivery boundary, and timing\n2. Current state and constraints: existing solution, dependent systems, resource limits, and open questions\n3. Technical fit: reusable capabilities, missing modules, key risks, and estimated effort\n4. Initial conclusion: feasible, not feasible, or pending confirmation, plus suggested path and next actions\n\nInput (information required every run): the name of the requirement to assess."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -574,8 +574,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: record events in time order and keep conclusions, action items, owners, and expected completion dates.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。\n\n适合配置成每天或每次关键沟通后自动整理项目日志的助手。\n\n重点写清日志结构、更新时间点，以及是否需要标注责任人和截止时间。\n\n输入（每次执行都需要提供给Skill的信息）：具体哪一天。",
-        "en-US": "Capture daily progress, meeting conclusions, and blockers in a traceable project log.\n\nBest used as a Skill that organizes the project log after each day or key communication.\n\nClarify the log structure, update timing, and whether owner and due date should be included.\n\nInput (information required every run): the specific date."
+        "zh-CN": "记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。\n\n适合配置成每天或每次关键沟通后自动整理项目日志的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 日志记录：时间、事件、结论、责任人\n2. 进展更新：已完成动作、当前阻塞、影响范围、计划时间\n3. 待跟进项：下一动作、截止时间、协同对象、提醒事项\n4. 风险备注：新增风险、升级项、需要同步的人\n\n输入（每次执行都需要提供给Skill的信息）：具体哪一天。",
+        "en-US": "Capture daily progress, meeting conclusions, and blockers in a traceable project log.\n\nBest used as a Skill that organizes the project log after each day or key communication.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Log entry: time, event, conclusion, and owner\n2. Progress update: completed actions, current blockers, impact scope, and planned timing\n3. Follow-up items: next action, due date, collaborating team, and reminders\n4. Risk notes: new risks, escalation items, and people to notify\n\nInput (information required every run): the specific date."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -619,8 +619,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: maintain the critical path and external commitment dates first, then sync update time, impact scope, and owner after any plan change.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "制定和更新项目计划，跟踪里程碑、依赖关系和下一步安排。\n\n适合配置成维护项目主计划和里程碑承诺的助手。\n\n建议写清计划颗粒度、里程碑口径、延期判断方式和对外同步节奏。\n\n输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。",
-        "en-US": "Create and update project plans, then track milestones, dependencies, and next actions.\n\nBest used as a Skill that maintains the master plan and milestone commitments.\n\nClarify planning granularity, milestone definitions, delay criteria, and external sync cadence.\n\nInput (information required every run): the planning timeframe and scope."
+        "zh-CN": "制定和更新项目计划，跟踪里程碑、依赖关系和下一步安排。\n\n适合配置成维护项目主计划和里程碑承诺的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 计划总览：阶段、里程碑、当前状态、预计日期\n2. 任务拆解：关键任务、责任人、依赖项、完成标准\n3. 变更与风险：延期原因、影响范围、缓解动作、升级节点\n4. 近期动作：本周重点、下周计划、外部承诺节点\n\n输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。",
+        "en-US": "Create and update project plans, then track milestones, dependencies, and next actions.\n\nBest used as a Skill that maintains the master plan and milestone commitments.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Plan overview: stage, milestone, current status, and target date\n2. Task breakdown: key task, owner, dependency, and completion criteria\n3. Changes and risks: delay reason, impact scope, mitigation action, and escalation checkpoint\n4. Near-term actions: this week's focus, next week's plan, and external commitments\n\nInput (information required every run): the planning timeframe and scope."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -709,8 +709,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: record priority, owner, current status, and expected close date consistently, and move overdue issues into the escalation list automatically.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "汇总问题管理系统中的问题、测试缺陷和跨团队阻塞项，并推动闭环。\n\n适合配置成项目问题台账和闭环跟催的助手。\n\n建议写清问题优先级规则、升级条件、责任人口径和关闭标准。\n\n输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。",
-        "en-US": "Track issues, test defects, and cross-team blockers from the issue management system and drive closure.\n\nBest used as a Skill for maintaining an issue tracker and pushing closure.\n\nClarify priority rules, escalation criteria, owner conventions, and closure standards.\n\nInput (information required every run): the issue or project to track."
+        "zh-CN": "汇总问题管理系统中的问题、测试缺陷和跨团队阻塞项，并推动闭环。\n\n适合配置成项目问题台账和闭环跟催的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 问题概览：编号、优先级、问题描述、影响范围\n2. 处理进展：当前状态、最新动作、阻塞项、更新时间\n3. 问题闭环：当前状态、责任人、预计关闭时间、升级条件\n4. 后续动作：下一步计划、协同团队、需同步对象\n\n输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。",
+        "en-US": "Track issues, test defects, and cross-team blockers from the issue management system and drive closure.\n\nBest used as a Skill for maintaining an issue tracker and pushing closure.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. Issue overview: ID, priority, issue description, and impact scope\n2. Progress update: current status, latest action, blocker, and update time\n3. Closure tracking: current status, owner, target close date, and escalation criteria\n4. Next actions: follow-up plan, collaborating team, and people to notify\n\nInput (information required every run): the issue or project to track."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -754,8 +754,8 @@
         "en-US": "Examples:\nCurrent workflow / SOP / template: follow the company weekly report template and always include progress, risks, milestone status, and next week's plan.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "汇总项目状态、风险和下周动作，形成标准化周报输出。\n\n适合配置成固定节奏产出项目周报的助手。\n\n需要说明周报面向谁、固定结构是什么、哪些异常必须突出展示。\n\n输入（每次执行都需要提供给Skill的信息）：本周进展、风险、里程碑状态和下周计划。",
-        "en-US": "Summarize project status, risks, and next-week actions in a standardized weekly report.\n\nBest used as a Skill that produces weekly reports on a fixed cadence.\n\nClarify the audience, the fixed structure, and which exceptions must be highlighted.\n\nInput (information required every run): this week's progress, risks, milestone status, and next week's plan."
+        "zh-CN": "汇总项目状态、风险和下周动作，形成标准化周报输出。\n\n适合配置成固定节奏产出项目周报的助手。\n\n如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容；未填写时，默认按以下模板整理：\n1. 本周进展：关键交付、完成情况、里程碑状态\n2. 风险与问题：新增风险、阻塞项、影响评估\n3. 下周计划：关键动作、责任人、目标时间\n4. 需要支持：待决策事项、资源需求、升级提醒\n\n输入（每次执行都需要提供给Skill的信息）：本周进展、风险、里程碑状态和下周计划。",
+        "en-US": "Summarize project status, risks, and next-week actions in a standardized weekly report.\n\nBest used as a Skill that produces weekly reports on a fixed cadence.\n\nIf the user provides a company SOP or template link, follow the user-provided content first. Otherwise, use this built-in template:\n1. This week's progress: key deliverables, completion status, and milestone state\n2. Risks and issues: new risks, blockers, and impact assessment\n3. Next-week plan: key action, owner, and target date\n4. Support needed: pending decisions, resource needs, and escalation reminders\n\nInput (information required every run): this week's progress, risks, milestone status, and next week's plan."
       },
       "defaultInfoSources": {
         "zh-CN": "",

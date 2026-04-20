@@ -44,6 +44,7 @@ import type {
   StagedOnboardingPackages,
 } from '../../types'
 import { getOnboardingCopy, onboardingCopy } from './copy'
+import { usesBuiltInTemplateFallback } from './useCaseTemplate'
 
 interface SaveFeedback {
   kind: 'success' | 'error'
@@ -546,7 +547,11 @@ function isUseCaseConfigured(record: OnboardingEditableUseCaseRecord) {
   if (questions.length > 0) {
     const requiredQuestionsConfigured = questions
       .filter((question) => question.required)
-      .every((question) => isConfiguredText(question.answer))
+      .every(
+        (question) =>
+          isConfiguredText(question.answer) ||
+          usesBuiltInTemplateFallback(question.id, question.answer, record.description)
+      )
 
     if (record.description_locked) {
       return requiredQuestionsConfigured

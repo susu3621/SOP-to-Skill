@@ -538,7 +538,9 @@ describe('workbuddy agent apps', () => {
     expect(requirementAssessmentOption?.description_prompt).not.toContain('输出（Skill输出的结果）：')
     expect(requirementAssessment?.description).toContain('梳理售前需求、企业技术积累和约束边界')
     expect(requirementAssessment?.description).toContain('适合配置成帮你做售前需求初评的助手')
-    expect(requirementAssessment?.description).toContain('需要提前说明它会读取哪些公司现有技术积累')
+    expect(requirementAssessment?.description).toContain(
+      '如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容'
+    )
     expect(requirementAssessment?.description).toContain(
       '输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字'
     )
@@ -762,6 +764,45 @@ describe('workbuddy agent apps', () => {
         ],
       })
     )
+  })
+
+  it('adds built-in fallback templates to the retained project-manager use cases', () => {
+    const defaults = createDefaultRoleUseCaseContents('project-manager')
+
+    expect(
+      defaults.find((useCase) => useCase.use_case_id === 'requirement-assessment')?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      defaults.find((useCase) => useCase.use_case_id === 'requirement-assessment')?.description
+    ).toContain('初步结论：可做 / 不可做 / 待确认项')
+
+    expect(defaults.find((useCase) => useCase.use_case_id === 'daily-log')?.description).toContain(
+      '默认按以下模板整理：'
+    )
+    expect(defaults.find((useCase) => useCase.use_case_id === 'daily-log')?.description).toContain(
+      '日志记录：时间、事件、结论、责任人'
+    )
+
+    expect(defaults.find((useCase) => useCase.use_case_id === 'planning')?.description).toContain(
+      '默认按以下模板整理：'
+    )
+    expect(defaults.find((useCase) => useCase.use_case_id === 'planning')?.description).toContain(
+      '计划总览：阶段、里程碑、当前状态、预计日期'
+    )
+
+    expect(
+      defaults.find((useCase) => useCase.use_case_id === 'weekly-report')?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      defaults.find((useCase) => useCase.use_case_id === 'weekly-report')?.description
+    ).toContain('下周计划：关键动作、责任人、目标时间')
+
+    expect(
+      defaults.find((useCase) => useCase.use_case_id === 'issue-tracking')?.description
+    ).toContain('默认按以下模板整理：')
+    expect(
+      defaults.find((useCase) => useCase.use_case_id === 'issue-tracking')?.description
+    ).toContain('问题闭环：当前状态、责任人、预计关闭时间、升级条件')
   })
 
   it('creates custom use cases with editable descriptions and no default questions', () => {
