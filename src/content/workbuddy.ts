@@ -485,6 +485,18 @@ const onboardingBaseSkillGroupDefinitions = [
     skill_ids: ['jira'],
   },
   {
+    id: 'document-generation',
+    name: {
+      'zh-CN': '文档生成',
+      'en-US': 'Document Generation',
+    },
+    description: {
+      'zh-CN': '基于模板和结构化内容生成正式文档，方便 AI 输出 Word 或 PDF 结果。',
+      'en-US': 'Generate formal documents from templates and structured data so AI can produce Word or PDF outputs.',
+    },
+    skill_ids: ['document-template'],
+  },
+  {
     id: 'version-management',
     name: {
       'zh-CN': '版本管理',

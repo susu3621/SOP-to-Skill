@@ -46,7 +46,7 @@ lastUpdated: false
 <article>
 <span>01</span>
 <h3>准备基础环境</h3>
-<p>先把 Jira、Confluence、Linux、Gerrit 这类基础能力接通，确保后续配置可以落地。</p>
+<p>先把 Jira、Confluence、文档模板、Linux、Gerrit 这类基础能力接通，确保后续配置可以落地。</p>
 </article>
 <article>
 <span>02</span>

@@ -231,12 +231,17 @@ describe('skill manifest validation', () => {
     })
   })
 
-  it('ships gerrit, svn, and linux under the expected repository skill categories', () => {
+  it('ships document-template, gerrit, svn, and linux under the expected repository skill categories', () => {
     const { loadSkillManifest } = loadSkillManifestLib()
     const manifest = loadSkillManifest({ repoRoot: process.cwd() })
 
     expect(manifest.skills).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({
+          id: 'document-template',
+          path: 'skills/document-template',
+          category: 'document-generation',
+        }),
         expect.objectContaining({
           id: 'gerrit',
           path: 'skills/gerrit',

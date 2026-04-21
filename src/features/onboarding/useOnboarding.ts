@@ -72,6 +72,8 @@ function unique(values: string[]) {
   return Array.from(new Set(values))
 }
 
+const implicitDefaultBaseSkillIds = ['document-template'] as const
+
 function buildNextQuestionId(records: OnboardingUseCaseQuestionRecord[]) {
   let suffix = records.length + 1
   let candidate = `question-${suffix}`
@@ -137,6 +139,25 @@ function createEmptySvnRepository(
 
 function isBaseSkillId(skillId: string) {
   return onboardingBaseSkills.some((skill) => skill.id === skillId)
+}
+
+function withImplicitDefaultBaseSkills(
+  state: Pick<OnboardingState, 'selected_base_skill_ids' | 'selected_install_skill_ids_initialized'>
+) {
+  const selectedBaseSkillIds = unique(
+    state.selected_base_skill_ids.filter((skillId) =>
+      onboardingBaseSkills.some((skill) => skill.id === skillId)
+    )
+  )
+
+  if (selectedBaseSkillIds.length > 0 || state.selected_install_skill_ids_initialized) {
+    return selectedBaseSkillIds
+  }
+
+  return unique([
+    ...selectedBaseSkillIds,
+    ...implicitDefaultBaseSkillIds.filter((skillId) => isBaseSkillId(skillId)),
+  ])
 }
 
 function isRoleId(roleId: string) {
@@ -650,11 +671,7 @@ function normalizeState(state: OnboardingState, locale: Locale = 'zh-CN'): Onboa
       onboardingSupportedAgents.some((agent) => agent.id === agentId)
     )
   )
-  const selected_base_skill_ids = unique(
-    state.selected_base_skill_ids.filter((skillId) =>
-      onboardingBaseSkills.some((skill) => skill.id === skillId)
-    )
-  )
+  const selected_base_skill_ids = withImplicitDefaultBaseSkills(state)
   const allowedCredentialFieldIds = buildAllowedCredentialFieldIds(selected_base_skill_ids)
   const linux_devices = selected_base_skill_ids.includes('linux')
     ? (state.linux_devices ?? []).map((device, index) => ({

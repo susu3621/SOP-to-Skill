@@ -16,6 +16,14 @@
       "contentHash": "sha256:95383003a84607dd0e155a5e16c075b77db4203302e8b42c4f4ccfa532542e75"
     },
     {
+      "id": "document-template",
+      "path": "skills/document-template",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "category": "document-generation",
+      "contentHash": "sha256:0f684b9f52ef2fdf94a980212458b6a0301d32432ec447c5d5b279ae5ed3ae24"
+    },
+    {
       "id": "gerrit",
       "path": "skills/gerrit",
       "version": "1.0.2",

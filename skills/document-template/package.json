@@ -1,0 +1,10 @@
+{
+  "name": "@skills-for-no-engineer/document-template",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "docxtemplater": "^3.67.3",
+    "lodash": "^4.17.21",
+    "pizzip": "^3.2.0"
+  }
+}

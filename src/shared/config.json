@@ -246,6 +246,17 @@
         }
       }
     },
+    "document-template": {
+      "name": {
+        "zh-CN": "文档模板",
+        "en-US": "Document Template"
+      },
+      "description": {
+        "zh-CN": "基于 Word 模板和结构化 JSON 生成正式文档，并提供模板校验能力。",
+        "en-US": "Generate formal documents from Word templates and structured JSON, with template validation support."
+      },
+      "credentials": {}
+    },
     "gerrit": {
       "name": {
         "zh-CN": "Gerrit",
@@ -2024,7 +2035,8 @@
     "role": "project-manager",
     "baseSkills": [
       "jira",
-      "confluence"
+      "confluence",
+      "document-template"
     ],
     "useCase": "项目周报",
     "infoSources": "Jira 项目看板、Confluence 周报模板、例会纪要目录、邮件归档",

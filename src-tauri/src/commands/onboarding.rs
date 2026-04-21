@@ -2440,12 +2440,22 @@ pub fn load_onboarding_state() -> OnboardingState {
             }
 
             if let Ok(state) = serde_json::from_value(value) {
-                return state;
+                return apply_implicit_default_base_skills(state);
             }
         }
     }
 
-    OnboardingState::default()
+    apply_implicit_default_base_skills(OnboardingState::default())
+}
+
+fn apply_implicit_default_base_skills(mut state: OnboardingState) -> OnboardingState {
+    if state.selected_base_skill_ids.is_empty() && !state.selected_install_skill_ids_initialized {
+        state
+            .selected_base_skill_ids
+            .push("document-template".to_string());
+    }
+
+    state
 }
 
 pub fn save_onboarding_state(state: &OnboardingState) -> Result<(), String> {
@@ -3799,6 +3809,23 @@ mod tests {
             loaded.credential_values.get("jiraUrl"),
             Some(&"https://jira.example.com".to_string())
         );
+    }
+
+    #[test]
+    fn onboarding_state_load_defaults_document_template_for_empty_uninitialized_state() {
+        let _guard = env_lock().lock().unwrap();
+        let data_dir = temp_dir("onboarding-state-empty-defaults");
+        let original_data_dir = std::env::var(DATA_DIR_ENV_VAR).ok();
+
+        std::env::set_var(DATA_DIR_ENV_VAR, &data_dir);
+        let loaded = super::load_onboarding_state();
+        restore_env_var(DATA_DIR_ENV_VAR, original_data_dir);
+
+        assert_eq!(
+            loaded.selected_base_skill_ids,
+            vec!["document-template".to_string()]
+        );
+        assert!(!loaded.selected_install_skill_ids_initialized);
     }
 
     #[test]

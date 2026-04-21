@@ -40,6 +40,7 @@ describe('workbuddy agent apps', () => {
     expect(Object.keys(sharedConfig.baseSkills)).toEqual([
       'confluence',
       'jira',
+      'document-template',
       'gerrit',
       'svn',
       'linux',
@@ -48,6 +49,7 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual([
       'confluence',
       'jira',
+      'document-template',
       'gerrit',
       'svn',
       'linux',
@@ -56,6 +58,7 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyBaseSkills.map((skill) => skill.label['zh-CN'])).toEqual([
       'Confluence',
       'Jira',
+      '文档模板',
       'Gerrit',
       'SVN',
       'Linux',
@@ -67,6 +70,7 @@ describe('workbuddy agent apps', () => {
     expect(onboardingBaseSkillGroups.map((group) => group.name)).toEqual([
       'Wiki 系统',
       '问题管理系统',
+      '文档生成',
       '版本管理',
       '主机与运维',
       '通信系统',
@@ -74,6 +78,7 @@ describe('workbuddy agent apps', () => {
     expect(onboardingBaseSkillGroups.map((group) => group.skills.map((skill) => skill.id))).toEqual([
       ['confluence'],
       ['jira'],
+      ['document-template'],
       ['gerrit', 'svn'],
       ['linux'],
       ['mail'],
@@ -99,6 +104,9 @@ describe('workbuddy agent apps', () => {
     expect(
       onboardingBaseSkillGroups.find((group) => group.id === 'version-management')?.description
     ).toBe('同步版本库、提交历史和版本变更，方便 AI 读取和写入研发协作信息。')
+    expect(
+      onboardingBaseSkillGroups.find((group) => group.id === 'document-generation')?.description
+    ).toBe('基于模板和结构化内容生成正式文档，方便 AI 输出 Word 或 PDF 结果。')
   })
 
   it('exposes flat credential fields for existing tools while Linux stays as a structured device editor', () => {

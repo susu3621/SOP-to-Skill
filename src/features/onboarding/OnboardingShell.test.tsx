@@ -681,7 +681,7 @@ describe('OnboardingShell', () => {
     expect(await screen.findByRole('heading', { name: '先选要安装到的 AI 工具' })).toBeInTheDocument()
   })
 
-  it('shows no selected role while leaving all onboarding sections incomplete for a fresh state', async () => {
+  it('shows no selected role while defaulting the document template base skill for a fresh state', async () => {
     mockControls.stateOverride = {
       selected_agent_ids: [],
       selected_role_id: '',
@@ -707,15 +707,15 @@ describe('OnboardingShell', () => {
     const useCaseCard = screen.getByRole('button', { name: '配置要交给 AI 的工作' })
     const installCard = screen.getByRole('button', { name: '安装到 AI 工具' })
 
-    expect(within(basicCard).queryByText('已设置')).not.toBeInTheDocument()
+    expect(within(basicCard).queryByText('已设置')).toBeInTheDocument()
     expect(within(useCaseCard).queryByText('已设置')).not.toBeInTheDocument()
     expect(within(installCard).queryByText('已设置')).not.toBeInTheDocument()
 
     const summary = screen.getByRole('region', { name: '已设置内容' })
-    expect(within(summary).getAllByText('未设置')).toHaveLength(5)
+    expect(within(summary).getAllByText('未设置')).toHaveLength(4)
     expect(within(summary).queryByText('项目经理')).not.toBeInTheDocument()
     expect(within(summary).queryByText('记录日志')).not.toBeInTheDocument()
-    expect(within(summary).queryByText('Jira')).not.toBeInTheDocument()
+    expect(within(summary).getByText('文档模板')).toBeInTheDocument()
     expect(within(summary).queryByText('Codex')).not.toBeInTheDocument()
   })
 
@@ -1910,6 +1910,31 @@ describe('OnboardingShell', () => {
     expect(await screen.findByText('✅ 成功')).toBeInTheDocument()
     expect(await screen.findByText('❌ 失败')).toBeInTheDocument()
     expect(screen.getByText('HTTP 401: invalid token')).toBeInTheDocument()
+  })
+
+  it('defaults document-template into an empty uninitialized onboarding state', async () => {
+    mockControls.stateOverride = {
+      selected_agent_ids: [],
+      selected_role_id: '',
+      selected_base_skill_ids: [],
+      role_use_case_contents: [],
+      selected_install_skill_ids: [],
+      selected_install_skill_ids_initialized: false,
+      selected_install_candidate_skill_ids: [],
+      credential_values: {},
+      linux_devices: [],
+      svn_repositories: [],
+    }
+
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    expect(screen.getByRole('checkbox', { name: '文档模板' })).toBeChecked()
   })
 
   it('loads a hidden legacy role state without exposing hidden role options in the work module', async () => {

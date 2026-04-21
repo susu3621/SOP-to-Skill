@@ -27,6 +27,16 @@ describe('base skill documentation contract', () => {
       expectedSnippets: ['python3', 'scripts/requirements.txt', 'JIRA_URL'],
     },
     {
+      id: 'document-template',
+      expectedSnippets: [
+        'node',
+        'docxtemplater',
+        'libreoffice',
+        'render_doc_template.js',
+        'validate_doc_template.js',
+      ],
+    },
+    {
       id: 'gerrit',
       expectedSnippets: ['git', 'ssh', 'python3', 'GERRIT_AUTH_MODE'],
     },
