@@ -10,6 +10,7 @@ node_modules/
 dist/
 artifacts/
 artifacts/desktop/
+design/
 docs/.vitepress/dist/
 docs/superpowers/
 src-tauri/target/
