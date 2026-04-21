@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 
 import {
   createTempWorkspace,
+  getBundledExamplePath,
+  getBundledTemplatePath,
   runSkillScript,
   writeFixtureTemplate,
   writeJsonFixture,
@@ -93,4 +95,18 @@ test('validate_doc_template reports a pdf dependency error when pdf output is re
   const parsed = JSON.parse(result.stdout)
   assert.equal(parsed.success, false)
   assert.match(parsed.errors.join('\n'), /libreoffice|soffice/i)
+})
+
+test('validate_doc_template succeeds with the bundled 8d template and shipped sample data', () => {
+  const result = runSkillScript('validate_doc_template.js', [
+    '--template',
+    getBundledTemplatePath(),
+    '--data',
+    getBundledExamplePath(),
+  ])
+
+  assert.equal(result.status, 0)
+  const parsed = JSON.parse(result.stdout)
+  assert.equal(parsed.success, true)
+  assert.deepEqual(parsed.missingTags, [])
 })

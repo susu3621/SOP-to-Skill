@@ -34,6 +34,13 @@ describe('base skill documentation contract', () => {
         'libreoffice',
         'render_doc_template.js',
         'validate_doc_template.js',
+        'brew install --cask libreoffice',
+        'winget install --id TheDocumentFoundation.LibreOffice -e',
+      ],
+      rejectedSnippets: [
+        'Download the macOS DMG',
+        'Drag `LibreOffice.app` into the `Applications` folder',
+        'Double-click the installer',
       ],
     },
     {
@@ -56,7 +63,7 @@ describe('base skill documentation contract', () => {
 
   it.each(baseSkills)(
     'documents environment checks and confirm-before-install flow for $id',
-    ({ id, expectedSnippets }) => {
+    ({ id, expectedSnippets, rejectedSnippets = [] }) => {
       const content = readSkillDoc(id)
 
       for (const snippet of commonGuidance) {
@@ -65,6 +72,10 @@ describe('base skill documentation contract', () => {
 
       for (const snippet of expectedSnippets) {
         expect(content).toContain(snippet)
+      }
+
+      for (const snippet of rejectedSnippets) {
+        expect(content).not.toContain(snippet)
       }
     },
   )

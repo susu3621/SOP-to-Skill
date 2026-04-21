@@ -36,6 +36,54 @@ fn get_onboarding_staging_dir_with_data_root(data_root: Option<&PathBuf>) -> Pat
         .join("generated-skills")
 }
 
+fn build_eight_d_document_template_guidance(input: &StageOnboardingPackageInput) -> Option<String> {
+    if input.use_case.use_case_id != "eight-d-report-preparation"
+        || !input
+            .selected_base_skill_ids
+            .iter()
+            .any(|skill_id| skill_id == "document-template")
+    {
+        return None;
+    }
+
+    Some(
+        r#"## 默认模板出具流程
+
+- 默认情况下，调用 `document-template` 基础技能来生成正式 8D 报告。
+- 如果用户没有提供外部模板链接，默认使用 `document-template` 技能内置模板 `templates/8d-report.docx`。
+- 先整理成结构化 JSON，再进行模板校验和文档渲染。
+- 建议 JSON 至少包含以下结构：
+
+```json
+{
+  "report_object": { "customer_mark": "☑", "supplier_mark": "☐", "internal_mark": "☐" },
+  "severity": { "critical_mark": "☑", "major_mark": "☐", "minor_mark": "☐" },
+  "report_no": "MC20260421001",
+  "report_date": "2026-04-21",
+  "subject": { "customer_mark": "☑", "supplier_mark": "☐", "name": "客户或供应商名称" },
+  "related_report": "涉及报告或文件",
+  "d1_leader": "小组负责人",
+  "d1_members": "小组成员",
+  "d2": { "problem_1": "", "problem_2": "", "problem_3": "", "problem_4": "", "problem_image": "" },
+  "d3": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d4": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d5": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d6": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d7": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d8_summary": "批量验证 / 团队激励结论",
+  "team_leader": "小组负责人",
+  "management_representative": "管理者代表"
+}
+```
+
+- 先用 `validate_doc_template.js` 校验模板和 JSON 的匹配结果，再用 `render_doc_template.js` 输出 `docx`；如果用户要求，再进一步输出 `pdf`。
+- 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。
+
+"#
+        .to_string(),
+    )
+}
+
 fn build_skill_markdown(
     input: &StageOnboardingPackageInput,
     skill_id: &str,
@@ -77,6 +125,10 @@ fn build_skill_markdown(
         }
 
         body.push('\n');
+    }
+
+    if let Some(guidance) = build_eight_d_document_template_guidance(input) {
+        body.push_str(&guidance);
     }
 
     if include_test_guidance {
@@ -277,5 +329,50 @@ mod tests {
         assert!(production_markdown.contains("https://wiki.company.com/pmo/weekly-report-template"));
         assert!(!production_markdown.contains("- **信息来源**:"));
         assert!(!production_markdown.contains("- **规则**:"));
+    }
+
+    #[test]
+    fn onboarding_renders_document_template_guidance_for_eight_d_report() {
+        let data_dir = temp_data_dir("onboarding-eight-d");
+
+        let result = stage_generated_use_case_skill_packages_with_data_root(
+            &StageOnboardingPackageInput {
+                role_id: "qa-manager".to_string(),
+                role_name: "质量经理".to_string(),
+                selected_agent_ids: vec!["codex".to_string()],
+                selected_base_skill_ids: vec![
+                    "document-template".to_string(),
+                    "jira".to_string(),
+                ],
+                use_case: crate::models::OnboardingRoleUseCaseContent {
+                    role_id: "qa-manager".to_string(),
+                    use_case_id: "eight-d-report-preparation".to_string(),
+                    use_case_name: "8D报告出具".to_string(),
+                    description: "基于质量异常或客诉记录，生成 8D 报告。".to_string(),
+                    description_locked: true,
+                    info_sources: "".to_string(),
+                    rules: "".to_string(),
+                    questions: vec![OnboardingUseCaseQuestion {
+                        id: "eight-d-template-source".to_string(),
+                        label: "如果要覆盖内置模板，从哪里获取用户指定的 8D 模板？".to_string(),
+                        placeholder: "".to_string(),
+                        required: false,
+                        answer: "".to_string(),
+                        locked: true,
+                    }],
+                },
+                use_case_directory: "eight-d-report-preparation".to_string(),
+            },
+            Some(&data_dir),
+        )
+        .expect("stage packages");
+
+        let production_markdown = fs::read_to_string(result.production.source_dir.join("SKILL.md"))
+            .expect("production skill md");
+
+        assert!(production_markdown.contains("document-template"));
+        assert!(production_markdown.contains("先整理成结构化 JSON"));
+        assert!(production_markdown.contains("render_doc_template.js"));
+        assert!(production_markdown.contains("8d-report.docx"));
     }
 }

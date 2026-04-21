@@ -321,8 +321,10 @@ describe('workbuddy agent apps', () => {
     expect(isoPackageDefault?.description).toContain('默认按以下模板整理')
     expect(isoPackageDefault?.description).toContain('缺口与待补项')
     expect(eightDReportDefault?.description).toContain('如果用户填写了模板链接，则优先采用用户模板')
-    expect(eightDReportDefault?.description).toContain('D4 根本原因分析')
-    expect(eightDReportDefault?.description).toContain('D8 团队结项与经验沉淀')
+    expect(eightDReportDefault?.description).toContain('默认使用 document-template 基础技能中的 8D Word 模板')
+    expect(eightDReportDefault?.description).toContain('报告对象：客户 / 供应商 / 公司内部')
+    expect(eightDReportDefault?.description).toContain('D4 根本原因分析：原因描述、责任人、完成日期、结果确认')
+    expect(eightDReportDefault?.description).toContain('D8 批量验证 / 团队激励：结项结论、奖励建议、小组负责人、管理者代表')
   })
 
   it('adds built-in fallback templates to the remaining qa-manager quality use cases', () => {

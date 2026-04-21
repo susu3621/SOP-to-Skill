@@ -18,6 +18,46 @@ function resolveExplicitSkillVariant(options) {
   return explicitVariant;
 }
 
+function buildEightDDocumentTemplateGuidance(cfg, useCaseDir) {
+  if (useCaseDir !== 'eight-d-report-preparation' || !cfg.baseSkills.includes('document-template')) {
+    return '';
+  }
+
+  return `## 默认模板出具流程
+
+- 默认情况下，调用 \`document-template\` 基础技能来生成正式 8D 报告。
+- 如果用户没有提供外部模板链接，默认使用 \`document-template\` 技能内置模板 \`templates/8d-report.docx\`。
+- 先整理成结构化 JSON，再进行模板校验和文档渲染。
+- 建议 JSON 至少包含以下结构：
+
+\`\`\`json
+{
+  "report_object": { "customer_mark": "☑", "supplier_mark": "☐", "internal_mark": "☐" },
+  "severity": { "critical_mark": "☑", "major_mark": "☐", "minor_mark": "☐" },
+  "report_no": "MC20260421001",
+  "report_date": "2026-04-21",
+  "subject": { "customer_mark": "☑", "supplier_mark": "☐", "name": "客户或供应商名称" },
+  "related_report": "涉及报告或文件",
+  "d1_leader": "小组负责人",
+  "d1_members": "小组成员",
+  "d2": { "problem_1": "", "problem_2": "", "problem_3": "", "problem_4": "", "problem_image": "" },
+  "d3": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d4": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d5": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d6": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d7": { "row1": { "description": "", "owner": "", "due_date": "", "result": "" } },
+  "d8_summary": "批量验证 / 团队激励结论",
+  "team_leader": "小组负责人",
+  "management_representative": "管理者代表"
+}
+\`\`\`
+
+- 先用 \`validate_doc_template.js\` 校验模板和 JSON 的匹配结果，再用 \`render_doc_template.js\` 输出 \`docx\`；如果用户要求，再进一步输出 \`pdf\`。
+- 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。
+
+`;
+}
+
 function getSkillOutputDetails(cfg, sharedConfig, options) {
   const explicitVariant = resolveExplicitSkillVariant(options);
   const variant = explicitVariant || 'production';
@@ -40,6 +80,7 @@ function getSkillOutputDetails(cfg, sharedConfig, options) {
   const skillId = variant === 'test' ? generatedSkillIds.testSkillId : generatedSkillIds.productionSkillId;
   const skillOutputDir = path.join(cfg.outputDir, skillId);
   const includeLocalOnlyGuidance = explicitVariant ? variant === 'test' : Boolean(cfg.localOnly);
+  const documentTemplateGuidance = buildEightDDocumentTemplateGuidance(cfg, useCaseDir);
 
   if (explicitVariant && cfg.localOnly !== undefined && cfg.localOnly !== includeLocalOnlyGuidance) {
     throw new Error(
@@ -88,7 +129,7 @@ ${cfg.infoSources}
 
 ${cfg.reportRules || '未设置'}
 
-${includeLocalOnlyGuidance ? `## 测试环境说明
+${documentTemplateGuidance}${includeLocalOnlyGuidance ? `## 测试环境说明
 
 - 将产生的结果存储到 \`/tmp/skills-for-no-engineer\`
 - 不要实际进行发送

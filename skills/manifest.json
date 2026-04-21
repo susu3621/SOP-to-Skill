@@ -21,7 +21,7 @@
       "version": "1.0.0",
       "targets": ["claude-code", "codex", "workbuddy"],
       "category": "document-generation",
-      "contentHash": "sha256:0f684b9f52ef2fdf94a980212458b6a0301d32432ec447c5d5b279ae5ed3ae24"
+      "contentHash": "sha256:14784c543da54405a32b2902d1b15f4a28ea3970ab6ad35ee2c520029a76f731"
     },
     {
       "id": "gerrit",

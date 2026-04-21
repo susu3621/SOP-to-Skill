@@ -360,6 +360,52 @@ describe('onboarding manager helpers', () => {
     }
   })
 
+  it('stages 8d report skills with explicit document-template rendering guidance by default', () => {
+    const { stageGeneratedUseCaseSkillPackages } = loadManager()
+    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'generated-skill-stage-8d-'))
+
+    try {
+      const staged = stageGeneratedUseCaseSkillPackages(
+        {
+          outputDir: tempDir,
+          role: { id: 'qa-manager', name: '质量经理' },
+          selectedBaseSkills: [
+            { id: 'document-template', name: '文档模板' },
+            { id: 'jira', name: 'Jira' },
+          ],
+          selectedAgents: [{ id: 'codex', type: 'codex' }],
+          useCase: {
+            description: '基于质量异常或客诉记录，生成 8D 报告。',
+            infoSources: '客诉单、检验记录、5Why 分析',
+            name: '8D报告出具',
+            rules: '',
+          },
+        },
+        {
+          agentApps: {
+            codex: { name: 'Codex' },
+          },
+          baseSkills: {
+            'document-template': { name: '文档模板' },
+            jira: { name: 'Jira' },
+          },
+          useCases: {
+            '8D报告出具': { directory: 'eight-d-report-preparation' },
+          },
+        }
+      )
+
+      const productionSkillMd = fs.readFileSync(path.join(staged.production.sourceDir, 'SKILL.md'), 'utf8')
+
+      expect(productionSkillMd).toContain('document-template')
+      expect(productionSkillMd).toContain('先整理成结构化 JSON')
+      expect(productionSkillMd).toContain('render_doc_template.js')
+      expect(productionSkillMd).toContain('8d-report.docx')
+    } finally {
+      fs.rmSync(tempDir, { force: true, recursive: true })
+    }
+  })
+
   it('builds a shared sync plan for all selected agents and preserves unmanaged skills', () => {
     const { buildSelectedAgentInstallSyncPlans } = loadManager()
 

@@ -1187,8 +1187,8 @@
           "en-US": "Best used as a Skill that helps a QA manager organize cross-functional analysis, corrective actions, and recurrence prevention."
         },
         {
-          "zh-CN": "默认内置一份 8D 报告模板；如果用户填写了模板链接，则优先采用用户模板。",
-          "en-US": "A built-in 8D report template is included by default; if the user provides a template link, follow the user template first."
+          "zh-CN": "默认使用 document-template 基础技能中的 8D Word 模板；如果用户填写了模板链接，则优先采用用户模板。",
+          "en-US": "By default, use the 8D Word template from the document-template base skill; if the user provides a template link, follow the user template first."
         }
       ],
       "descriptionPrompt": {
@@ -1200,12 +1200,12 @@
         "en-US": "Examples: issue tickets, complaint records, inspection data, containment records, 5 Whys or fishbone analysis, and validation results."
       },
       "rulesPrompt": {
-        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，按内置 8D 结构输出 D1-D8；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
-        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, produce D1-D8 using the built-in 8D structure; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，则先整理结构化 JSON，再调用 document-template 的 8D Word 模板生成 docx / pdf；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, first prepare structured JSON, then use the document-template 8D Word template to generate docx or pdf; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "基于质量异常或客诉记录，生成一份结构完整、可继续补充证据的 8D 报告草稿。\n\n适合配置成质量经理快速组织跨部门问题分析、纠正措施和防再发行动的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\nD1 团队与职责\nD2 问题描述与影响范围\nD3 临时遏制措施\nD4 根本原因分析\nD5 永久纠正措施\nD6 实施验证与效果确认\nD7 防再发措施\nD8 团队结项与经验沉淀\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的质量异常、客诉或批次信息。",
-        "en-US": "Use quality issues or complaint records to prepare a complete 8D report draft that can be extended with evidence.\n\nBest used as a Skill that helps a QA manager organize cross-functional analysis, corrective actions, and recurrence prevention.\n\nIf the user provides a template link, follow the user template first. Otherwise, use this built-in structure:\nD1 Team and responsibilities\nD2 Problem statement and impact scope\nD3 Interim containment actions\nD4 Root cause analysis\nD5 Permanent corrective actions\nD6 Implementation verification and effectiveness confirmation\nD7 Recurrence prevention\nD8 Team closure and knowledge capture\n\nInput (information required every run): the quality issue, complaint, or batch information that needs this 8D report."
+        "zh-CN": "基于质量异常或客诉记录，生成一份结构完整、可继续补充证据的 8D 报告草稿。\n\n适合配置成质量经理快速组织跨部门问题分析、纠正措施和防再发行动的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n默认使用 document-template 基础技能中的 8D Word 模板，可输出 Word，也可进一步转成 PDF\n报告对象：客户 / 供应商 / 公司内部\n品质严重性：非常严重 / 严重 / 轻微\n报告编号、报告日期、客户 / 供应商名称、涉及报告或文件\nD1 成立改善小组：小组负责人、小组成员\nD2 问题描述：问题描述 1-4、问题图片\nD3 临时措施：措施要点、责任人、完成日期、结果确认\nD4 根本原因分析：原因描述、责任人、完成日期、结果确认\nD5 永久性纠正措施：措施描述、责任人、完成日期、结果确认\nD6 纠正措施验证：验证情况、责任人、完成日期、结果确认\nD7 预防措施：措施描述、责任人、完成日期、结果确认\nD8 批量验证 / 团队激励：结项结论、奖励建议、小组负责人、管理者代表\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的质量异常、客诉或批次信息。",
+        "en-US": "Use quality issues or complaint records to prepare a complete 8D report draft that can be extended with evidence.\n\nBest used as a Skill that helps a QA manager organize cross-functional analysis, corrective actions, and recurrence prevention.\n\nIf the user provides a template link, follow the user template first. Otherwise, use this built-in structure:\nUse the 8D Word template from the document-template base skill by default, with Word output first and optional PDF conversion\nReport object: customer, supplier, or internal\nSeverity: very serious, serious, or minor\nReport number, report date, customer or supplier name, and related report or file\nD1 Improvement team: team leader and team members\nD2 Problem description: problem lines 1-4 and problem image\nD3 Interim actions: action description, owner, due date, and result confirmation\nD4 Root cause analysis: cause description, owner, due date, and result confirmation\nD5 Permanent corrective actions: action description, owner, due date, and result confirmation\nD6 Corrective-action verification: verification details, owner, due date, and result confirmation\nD7 Preventive actions: action description, owner, due date, and result confirmation\nD8 Batch validation and team recognition: closure summary, reward suggestion, team leader, and management representative\n\nInput (information required every run): the quality issue, complaint, or batch information that needs this 8D report."
       },
       "defaultInfoSources": {
         "zh-CN": "",

@@ -34,6 +34,23 @@ node skills/document-template/scripts/render_doc_template.js \
   --output /tmp/8d-report.docx
 ```
 
+## Installing LibreOffice For PDF Output
+
+PDF export depends on `libreoffice` or `soffice`.
+
+macOS:
+
+```bash
+brew install --cask libreoffice
+```
+
+Windows:
+
+```powershell
+winget search LibreOffice
+winget install --id TheDocumentFoundation.LibreOffice -e
+```
+
 ## Repository Layout
 
 ```text

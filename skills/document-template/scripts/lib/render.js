@@ -10,6 +10,46 @@ const require = createRequire(import.meta.url)
 const Docxtemplater = require('docxtemplater')
 const PizZip = require('pizzip')
 
+function resolveTagValue(source, tag) {
+  if (tag === '.') {
+    return source
+  }
+
+  return tag.split('.').reduce((current, segment) => {
+    if (current == null || typeof current !== 'object') {
+      return undefined
+    }
+
+    return current[segment]
+  }, source)
+}
+
+function buildDotPathParser() {
+  return (tag) => {
+    const normalizedTag = tag.trim()
+
+    return {
+      get(scope, context) {
+        const directValue = resolveTagValue(scope, normalizedTag)
+
+        if (directValue !== undefined) {
+          return directValue
+        }
+
+        const scopes = Array.isArray(context?.scopeList) ? context.scopeList : []
+        for (let index = scopes.length - 1; index >= 0; index -= 1) {
+          const scopedValue = resolveTagValue(scopes[index], normalizedTag)
+          if (scopedValue !== undefined) {
+            return scopedValue
+          }
+        }
+
+        return undefined
+      },
+    }
+  }
+}
+
 function parseCliArgs(args) {
   const options = {
     format: 'docx',
@@ -102,6 +142,7 @@ export async function renderDocxTemplate(templatePath, data, outputPath) {
   const document = new Docxtemplater(zip, {
     linebreaks: true,
     paragraphLoop: true,
+    parser: buildDotPathParser(),
   })
 
   document.render(data)

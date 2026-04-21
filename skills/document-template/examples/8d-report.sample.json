@@ -1,17 +1,162 @@
 {
-  "report_no": "8D-2026-001",
-  "customer": "示例客户",
-  "team": [
-    {
-      "name": "张三",
-      "role": "质量"
+  "report_object": {
+    "customer_mark": "☑",
+    "supplier_mark": "☐",
+    "internal_mark": "☐"
+  },
+  "severity": {
+    "critical_mark": "☑",
+    "major_mark": "☐",
+    "minor_mark": "☐"
+  },
+  "report_no": "MC2016051201",
+  "report_date": "2026-04-21",
+  "subject": {
+    "customer_mark": "☑",
+    "supplier_mark": "☐",
+    "name": "深圳市 XXX 科技有限公司"
+  },
+  "related_report": "进料检验报告",
+  "d1_leader": "陈XX / 品质部 / 副总",
+  "d1_members": "1. 李XX / 品质部 / CQE；2. 赵XX / 品质部 / DQE；3. 陈XX / 工程部 / 工程师；4. 蒋XX / 生产部 / 技术员",
+  "d2": {
+    "problem_1": "客户端反馈来料端子氧化，影响焊接可靠性。",
+    "problem_2": "异常批次集中在 2026-04-15 到货物料。",
+    "problem_3": "产线已发现 18 pcs 不良，客户侧退回 1 批。",
+    "problem_4": "需要同步确认库存、在制和已出货影响范围。",
+    "problem_image": "附：端子氧化照片、来料检验对比图。"
+  },
+  "d3": {
+    "row1": {
+      "description": "冻结涉事批次库存并暂停上线。",
+      "owner": "赵XX",
+      "due_date": "2026-04-21",
+      "result": "OK"
     },
-    {
-      "name": "李四",
-      "role": "工艺"
+    "row2": {
+      "description": "对客户在途批次发出停用通知。",
+      "owner": "赵XX",
+      "due_date": "2026-04-21",
+      "result": "OK"
+    },
+    "row3": {
+      "description": "补做来料全检并建立隔离区标识。",
+      "owner": "陈XX",
+      "due_date": "2026-04-22",
+      "result": "OK"
+    },
+    "row4": {
+      "description": "汇总库存、在制和已出货影响数量。",
+      "owner": "李XX",
+      "due_date": "2026-04-22",
+      "result": "OK"
     }
-  ],
-  "d1_team": "已成立跨部门 8D 小组。",
-  "d2_problem": "客户端反馈批次异常，需要启动 8D 报告。",
-  "d3_containment": "已隔离库存并暂停出货。"
+  },
+  "d4": {
+    "row1": {
+      "description": "供应商端子清洗后防护包装失效，运输途中再次暴露。",
+      "owner": "蒋XX",
+      "due_date": "2026-04-23",
+      "result": "OK"
+    },
+    "row2": {
+      "description": "来料检验标准未覆盖端子表面氧化对比样本。",
+      "owner": "李XX",
+      "due_date": "2026-04-23",
+      "result": "OK"
+    },
+    "row3": {
+      "description": "仓储湿度记录未触发批次风险预警。",
+      "owner": "陈XX",
+      "due_date": "2026-04-24",
+      "result": "OK"
+    },
+    "row4": {
+      "description": "客户端焊接窗口较窄，放大了材料表面异常影响。",
+      "owner": "赵XX",
+      "due_date": "2026-04-24",
+      "result": "OK"
+    }
+  },
+  "d5": {
+    "row1": {
+      "description": "供应商更换防氧化包装并增加出货前抽检。",
+      "owner": "蒋XX",
+      "due_date": "2026-04-26",
+      "result": "OK"
+    },
+    "row2": {
+      "description": "更新来料检验标准，加入端子表面判定图谱。",
+      "owner": "李XX",
+      "due_date": "2026-04-26",
+      "result": "OK"
+    },
+    "row3": {
+      "description": "客户端风险批次全部换货并重新验证焊接参数。",
+      "owner": "赵XX",
+      "due_date": "2026-04-27",
+      "result": "OK"
+    },
+    "row4": {
+      "description": "仓储湿度超限自动预警并升级到质量负责人。",
+      "owner": "陈XX",
+      "due_date": "2026-04-27",
+      "result": "OK"
+    }
+  },
+  "d6": {
+    "row1": {
+      "description": "新包装物料试产 2 批，端子表面无异常。",
+      "owner": "赵XX",
+      "due_date": "2026-04-29",
+      "result": "OK"
+    },
+    "row2": {
+      "description": "按新检验标准复核 100 pcs，判定一致。",
+      "owner": "赵XX",
+      "due_date": "2026-04-29",
+      "result": "OK"
+    },
+    "row3": {
+      "description": "客户端焊接验证通过，功能与拉力满足要求。",
+      "owner": "陈XX",
+      "due_date": "2026-04-30",
+      "result": "OK"
+    },
+    "row4": {
+      "description": "仓储湿度预警演练完成，流程有效。",
+      "owner": "李XX",
+      "due_date": "2026-04-30",
+      "result": "OK"
+    }
+  },
+  "d7": {
+    "row1": {
+      "description": "将端子氧化风险纳入供应商月度审核项。",
+      "owner": "陈XX",
+      "due_date": "2026-05-05",
+      "result": "OK"
+    },
+    "row2": {
+      "description": "在来料 IQC 培训中加入异常对比案例。",
+      "owner": "陈XX",
+      "due_date": "2026-05-05",
+      "result": "OK"
+    },
+    "row3": {
+      "description": "客户端关键工序建立批次追溯清单。",
+      "owner": "赵XX",
+      "due_date": "2026-05-06",
+      "result": "OK"
+    },
+    "row4": {
+      "description": "定期复盘相似物料历史异常，更新预警模型。",
+      "owner": "李XX",
+      "due_date": "2026-05-06",
+      "result": "OK"
+    }
+  },
+  "d8_summary": "此项目原因分析准确，制定的永久性纠正措施验证可行有效。承认小组的集体努力，对本次跨部门协同进行总结，并建议在月度质量会议上予以表彰。",
+  "team_leader": "陈XX",
+  "management_representative": "管理者代表 / 李总"
 }

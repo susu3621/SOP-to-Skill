@@ -28,11 +28,32 @@ npm --version
 libreoffice --version
 ```
 
+## LibreOffice Installation
+
+Use the OS-appropriate method below when PDF output is required and `libreoffice` or `soffice` is missing.
+
+### macOS
+
+```bash
+brew install --cask libreoffice
+```
+
+If `brew` is unavailable, stop and report that Homebrew is missing instead of switching to a GUI installer.
+
+### Windows
+
+```powershell
+winget search LibreOffice
+winget install --id TheDocumentFoundation.LibreOffice -e
+```
+
+If `winget` is unavailable, stop and report that Windows Package Manager is missing instead of switching to a GUI installer.
+
 ## Missing Environment Handling
 
 1. If `node`, `npm`, `libreoffice`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
 2. If a required tool is missing, ask the user for confirmation before installing anything.
-3. After the user confirms, install the missing dependency automatically with the machine's package manager or `npm install --prefix {{skill_dir}}`.
+3. After the user confirms, install the missing dependency automatically with the machine's package manager, the command-line LibreOffice method above, or `npm install --prefix {{skill_dir}}`.
 4. Re-run the environment checks and the validation script before rendering a final document.
 
 ## Core Workflows
