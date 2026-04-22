@@ -28,12 +28,20 @@ export function buildOutputPath(workspaceDir, filename) {
   return path.join(workspaceDir, filename)
 }
 
-export function getBundledTemplatePath(filename = '8d-report.docx') {
-  return path.resolve(process.cwd(), 'skills/document-template/templates', filename)
+export function getBusinessOwnedTemplatePath(filename = '8d-report.docx') {
+  return path.resolve(
+    process.cwd(),
+    'skills/use-cases/eight-d-report-preparation/templates',
+    filename
+  )
 }
 
-export function getBundledExamplePath(filename = '8d-report.sample.json') {
-  return path.resolve(process.cwd(), 'skills/document-template/examples', filename)
+export function getBusinessOwnedExamplePath(filename = '8d-report.sample.json') {
+  return path.resolve(
+    process.cwd(),
+    'skills/use-cases/eight-d-report-preparation/examples',
+    filename
+  )
 }
 
 export function readDocxText(docxPath) {

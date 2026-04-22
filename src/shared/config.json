@@ -1181,14 +1181,20 @@
         "zh-CN": "基于质量异常或客诉记录，生成一份结构完整、可继续补充证据的 8D 报告草稿。",
         "en-US": "Use quality issues or complaint records to prepare a complete 8D report draft that can be extended with evidence."
       },
+      "templateAssets": {
+        "repoDir": "skills/use-cases/eight-d-report-preparation",
+        "defaultTemplatePath": "templates/8d-report.docx",
+        "exampleDataPath": "examples/8d-report.sample.json",
+        "rendererBaseSkillId": "document-template"
+      },
       "guidance": [
         {
           "zh-CN": "适合配置成质量经理快速组织跨部门问题分析、纠正措施和防再发行动的助手。",
           "en-US": "Best used as a Skill that helps a QA manager organize cross-functional analysis, corrective actions, and recurrence prevention."
         },
         {
-          "zh-CN": "默认使用当前 8D 报告 Skill 自带的 Word 模板，并调用 document-template 基础技能生成正式文档；如果用户填写了模板链接，则优先采用用户模板；如果当前 8D 报告 Skill 里还没有模板，则先构建模板。",
-          "en-US": "By default, use the Word template that ships with the current 8D report skill and render it through the document-template base skill; if the user provides a template link, follow the user template first; if the current 8D report skill does not have a template yet, build one first."
+          "zh-CN": "默认使用当前 8D 报告 Skill 自带的 Word 模板，并调用 document-template 基础技能生成正式文档；业务模板资产统一维护在 `skills/use-cases/eight-d-report-preparation/`；如果用户填写了模板链接，则优先采用用户模板；如果当前 8D 报告 Skill 里还没有模板，则先构建模板。",
+          "en-US": "By default, use the Word template that ships with the current 8D report skill and render it through the document-template base skill; business-owned template assets are managed in `skills/use-cases/eight-d-report-preparation/`; if the user provides a template link, follow the user template first; if the current 8D report skill does not have a template yet, build one first."
         }
       ],
       "descriptionPrompt": {
@@ -1200,8 +1206,8 @@
         "en-US": "Examples: issue tickets, complaint records, inspection data, containment records, 5 Whys or fishbone analysis, and validation results."
       },
       "rulesPrompt": {
-        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，则优先使用当前 8D 报告 Skill 中的 `templates/8d-report.docx`，并调用 document-template 完成模板校验与 docx / pdf 生成；如果当前 Skill 里还没有模板，则先构建模板；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
-        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, first use `templates/8d-report.docx` from the current 8D report skill, then call document-template for template validation and docx or pdf generation; if the current skill does not have a template yet, build one first; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，则优先使用当前 8D 报告 Skill 中的 `templates/8d-report.docx`，该模板资产在仓库目录 `skills/use-cases/eight-d-report-preparation/` 中维护；再调用 document-template 完成模板校验与 docx / pdf 生成；如果当前 Skill 里还没有模板，则先构建模板；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, first use `templates/8d-report.docx` from the current 8D report skill; that business-owned template asset is maintained in `skills/use-cases/eight-d-report-preparation/`; then call document-template for template validation and docx or pdf generation; if the current skill does not have a template yet, build one first; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
         "zh-CN": "基于质量异常或客诉记录，生成一份结构完整、可继续补充证据的 8D 报告草稿。\n\n适合配置成质量经理快速组织跨部门问题分析、纠正措施和防再发行动的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n默认使用当前 8D 报告 Skill 自带的 Word 模板 `templates/8d-report.docx`，并调用 document-template 基础技能生成正式文档；如果当前 8D 报告 Skill 里还没有模板，则先构建模板；可输出 Word，也可进一步转成 PDF\n报告对象：客户 / 供应商 / 公司内部\n品质严重性：非常严重 / 严重 / 轻微\n报告编号、报告日期、客户 / 供应商名称、涉及报告或文件\nD1 成立改善小组：小组负责人、小组成员\nD2 问题描述：问题描述 1-4、问题图片\nD3 临时措施：措施要点、责任人、完成日期、结果确认\nD4 根本原因分析：原因描述、责任人、完成日期、结果确认\nD5 永久性纠正措施：措施描述、责任人、完成日期、结果确认\nD6 纠正措施验证：验证情况、责任人、完成日期、结果确认\nD7 预防措施：措施描述、责任人、完成日期、结果确认\nD8 批量验证 / 团队激励：结项结论、奖励建议、小组负责人、管理者代表\n\n输入（每次执行都需要提供给Skill的信息）：本次需要处理的质量异常、客诉或批次信息。",

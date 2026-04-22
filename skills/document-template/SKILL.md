@@ -62,8 +62,8 @@ If `winget` is unavailable, stop and report that Windows Package Manager is miss
 
 ```bash
 node {{script_dir}}/validate_doc_template.js \
-  --template {{skill_dir}}/templates/8d-report.docx \
-  --data {{skill_dir}}/examples/8d-report.sample.json
+  --template /path/to/template.docx \
+  --data /path/to/data.json
 ```
 
 Validate with PDF readiness:
@@ -79,9 +79,9 @@ node {{script_dir}}/validate_doc_template.js \
 
 ```bash
 node {{script_dir}}/render_doc_template.js \
-  --template {{skill_dir}}/templates/8d-report.docx \
-  --data {{skill_dir}}/examples/8d-report.sample.json \
-  --output /tmp/8d-report.docx
+  --template /path/to/template.docx \
+  --data /path/to/data.json \
+  --output /tmp/output.docx
 ```
 
 ### Render PDF
@@ -133,4 +133,5 @@ Render returns machine-readable JSON with:
 
 - `docxtemplater` generates `.docx`; PDF export is a separate conversion step.
 - PDF export uses LibreOffice headless mode and may render differently from Microsoft Word.
+- Business workflows own their repository template assets, typically under `skills/use-cases/<use-case-directory>/`.
 - `{{skill_dir}}` and `{{script_dir}}` are resolved during installation so the commands point at the installed skill package.

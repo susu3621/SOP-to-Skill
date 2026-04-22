@@ -21,16 +21,16 @@ Run the validation script:
 
 ```bash
 node skills/document-template/scripts/validate_doc_template.js \
-  --template skills/document-template/templates/8d-report.docx \
-  --data skills/document-template/examples/8d-report.sample.json
+  --template skills/use-cases/eight-d-report-preparation/templates/8d-report.docx \
+  --data skills/use-cases/eight-d-report-preparation/examples/8d-report.sample.json
 ```
 
 Run the render script:
 
 ```bash
 node skills/document-template/scripts/render_doc_template.js \
-  --template skills/document-template/templates/8d-report.docx \
-  --data skills/document-template/examples/8d-report.sample.json \
+  --template skills/use-cases/eight-d-report-preparation/templates/8d-report.docx \
+  --data skills/use-cases/eight-d-report-preparation/examples/8d-report.sample.json \
   --output /tmp/8d-report.docx
 ```
 
@@ -59,6 +59,12 @@ document-template/
   README.md
   package.json
   scripts/
+```
+
+Business-owned templates live outside this base skill, for example:
+
+```text
+skills/use-cases/eight-d-report-preparation/
   templates/
   examples/
 ```

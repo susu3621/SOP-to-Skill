@@ -390,7 +390,15 @@ describe('onboarding manager helpers', () => {
             jira: { name: 'Jira' },
           },
           useCases: {
-            '8D报告出具': { directory: 'eight-d-report-preparation' },
+            '8D报告出具': {
+              directory: 'eight-d-report-preparation',
+              templateAssets: {
+                repoDir: 'skills/use-cases/eight-d-report-preparation',
+                defaultTemplatePath: 'templates/8d-report.docx',
+                exampleDataPath: 'examples/8d-report.sample.json',
+                rendererBaseSkillId: 'document-template',
+              },
+            },
           },
         }
       )
@@ -398,12 +406,16 @@ describe('onboarding manager helpers', () => {
       const productionSkillMd = fs.readFileSync(path.join(staged.production.sourceDir, 'SKILL.md'), 'utf8')
 
       expect(productionSkillMd).toContain('document-template')
+      expect(productionSkillMd).toContain('skills/use-cases/eight-d-report-preparation')
       expect(productionSkillMd).toContain('当前 8D Skill 目录中的 `templates/8d-report.docx`')
       expect(productionSkillMd).toContain('如果当前 8D Skill 中还没有模板，先按 8D 报告结构补齐或构建模板')
       expect(productionSkillMd).toContain('先整理成结构化 JSON')
       expect(productionSkillMd).toContain('render_doc_template.js')
       expect(productionSkillMd).toContain('8d-report.docx')
       expect(fs.existsSync(path.join(staged.production.sourceDir, 'templates', '8d-report.docx'))).toBe(true)
+      expect(fs.existsSync(path.join(staged.production.sourceDir, 'examples', '8d-report.sample.json'))).toBe(
+        true
+      )
     } finally {
       fs.rmSync(tempDir, { force: true, recursive: true })
     }

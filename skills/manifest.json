@@ -18,10 +18,10 @@
     {
       "id": "document-template",
       "path": "skills/document-template",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "targets": ["claude-code", "codex", "workbuddy"],
       "category": "document-generation",
-      "contentHash": "sha256:14784c543da54405a32b2902d1b15f4a28ea3970ab6ad35ee2c520029a76f731"
+      "contentHash": "sha256:649dfae8db754b0e01c33356e56105b38f5b365b7a5fb0d9116d7bef4f20a193"
     },
     {
       "id": "gerrit",

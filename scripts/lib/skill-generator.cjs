@@ -5,8 +5,46 @@ const {
 } = require('./onboarding-skill-set.cjs');
 
 const EIGHT_D_USE_CASE_DIR = 'eight-d-report-preparation';
-const EIGHT_D_TEMPLATE_RELATIVE_PATH = path.join('templates', '8d-report.docx');
 const DOCUMENT_TEMPLATE_SKILL_ID = 'document-template';
+
+function normalizeDisplayPath(value) {
+  return String(value || '')
+    .replace(/\\/g, '/')
+    .replace(/^\/+|\/+$/g, '');
+}
+
+function buildRepoAssetDisplayPath(repoDir, assetPath) {
+  const normalizedRepoDir = normalizeDisplayPath(repoDir);
+  const normalizedAssetPath = normalizeDisplayPath(assetPath);
+
+  if (!normalizedRepoDir) {
+    return normalizedAssetPath;
+  }
+
+  if (!normalizedAssetPath) {
+    return normalizedRepoDir;
+  }
+
+  return `${normalizedRepoDir}/${normalizedAssetPath}`;
+}
+
+function resolveRepoRelativePath(repoRelativePath) {
+  return path.resolve(__dirname, '..', '..', repoRelativePath);
+}
+
+function resolveUseCaseAssetSourcePath(templateAssets, assetRelativePath) {
+  return resolveRepoRelativePath(path.join(templateAssets.repoDir, assetRelativePath));
+}
+
+function useCaseHasRepositoryTemplateAsset(templateAssets) {
+  if (!templateAssets?.defaultTemplatePath) {
+    return false;
+  }
+
+  return fs.existsSync(
+    resolveUseCaseAssetSourcePath(templateAssets, templateAssets.defaultTemplatePath)
+  );
+}
 
 function resolveExplicitSkillVariant(options) {
   const explicitVariant = options?.variant;
@@ -22,17 +60,47 @@ function resolveExplicitSkillVariant(options) {
   return explicitVariant;
 }
 
-function buildEightDDocumentTemplateGuidance(cfg, useCaseDir) {
-  if (useCaseDir !== EIGHT_D_USE_CASE_DIR || !cfg.baseSkills.includes(DOCUMENT_TEMPLATE_SKILL_ID)) {
+function buildUseCaseDocumentTemplateGuidance(cfg, useCaseDir, useCaseConfig) {
+  const templateAssets = useCaseConfig?.templateAssets;
+  if (!templateAssets) {
     return '';
   }
 
-  return `## 默认模板出具流程
+  if (!cfg.baseSkills.includes(templateAssets.rendererBaseSkillId)) {
+    return '';
+  }
 
-- 默认情况下，使用当前 8D Skill 目录中的 \`templates/8d-report.docx\` 作为模板，并调用 \`document-template\` 基础技能来生成正式 8D 报告。
+  const currentSkillTemplatePath = normalizeDisplayPath(templateAssets.defaultTemplatePath);
+  const repositoryTemplatePath = buildRepoAssetDisplayPath(
+    templateAssets.repoDir,
+    templateAssets.defaultTemplatePath
+  );
+  const hasRepositoryTemplate = useCaseHasRepositoryTemplateAsset(templateAssets);
+
+  let guidance =
+    useCaseDir === EIGHT_D_USE_CASE_DIR
+      ? `## 默认模板出具流程
+
+- 默认情况下，使用当前 8D Skill 目录中的 \`${currentSkillTemplatePath}\` 作为模板，并调用 \`${templateAssets.rendererBaseSkillId}\` 基础技能来生成正式 8D 报告。
+- 当前 8D 模板资产在仓库目录 \`${repositoryTemplatePath}\` 中维护。
 - 如果用户没有提供外部模板链接，优先使用当前 8D Skill 自带模板；如果当前 8D Skill 中还没有模板，先按 8D 报告结构补齐或构建模板。
 - 先整理成结构化 JSON，再进行模板校验和文档渲染。
-- 建议 JSON 至少包含以下结构：
+`
+      : `## 默认模板出具流程
+
+- 默认情况下，使用当前业务 Skill 目录中的 \`${currentSkillTemplatePath}\` 作为模板，并调用 \`${templateAssets.rendererBaseSkillId}\` 基础技能来生成正式文档。
+- 当前业务模板资产在仓库目录 \`${repositoryTemplatePath}\` 中维护。
+`;
+
+  if (!hasRepositoryTemplate) {
+    guidance += `- 当前业务模板资产目录 \`${normalizeDisplayPath(
+      templateAssets.repoDir
+    )}\` 下还没有模板文件 \`${currentSkillTemplatePath}\`，先按业务结构补齐或构建模板，再进行模板校验和文档渲染。
+`;
+  }
+
+  if (useCaseDir === EIGHT_D_USE_CASE_DIR) {
+    guidance += `- 建议 JSON 至少包含以下结构：
 
 \`\`\`json
 {
@@ -55,37 +123,41 @@ function buildEightDDocumentTemplateGuidance(cfg, useCaseDir) {
   "management_representative": "管理者代表"
 }
 \`\`\`
+`;
+  }
 
-- 先用 \`validate_doc_template.js\` 校验模板和 JSON 的匹配结果，再用 \`render_doc_template.js\` 输出 \`docx\`；如果用户要求，再进一步输出 \`pdf\`。
-- 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。
+  if (templateAssets.rendererBaseSkillId === DOCUMENT_TEMPLATE_SKILL_ID) {
+    guidance += `- 先用 \`validate_doc_template.js\` 校验模板和 JSON 的匹配结果，再用 \`render_doc_template.js\` 输出 \`docx\`；如果用户要求，再进一步输出 \`pdf\`。
+`;
+  }
+
+  guidance += `- 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。
 
 `;
+
+  return guidance;
 }
 
-function buildEightDSeedFiles(useCaseDir, skillOutputDir) {
-  if (useCaseDir !== EIGHT_D_USE_CASE_DIR) {
+function buildUseCaseTemplateSeedFiles(useCaseConfig, skillOutputDir) {
+  const templateAssets = useCaseConfig?.templateAssets;
+  if (!templateAssets) {
     return [];
   }
 
-  const sourcePath = path.resolve(
-    __dirname,
-    '..',
-    '..',
-    'skills',
-    DOCUMENT_TEMPLATE_SKILL_ID,
-    EIGHT_D_TEMPLATE_RELATIVE_PATH
+  const assetRelativePaths = Array.from(
+    new Set(
+      [templateAssets.defaultTemplatePath, templateAssets.exampleDataPath].filter(
+        (value) => typeof value === 'string' && value.trim().length > 0
+      )
+    )
   );
 
-  if (!fs.existsSync(sourcePath)) {
-    return [];
-  }
-
-  return [
-    {
-      sourcePath,
-      targetPath: path.join(skillOutputDir, EIGHT_D_TEMPLATE_RELATIVE_PATH),
-    },
-  ];
+  return assetRelativePaths
+    .map((assetRelativePath) => ({
+      sourcePath: resolveUseCaseAssetSourcePath(templateAssets, assetRelativePath),
+      targetPath: path.join(skillOutputDir, assetRelativePath),
+    }))
+    .filter((file) => fs.existsSync(file.sourcePath));
 }
 
 function getSkillOutputDetails(cfg, sharedConfig, options) {
@@ -110,7 +182,11 @@ function getSkillOutputDetails(cfg, sharedConfig, options) {
   const skillId = variant === 'test' ? generatedSkillIds.testSkillId : generatedSkillIds.productionSkillId;
   const skillOutputDir = path.join(cfg.outputDir, skillId);
   const includeLocalOnlyGuidance = explicitVariant ? variant === 'test' : Boolean(cfg.localOnly);
-  const documentTemplateGuidance = buildEightDDocumentTemplateGuidance(cfg, useCaseDir);
+  const documentTemplateGuidance = buildUseCaseDocumentTemplateGuidance(
+    cfg,
+    useCaseDir,
+    useCaseConfig
+  );
 
   if (explicitVariant && cfg.localOnly !== undefined && cfg.localOnly !== includeLocalOnlyGuidance) {
     throw new Error(
@@ -171,7 +247,7 @@ ${documentTemplateGuidance}${includeLocalOnlyGuidance ? `## 测试环境说明
 `;
 
   return {
-    seedFiles: buildEightDSeedFiles(useCaseDir, skillOutputDir),
+    seedFiles: buildUseCaseTemplateSeedFiles(useCaseConfig, skillOutputDir),
     skillConfig,
     skillJsonPath: path.join(skillOutputDir, 'skill.json'),
     skillMdPath: path.join(skillOutputDir, 'SKILL.md'),

@@ -11,6 +11,7 @@ import type {
   OnboardingCredentialGroup,
   OnboardingUseCaseQuestionDefinition,
   OnboardingUseCaseQuestionRecord,
+  OnboardingUseCaseTemplateAssets,
   WizardField,
   WizardOption,
   WizardStep,
@@ -62,6 +63,7 @@ interface UseCaseConfig {
   defaultInfoSources?: ConfigText
   defaultRules?: ConfigText
   structuredQuestions?: UseCaseQuestionConfig[]
+  templateAssets?: UseCaseTemplateAssetsConfig
 }
 
 interface UseCaseQuestionConfig {
@@ -70,6 +72,13 @@ interface UseCaseQuestionConfig {
   placeholder?: ConfigText
   required?: boolean
   legacyField?: 'info_sources' | 'rules'
+}
+
+interface UseCaseTemplateAssetsConfig {
+  repoDir: string
+  defaultTemplatePath: string
+  exampleDataPath?: string
+  rendererBaseSkillId: string
 }
 
 interface SharedConfig {
@@ -258,6 +267,7 @@ export interface OnboardingUseCaseOption {
   rules_prompt: string
   structured_questions: OnboardingUseCaseQuestionDefinition[]
   applicable_role_ids: string[]
+  template_assets?: OnboardingUseCaseTemplateAssets
 }
 
 function buildOnboardingAgentOption(
@@ -386,6 +396,21 @@ function buildStructuredQuestionsForOption(
   return buildFallbackStructuredQuestions(useCase, locale)
 }
 
+function buildOnboardingUseCaseTemplateAssets(
+  templateAssets: UseCaseTemplateAssetsConfig | undefined
+): OnboardingUseCaseTemplateAssets | undefined {
+  if (!templateAssets) {
+    return undefined
+  }
+
+  return {
+    repo_dir: templateAssets.repoDir,
+    default_template_path: templateAssets.defaultTemplatePath,
+    example_data_path: templateAssets.exampleDataPath,
+    renderer_base_skill_id: templateAssets.rendererBaseSkillId,
+  }
+}
+
 function buildOnboardingUseCaseOption(
   useCaseName: string,
   useCase: UseCaseConfig,
@@ -407,6 +432,7 @@ function buildOnboardingUseCaseOption(
     info_sources_prompt: readConfigText(useCase.infoSourcesPrompt, locale),
     rules_prompt: readConfigText(useCase.rulesPrompt, locale),
     structured_questions: structuredQuestions.map(({ legacyField, ...question }) => question),
+    template_assets: buildOnboardingUseCaseTemplateAssets(useCase.templateAssets),
     applicable_role_ids: Object.entries(typedConfig.roles)
       .filter(([, role]) => role.useCases.includes(useCaseName))
       .map(([roleId]) => roleId),

@@ -188,6 +188,13 @@ export interface OnboardingUseCaseQuestionRecord extends OnboardingUseCaseQuesti
   locked: boolean
 }
 
+export interface OnboardingUseCaseTemplateAssets {
+  repo_dir: string
+  default_template_path: string
+  example_data_path?: string
+  renderer_base_skill_id: string
+}
+
 export interface OnboardingEditableUseCaseRecord {
   role_id: string
   use_case_id: string

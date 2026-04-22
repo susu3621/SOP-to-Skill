@@ -4,12 +4,23 @@ use crate::template::{get_data_root, get_skills_dir};
 use std::fs;
 use std::path::{Path, PathBuf};
 
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct OnboardingUseCaseTemplateAssets {
+    pub repo_dir: String,
+    pub default_template_path: String,
+    #[serde(default)]
+    pub example_data_path: Option<String>,
+    pub renderer_base_skill_id: String,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct StageOnboardingPackageInput {
     pub role_id: String,
     pub role_name: String,
     pub selected_agent_ids: Vec<String>,
     pub selected_base_skill_ids: Vec<String>,
+    #[serde(default)]
+    pub template_assets: Option<OnboardingUseCaseTemplateAssets>,
     pub use_case: OnboardingRoleUseCaseContent,
     pub use_case_directory: String,
 }
@@ -37,46 +48,111 @@ fn get_onboarding_staging_dir_with_data_root(data_root: Option<&PathBuf>) -> Pat
 }
 
 const EIGHT_D_USE_CASE_ID: &str = "eight-d-report-preparation";
-const EIGHT_D_TEMPLATE_RELATIVE_PATH: &str = "templates/8d-report.docx";
 const DOCUMENT_TEMPLATE_SKILL_ID: &str = "document-template";
 
 fn is_eight_d_use_case(input: &StageOnboardingPackageInput) -> bool {
     input.use_case.use_case_id == EIGHT_D_USE_CASE_ID
 }
 
-fn resolve_eight_d_seed_template_path() -> Option<PathBuf> {
-    let runtime_template = get_skills_dir()
-        .join(DOCUMENT_TEMPLATE_SKILL_ID)
-        .join(EIGHT_D_TEMPLATE_RELATIVE_PATH);
-    if runtime_template.exists() {
-        return Some(runtime_template);
+fn normalize_display_path(path: &str) -> String {
+    path.replace('\\', "/").trim_matches('/').to_string()
+}
+
+fn build_repo_asset_display_path(repo_dir: &str, asset_path: &str) -> String {
+    let normalized_repo_dir = normalize_display_path(repo_dir);
+    let normalized_asset_path = normalize_display_path(asset_path);
+
+    match (normalized_repo_dir.is_empty(), normalized_asset_path.is_empty()) {
+        (true, true) => String::new(),
+        (true, false) => normalized_asset_path,
+        (false, true) => normalized_repo_dir,
+        (false, false) => format!("{normalized_repo_dir}/{normalized_asset_path}"),
+    }
+}
+
+fn repository_root_candidates() -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    if let Some(parent) = get_skills_dir().parent() {
+        let candidate = parent.to_path_buf();
+        if !candidates.iter().any(|existing| existing == &candidate) {
+            candidates.push(candidate);
+        }
     }
 
-    let repository_template = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("skills")
-        .join(DOCUMENT_TEMPLATE_SKILL_ID)
-        .join(EIGHT_D_TEMPLATE_RELATIVE_PATH);
-    if repository_template.exists() {
-        return Some(repository_template);
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    if !candidates.iter().any(|existing| existing == &workspace_root) {
+        candidates.push(workspace_root);
+    }
+
+    candidates
+}
+
+fn resolve_repo_relative_path(relative_path: &str) -> Option<PathBuf> {
+    let normalized = relative_path.trim();
+    if normalized.is_empty() {
+        return None;
+    }
+
+    let relative = PathBuf::from(normalized);
+    for root in repository_root_candidates() {
+        let candidate = root.join(&relative);
+        if candidate.exists() {
+            return Some(candidate);
+        }
     }
 
     None
 }
 
-fn seed_eight_d_template(source_dir: &Path) -> Result<(), SkillError> {
-    let Some(source_template) = resolve_eight_d_seed_template_path() else {
+fn resolve_use_case_asset_source_path(
+    template_assets: &OnboardingUseCaseTemplateAssets,
+    asset_relative_path: &str,
+) -> Option<PathBuf> {
+    let repo_relative = Path::new(&template_assets.repo_dir).join(asset_relative_path);
+    resolve_repo_relative_path(repo_relative.to_string_lossy().as_ref())
+}
+
+fn use_case_has_repository_template_asset(
+    template_assets: &OnboardingUseCaseTemplateAssets,
+) -> bool {
+    resolve_use_case_asset_source_path(template_assets, &template_assets.default_template_path)
+        .is_some()
+}
+
+fn stage_use_case_template_assets(
+    source_dir: &Path,
+    input: &StageOnboardingPackageInput,
+) -> Result<(), SkillError> {
+    let Some(template_assets) = input.template_assets.as_ref() else {
         return Ok(());
     };
 
-    let destination_template = source_dir.join(EIGHT_D_TEMPLATE_RELATIVE_PATH);
-    let Some(parent_dir) = destination_template.parent() else {
-        return Ok(());
-    };
+    let mut asset_relative_paths = vec![template_assets.default_template_path.clone()];
+    if let Some(example_data_path) = template_assets.example_data_path.as_ref() {
+        asset_relative_paths.push(example_data_path.clone());
+    }
 
-    fs::create_dir_all(parent_dir).map_err(|error| SkillError::WriteError(error.to_string()))?;
-    fs::copy(&source_template, &destination_template)
-        .map_err(|error| SkillError::WriteError(error.to_string()))?;
+    for asset_relative_path in asset_relative_paths {
+        if asset_relative_path.trim().is_empty() {
+            continue;
+        }
+
+        let Some(source_path) =
+            resolve_use_case_asset_source_path(template_assets, &asset_relative_path)
+        else {
+            continue;
+        };
+
+        let destination_path = source_dir.join(&asset_relative_path);
+        let Some(parent_dir) = destination_path.parent() else {
+            continue;
+        };
+
+        fs::create_dir_all(parent_dir).map_err(|error| SkillError::WriteError(error.to_string()))?;
+        fs::copy(&source_path, &destination_path)
+            .map_err(|error| SkillError::WriteError(error.to_string()))?;
+    }
 
     Ok(())
 }
@@ -185,23 +261,47 @@ fn should_render_default_template_section(
         .any(|question| is_built_in_template_question(&question.id))
 }
 
-fn build_eight_d_document_template_guidance(input: &StageOnboardingPackageInput) -> Option<String> {
-    if !is_eight_d_use_case(input)
-        || !input
-            .selected_base_skill_ids
-            .iter()
-            .any(|skill_id| skill_id == DOCUMENT_TEMPLATE_SKILL_ID)
+fn build_use_case_document_template_guidance(
+    input: &StageOnboardingPackageInput,
+) -> Option<String> {
+    let template_assets = input.template_assets.as_ref()?;
+
+    if !input
+        .selected_base_skill_ids
+        .iter()
+        .any(|skill_id| skill_id == &template_assets.renderer_base_skill_id)
     {
         return None;
     }
 
-    Some(
-        r#"## 默认模板出具流程
+    let current_skill_template_path =
+        normalize_display_path(&template_assets.default_template_path);
+    let repository_template_path = build_repo_asset_display_path(
+        &template_assets.repo_dir,
+        &template_assets.default_template_path,
+    );
+    let renderer_base_skill_id = &template_assets.renderer_base_skill_id;
+    let mut body = if is_eight_d_use_case(input) {
+        format!(
+            "## 默认模板出具流程\n\n- 默认情况下，使用当前 8D Skill 目录中的 `{current_skill_template_path}` 作为模板，并调用 `{renderer_base_skill_id}` 基础技能来生成正式 8D 报告。\n- 当前 8D 模板资产在仓库目录 `{repository_template_path}` 中维护。\n- 如果用户没有提供外部模板链接，优先使用当前 8D Skill 自带模板；如果当前 8D Skill 中还没有模板，先按 8D 报告结构补齐或构建模板。\n- 先整理成结构化 JSON，再进行模板校验和文档渲染。\n"
+        )
+    } else {
+        format!(
+            "## 默认模板出具流程\n\n- 默认情况下，使用当前业务 Skill 目录中的 `{current_skill_template_path}` 作为模板，并调用 `{renderer_base_skill_id}` 基础技能来生成正式文档。\n- 当前业务模板资产在仓库目录 `{repository_template_path}` 中维护。\n"
+        )
+    };
 
-- 默认情况下，使用当前 8D Skill 目录中的 `templates/8d-report.docx` 作为模板，并调用 `document-template` 基础技能来生成正式 8D 报告。
-- 如果用户没有提供外部模板链接，优先使用当前 8D Skill 自带模板；如果当前 8D Skill 中还没有模板，先按 8D 报告结构补齐或构建模板。
-- 先整理成结构化 JSON，再进行模板校验和文档渲染。
-- 建议 JSON 至少包含以下结构：
+    if !use_case_has_repository_template_asset(template_assets) {
+        body.push_str(&format!(
+            "- 当前业务模板资产目录 `{}` 下还没有模板文件 `{}`，先按业务结构补齐或构建模板，再进行模板校验和文档渲染。\n",
+            normalize_display_path(&template_assets.repo_dir),
+            current_skill_template_path
+        ));
+    }
+
+    if is_eight_d_use_case(input) {
+        body.push_str(
+            r#"- 建议 JSON 至少包含以下结构：
 
 ```json
 {
@@ -225,12 +325,19 @@ fn build_eight_d_document_template_guidance(input: &StageOnboardingPackageInput)
 }
 ```
 
-- 先用 `validate_doc_template.js` 校验模板和 JSON 的匹配结果，再用 `render_doc_template.js` 输出 `docx`；如果用户要求，再进一步输出 `pdf`。
-- 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。
+"#,
+        );
+    }
 
-"#
-        .to_string(),
-    )
+    if renderer_base_skill_id == DOCUMENT_TEMPLATE_SKILL_ID {
+        body.push_str("- 先用 `validate_doc_template.js` 校验模板和 JSON 的匹配结果，再用 `render_doc_template.js` 输出 `docx`；如果用户要求，再进一步输出 `pdf`。\n");
+    }
+
+    body.push_str(
+        "- 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。\n\n",
+    );
+
+    Some(body)
 }
 
 pub fn render_generated_skill_markdown(
@@ -290,7 +397,7 @@ pub fn render_generated_skill_markdown(
         body.push_str("\n\n");
     }
 
-    if let Some(guidance) = build_eight_d_document_template_guidance(input) {
+    if let Some(guidance) = build_use_case_document_template_guidance(input) {
         body.push_str(&guidance);
     }
 
@@ -316,9 +423,7 @@ fn stage_variant(
         render_generated_skill_markdown(input, skill_id, include_test_guidance),
     )
     .map_err(|error| SkillError::WriteError(error.to_string()))?;
-    if is_eight_d_use_case(input) {
-        seed_eight_d_template(&source_dir)?;
-    }
+    stage_use_case_template_assets(&source_dir, input)?;
 
     Ok(StagedOnboardingPackage {
         skill_id: skill_id.to_string(),
@@ -354,7 +459,8 @@ fn stage_generated_use_case_skill_packages_with_data_root(
 #[cfg(test)]
 mod tests {
     use super::{
-        stage_generated_use_case_skill_packages_with_data_root, StageOnboardingPackageInput,
+        stage_generated_use_case_skill_packages_with_data_root, OnboardingUseCaseTemplateAssets,
+        StageOnboardingPackageInput,
     };
     use crate::models::OnboardingUseCaseQuestion;
     use std::fs;
@@ -382,6 +488,7 @@ mod tests {
                 role_name: "项目经理".to_string(),
                 selected_agent_ids: vec!["codex".to_string(), "workbuddy".to_string()],
                 selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
+                template_assets: None,
                 use_case: crate::models::OnboardingRoleUseCaseContent {
                     role_id: "project-manager".to_string(),
                     use_case_id: "weekly-report".to_string(),
@@ -417,6 +524,7 @@ mod tests {
                 role_name: "项目经理".to_string(),
                 selected_agent_ids: vec!["codex".to_string()],
                 selected_base_skill_ids: vec!["jira".to_string()],
+                template_assets: None,
                 use_case: crate::models::OnboardingRoleUseCaseContent {
                     role_id: "project-manager".to_string(),
                     use_case_id: "weekly-report".to_string(),
@@ -449,6 +557,7 @@ mod tests {
                 role_name: "项目经理".to_string(),
                 selected_agent_ids: vec!["codex".to_string()],
                 selected_base_skill_ids: vec!["jira".to_string(), "confluence".to_string()],
+                template_assets: None,
                 use_case: crate::models::OnboardingRoleUseCaseContent {
                     role_id: "project-manager".to_string(),
                     use_case_id: "weekly-report".to_string(),
@@ -507,6 +616,7 @@ mod tests {
                 role_name: "项目经理".to_string(),
                 selected_agent_ids: vec!["codex".to_string()],
                 selected_base_skill_ids: vec!["confluence".to_string()],
+                template_assets: None,
                 use_case: crate::models::OnboardingRoleUseCaseContent {
                     role_id: "project-manager".to_string(),
                     use_case_id: "weekly-report".to_string(),
@@ -564,6 +674,12 @@ mod tests {
                     "document-template".to_string(),
                     "jira".to_string(),
                 ],
+                template_assets: Some(OnboardingUseCaseTemplateAssets {
+                    repo_dir: "skills/use-cases/eight-d-report-preparation".to_string(),
+                    default_template_path: "templates/8d-report.docx".to_string(),
+                    example_data_path: Some("examples/8d-report.sample.json".to_string()),
+                    renderer_base_skill_id: "document-template".to_string(),
+                }),
                 use_case: crate::models::OnboardingRoleUseCaseContent {
                     role_id: "qa-manager".to_string(),
                     use_case_id: "eight-d-report-preparation".to_string(),
@@ -591,6 +707,7 @@ mod tests {
             .expect("production skill md");
 
         assert!(production_markdown.contains("document-template"));
+        assert!(production_markdown.contains("skills/use-cases/eight-d-report-preparation"));
         assert!(production_markdown.contains("当前 8D Skill 目录中的 `templates/8d-report.docx`"));
         assert!(production_markdown.contains("如果当前 8D Skill 中还没有模板，先按 8D 报告结构补齐或构建模板"));
         assert!(production_markdown.contains("先整理成结构化 JSON"));
@@ -601,6 +718,12 @@ mod tests {
             .source_dir
             .join("templates")
             .join("8d-report.docx")
+            .exists());
+        assert!(result
+            .production
+            .source_dir
+            .join("examples")
+            .join("8d-report.sample.json")
             .exists());
     }
 }

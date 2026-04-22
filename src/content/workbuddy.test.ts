@@ -317,6 +317,24 @@ describe('workbuddy agent apps', () => {
       }),
     ])
 
+    expect(sharedConfig.useCases['8D报告出具']).toHaveProperty('templateAssets')
+    expect(sharedConfig.useCases['8D报告出具']?.templateAssets).toEqual({
+      repoDir: 'skills/use-cases/eight-d-report-preparation',
+      defaultTemplatePath: 'templates/8d-report.docx',
+      exampleDataPath: 'examples/8d-report.sample.json',
+      rendererBaseSkillId: 'document-template',
+    })
+    expect(eightDReport).toEqual(
+      expect.objectContaining({
+        template_assets: {
+          repo_dir: 'skills/use-cases/eight-d-report-preparation',
+          default_template_path: 'templates/8d-report.docx',
+          example_data_path: 'examples/8d-report.sample.json',
+          renderer_base_skill_id: 'document-template',
+        },
+      })
+    )
+
     expect(isoPackageDefault?.description).toContain('如果用户填写了模板链接，则优先采用用户模板')
     expect(isoPackageDefault?.description).toContain('默认按以下模板整理')
     expect(isoPackageDefault?.description).toContain('缺口与待补项')

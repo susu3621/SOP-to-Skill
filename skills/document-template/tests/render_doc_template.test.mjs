@@ -5,8 +5,8 @@ import { existsSync } from 'node:fs'
 import {
   buildOutputPath,
   createTempWorkspace,
-  getBundledExamplePath,
-  getBundledTemplatePath,
+  getBusinessOwnedExamplePath,
+  getBusinessOwnedTemplatePath,
   readDocxText,
   runSkillScript,
   writeFixtureTemplate,
@@ -47,15 +47,15 @@ test('render_doc_template renders a docx file from a template and json data', ()
   assert.equal(parsed.pdfPath, null)
 })
 
-test('render_doc_template renders the bundled 8d report template with the shipped sample data', () => {
+test('render_doc_template renders the business-owned 8d report template with the shipped sample data', () => {
   const workspaceDir = createTempWorkspace('document-template-render-bundled')
   const outputPath = buildOutputPath(workspaceDir, 'bundled-8d-report.docx')
 
   const result = runSkillScript('render_doc_template.js', [
     '--template',
-    getBundledTemplatePath(),
+    getBusinessOwnedTemplatePath(),
     '--data',
-    getBundledExamplePath(),
+    getBusinessOwnedExamplePath(),
     '--output',
     outputPath,
   ])
