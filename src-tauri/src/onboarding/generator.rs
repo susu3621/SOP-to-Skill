@@ -243,6 +243,7 @@ fn resolve_effective_question_answer(
     question_id: &str,
     answer: &str,
     built_in_template_value: Option<&str>,
+    template_assets: Option<&OnboardingUseCaseTemplateAssets>,
 ) -> String {
     let trimmed_answer = answer.trim();
     if !trimmed_answer.is_empty() {
@@ -250,6 +251,17 @@ fn resolve_effective_question_answer(
     }
 
     if is_built_in_template_question(question_id) {
+        if let Some(template_assets) = template_assets {
+            let current_skill_template_path =
+                normalize_display_path(&template_assets.default_template_path);
+
+            if !current_skill_template_path.is_empty() {
+                return format!(
+                    "留空时默认使用当前 Skill 目录中的 `{current_skill_template_path}`"
+                );
+            }
+        }
+
         return built_in_template_value.unwrap_or("").to_string();
     }
 
@@ -288,7 +300,7 @@ fn build_use_case_template_asset_guidance(input: &StageOnboardingPackageInput) -
 
     if template_extension != "docx" {
         let mut body = format!(
-            "## 默认模板资产\n\n- 默认情况下，使用当前业务 Skill 目录中的 `{current_skill_template_path}` 作为内置模板资产。\n- 当前业务模板资产在仓库目录 `{repository_template_path}` 中维护。\n"
+            "## 默认模板资产\n\n- 默认情况下，使用当前业务 Skill 目录中的 `{current_skill_template_path}` 作为内置模板资产。\n- 生成 Skill 时会将模板复制到当前业务 Skill 目录的 `{current_skill_template_path}`，后续使用当前 Skill 内的副本。\n"
         );
 
         if !has_repository_template_asset {
@@ -428,6 +440,7 @@ pub fn render_generated_skill_markdown(
                 &question.id,
                 &question.answer,
                 built_in_template_value.as_deref(),
+                input.template_assets.as_ref(),
             );
             body.push_str(&format!("- **{}**: {}\n", question.label, answer));
         }
@@ -820,10 +833,13 @@ mod tests {
         assert!(production_markdown.contains(
             "当前业务 Skill 目录中的 `templates/iso9001-internal-audit-checklist.xlsx`"
         ));
-        assert!(production_markdown.contains("skills/use-cases/iso9001-package-preparation"));
+        assert!(production_markdown.contains(
+            "生成 Skill 时会将模板复制到当前业务 Skill 目录的 `templates/iso9001-internal-audit-checklist.xlsx`"
+        ));
         assert!(production_markdown.contains("输出应至少包含内审检查表文件和内审资料包压缩包"));
         assert!(production_markdown.contains("目录应与内审检查表中的条款目录保持一致"));
         assert!(production_markdown.contains("页面类证据先导出为文件"));
+        assert!(!production_markdown.contains("skills/use-cases/iso9001-package-preparation"));
         assert!(!production_markdown.contains("render_doc_template.js"));
         assert!(!production_markdown.contains("生成正式文档"));
         assert!(result
@@ -832,5 +848,59 @@ mod tests {
             .join("templates")
             .join("iso9001-internal-audit-checklist.xlsx")
             .exists());
+    }
+
+    #[test]
+    fn onboarding_uses_local_template_path_as_blank_template_answer_when_assets_are_staged() {
+        let data_dir = temp_data_dir("onboarding-iso9001-template-answer");
+
+        let result = stage_generated_use_case_skill_packages_with_data_root(
+            &StageOnboardingPackageInput {
+                role_id: "qa-manager".to_string(),
+                role_name: "质量经理".to_string(),
+                selected_agent_ids: vec!["codex".to_string()],
+                selected_base_skill_ids: vec!["document-template".to_string()],
+                template_assets: Some(OnboardingUseCaseTemplateAssets {
+                    repo_dir: "skills/use-cases/iso9001-package-preparation".to_string(),
+                    default_template_path: "templates/iso9001-internal-audit-checklist.xlsx"
+                        .to_string(),
+                    example_data_path: None,
+                    renderer_base_skill_id: "document-template".to_string(),
+                }),
+                use_case: crate::models::OnboardingRoleUseCaseContent {
+                    role_id: "qa-manager".to_string(),
+                    use_case_id: "iso9001-package-preparation".to_string(),
+                    use_case_name: "ISO9001内审检查表与资料包出具".to_string(),
+                    description: "基于现有体系文件和记录，整理一套用于 ISO9001 内审的检查表和资料包。\n\n适合配置成质量经理按审核范围快速整理内审资料、识别缺口并给出补件清单的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n默认使用当前 ISO9001 内审 Skill 自带的 Excel 检查表模板 `templates/iso9001-internal-audit-checklist.xlsx`，该模板资产在仓库目录 `skills/use-cases/iso9001-package-preparation/` 中维护。\n内审检查表目录默认参考 `ISO9001：内审检查表.xlsx` 的条款结构，例如 4.1、4.2、4.3、4.4、5.1.1、9.2、9.3、10.2、10.3。\n输出内容：\n1. 内审检查表文件：基于内置 Excel 检查表模板填写本次内审记录\n2. 内审资料包压缩包：按检查表目录整理内审参考文件、体系文件、过程记录和导出后的页面文件\n\n输入（每次执行都需要提供给Skill的信息）：本次内审的审核范围、客户 / 工厂 / 项目名称，以及时间范围。".to_string(),
+                    description_locked: true,
+                    info_sources: "".to_string(),
+                    rules: "".to_string(),
+                    questions: vec![OnboardingUseCaseQuestion {
+                        id: "iso9001-template-source".to_string(),
+                        label:
+                            "如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？"
+                                .to_string(),
+                        placeholder: "".to_string(),
+                        required: false,
+                        answer: "".to_string(),
+                        locked: true,
+                    }],
+                },
+                use_case_directory: "iso9001-package-preparation".to_string(),
+            },
+            Some(&data_dir),
+        )
+        .expect("stage packages");
+
+        let production_markdown = fs::read_to_string(result.production.source_dir.join("SKILL.md"))
+            .expect("production skill md");
+
+        assert!(production_markdown.contains(
+            "- **如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？**: 留空时默认使用当前 Skill 目录中的 `templates/iso9001-internal-audit-checklist.xlsx`"
+        ));
+        assert!(!production_markdown.contains(
+            "- **如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？**: 默认使用当前 ISO9001 内审 Skill 自带的 Excel 检查表模板"
+        ));
+        assert!(!production_markdown.contains("该模板资产在仓库目录"));
     }
 }
