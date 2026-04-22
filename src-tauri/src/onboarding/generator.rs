@@ -48,10 +48,15 @@ fn get_onboarding_staging_dir_with_data_root(data_root: Option<&PathBuf>) -> Pat
 }
 
 const EIGHT_D_USE_CASE_ID: &str = "eight-d-report-preparation";
+const ISO9001_INTERNAL_AUDIT_USE_CASE_ID: &str = "iso9001-package-preparation";
 const DOCUMENT_TEMPLATE_SKILL_ID: &str = "document-template";
 
 fn is_eight_d_use_case(input: &StageOnboardingPackageInput) -> bool {
     input.use_case.use_case_id == EIGHT_D_USE_CASE_ID
+}
+
+fn is_iso9001_internal_audit_use_case(input: &StageOnboardingPackageInput) -> bool {
+    input.use_case.use_case_id == ISO9001_INTERNAL_AUDIT_USE_CASE_ID
 }
 
 fn normalize_display_path(path: &str) -> String {
@@ -118,6 +123,14 @@ fn use_case_has_repository_template_asset(
 ) -> bool {
     resolve_use_case_asset_source_path(template_assets, &template_assets.default_template_path)
         .is_some()
+}
+
+fn normalized_template_extension(path: &str) -> String {
+    Path::new(path)
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase()
 }
 
 fn stage_use_case_template_assets(
@@ -261,10 +274,47 @@ fn should_render_default_template_section(
         .any(|question| is_built_in_template_question(&question.id))
 }
 
-fn build_use_case_document_template_guidance(
-    input: &StageOnboardingPackageInput,
-) -> Option<String> {
+fn build_use_case_template_asset_guidance(input: &StageOnboardingPackageInput) -> Option<String> {
     let template_assets = input.template_assets.as_ref()?;
+
+    let current_skill_template_path =
+        normalize_display_path(&template_assets.default_template_path);
+    let repository_template_path = build_repo_asset_display_path(
+        &template_assets.repo_dir,
+        &template_assets.default_template_path,
+    );
+    let template_extension = normalized_template_extension(&template_assets.default_template_path);
+    let has_repository_template_asset = use_case_has_repository_template_asset(template_assets);
+
+    if template_extension != "docx" {
+        let mut body = format!(
+            "## 默认模板资产\n\n- 默认情况下，使用当前业务 Skill 目录中的 `{current_skill_template_path}` 作为内置模板资产。\n- 当前业务模板资产在仓库目录 `{repository_template_path}` 中维护。\n"
+        );
+
+        if !has_repository_template_asset {
+            body.push_str(&format!(
+                "- 当前业务模板资产目录 `{}` 下还没有模板文件 `{}`，先按业务结构补齐或构建模板，再开始执行。\n",
+                normalize_display_path(&template_assets.repo_dir),
+                current_skill_template_path
+            ));
+        }
+
+        if template_extension == "xlsx" {
+            body.push_str(
+                "- 该模板是 Excel 检查表模板，优先按表内结构完成检查表，再围绕同一结构整理配套资料。\n",
+            );
+        }
+
+        if is_iso9001_internal_audit_use_case(input) {
+            body.push_str(
+                "- 输出应至少包含内审检查表文件和内审资料包压缩包。\n- 资料包目录应与内审检查表中的条款目录保持一致。\n- 页面类证据先导出为文件，再放入对应条款目录。\n",
+            );
+        }
+
+        body.push_str("- 如果用户提供了自定义模板，优先改用用户模板，但仍保持当前输出和目录约束。\n\n");
+
+        return Some(body);
+    }
 
     if !input
         .selected_base_skill_ids
@@ -274,12 +324,6 @@ fn build_use_case_document_template_guidance(
         return None;
     }
 
-    let current_skill_template_path =
-        normalize_display_path(&template_assets.default_template_path);
-    let repository_template_path = build_repo_asset_display_path(
-        &template_assets.repo_dir,
-        &template_assets.default_template_path,
-    );
     let renderer_base_skill_id = &template_assets.renderer_base_skill_id;
     let mut body = if is_eight_d_use_case(input) {
         format!(
@@ -291,7 +335,7 @@ fn build_use_case_document_template_guidance(
         )
     };
 
-    if !use_case_has_repository_template_asset(template_assets) {
+    if !has_repository_template_asset {
         body.push_str(&format!(
             "- 当前业务模板资产目录 `{}` 下还没有模板文件 `{}`，先按业务结构补齐或构建模板，再进行模板校验和文档渲染。\n",
             normalize_display_path(&template_assets.repo_dir),
@@ -397,7 +441,7 @@ pub fn render_generated_skill_markdown(
         body.push_str("\n\n");
     }
 
-    if let Some(guidance) = build_use_case_document_template_guidance(input) {
+    if let Some(guidance) = build_use_case_template_asset_guidance(input) {
         body.push_str(&guidance);
     }
 
@@ -724,6 +768,69 @@ mod tests {
             .source_dir
             .join("examples")
             .join("8d-report.sample.json")
+            .exists());
+    }
+
+    #[test]
+    fn onboarding_renders_non_docx_template_guidance_for_iso9001_internal_audit() {
+        let data_dir = temp_data_dir("onboarding-iso9001-internal-audit");
+
+        let result = stage_generated_use_case_skill_packages_with_data_root(
+            &StageOnboardingPackageInput {
+                role_id: "qa-manager".to_string(),
+                role_name: "质量经理".to_string(),
+                selected_agent_ids: vec!["codex".to_string()],
+                selected_base_skill_ids: vec!["document-template".to_string()],
+                template_assets: Some(OnboardingUseCaseTemplateAssets {
+                    repo_dir: "skills/use-cases/iso9001-package-preparation".to_string(),
+                    default_template_path: "templates/iso9001-internal-audit-checklist.xlsx"
+                        .to_string(),
+                    example_data_path: None,
+                    renderer_base_skill_id: "document-template".to_string(),
+                }),
+                use_case: crate::models::OnboardingRoleUseCaseContent {
+                    role_id: "qa-manager".to_string(),
+                    use_case_id: "iso9001-package-preparation".to_string(),
+                    use_case_name: "ISO9001内审检查表与资料包出具".to_string(),
+                    description: "基于现有体系文件和记录，整理 ISO9001 内审检查表与资料包。"
+                        .to_string(),
+                    description_locked: true,
+                    info_sources: "".to_string(),
+                    rules: "".to_string(),
+                    questions: vec![OnboardingUseCaseQuestion {
+                        id: "iso9001-template-source".to_string(),
+                        label:
+                            "如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？"
+                                .to_string(),
+                        placeholder: "".to_string(),
+                        required: false,
+                        answer: "".to_string(),
+                        locked: true,
+                    }],
+                },
+                use_case_directory: "iso9001-package-preparation".to_string(),
+            },
+            Some(&data_dir),
+        )
+        .expect("stage packages");
+
+        let production_markdown = fs::read_to_string(result.production.source_dir.join("SKILL.md"))
+            .expect("production skill md");
+
+        assert!(production_markdown.contains(
+            "当前业务 Skill 目录中的 `templates/iso9001-internal-audit-checklist.xlsx`"
+        ));
+        assert!(production_markdown.contains("skills/use-cases/iso9001-package-preparation"));
+        assert!(production_markdown.contains("输出应至少包含内审检查表文件和内审资料包压缩包"));
+        assert!(production_markdown.contains("目录应与内审检查表中的条款目录保持一致"));
+        assert!(production_markdown.contains("页面类证据先导出为文件"));
+        assert!(!production_markdown.contains("render_doc_template.js"));
+        assert!(!production_markdown.contains("生成正式文档"));
+        assert!(result
+            .production
+            .source_dir
+            .join("templates")
+            .join("iso9001-internal-audit-checklist.xlsx")
             .exists());
     }
 }

@@ -104,7 +104,7 @@
       "useCases": [
         "质量异常汇总与闭环跟进",
         "客诉售后问题分析与回复草稿",
-        "ISO9001资料包出具",
+        "ISO9001内审检查表与资料包出具",
         "8D报告出具",
         "变更评审里的质量影响检查",
         "质量周报",
@@ -1064,41 +1064,46 @@
         }
       ]
     },
-    "ISO9001资料包出具": {
+    "ISO9001内审检查表与资料包出具": {
       "name": {
-        "zh-CN": "ISO9001资料包出具",
-        "en-US": "ISO9001 Package Preparation"
+        "zh-CN": "ISO9001内审检查表与资料包出具",
+        "en-US": "ISO9001 Internal Audit Checklist and Package Preparation"
       },
       "directory": "iso9001-package-preparation",
       "description": {
-        "zh-CN": "基于现有体系文件和记录，整理一套可直接提交、审核或归档的 ISO9001 资料包。",
-        "en-US": "Prepare an ISO9001 package from the current quality-system documents and records so it can be submitted, audited, or archived."
+        "zh-CN": "基于现有体系文件和记录，整理一套用于 ISO9001 内审的检查表和资料包。",
+        "en-US": "Prepare an ISO9001 internal-audit checklist and evidence package from the current quality-system documents and records."
+      },
+      "templateAssets": {
+        "repoDir": "skills/use-cases/iso9001-package-preparation",
+        "defaultTemplatePath": "templates/iso9001-internal-audit-checklist.xlsx",
+        "rendererBaseSkillId": "document-template"
       },
       "guidance": [
         {
-          "zh-CN": "适合配置成质量经理按审核范围快速整理体系资料、识别缺口并给出补件清单的助手。",
-          "en-US": "Best used as a Skill that helps a QA manager assemble system evidence for a specific audit scope, spot gaps, and list follow-up actions."
+          "zh-CN": "适合配置成质量经理按审核范围快速整理内审资料、识别缺口并给出补件清单的助手。",
+          "en-US": "Best used as a Skill that helps a QA manager assemble internal-audit evidence for a specific audit scope, spot gaps, and list follow-up actions."
         },
         {
-          "zh-CN": "默认内置一份 ISO9001 资料包模板；如果用户填写了模板链接，则优先采用用户模板。",
-          "en-US": "A built-in ISO9001 package template is included by default; if the user provides a template link, follow the user template first."
+          "zh-CN": "默认使用当前 ISO9001 内审 Skill 自带的 Excel 检查表模板，业务模板资产统一维护在 `skills/use-cases/iso9001-package-preparation/`；如果用户填写了模板链接，则优先采用用户模板。",
+          "en-US": "By default, use the Excel internal-audit checklist template that ships with the current ISO9001 internal-audit skill; repository-owned template assets are maintained in `skills/use-cases/iso9001-package-preparation/`; if the user provides a template link, follow the user template first."
         }
       ],
       "descriptionPrompt": {
-        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次要出具的审核范围、客户 / 工厂 / 项目名称，以及时间范围。",
-        "en-US": "Input (information required every run): the audit scope, customer, plant or project name, and time window for this package."
+        "zh-CN": "输入（每次执行都需要提供给Skill的信息）：本次内审的审核范围、客户 / 工厂 / 项目名称，以及时间范围。",
+        "en-US": "Input (information required every run): the internal-audit scope, customer, plant or project name, and time window."
       },
       "infoSourcesPrompt": {
-        "zh-CN": "例如：质量手册、程序文件清单、记录表单库、内审报告、管理评审资料、培训记录、校准记录。",
-        "en-US": "Examples: quality manual, procedure index, record library, internal audit reports, management review materials, training records, and calibration records."
+        "zh-CN": "例如：质量手册、程序文件清单、记录表单库、内审报告、管理评审资料、培训记录、校准记录，以及需要导出的系统页面。",
+        "en-US": "Examples: quality manual, procedure index, record library, internal audit reports, management review materials, training records, calibration records, and system pages that need export."
       },
       "rulesPrompt": {
-        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，按内置资料包模板整理基础信息、体系文件、运行记录、缺口项和交付说明；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
-        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, organize the package with the built-in structure for basic information, system documents, evidence records, gap items, and delivery notes; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
+        "zh-CN": "例如：\n当前流程 / SOP / 模板：若未提供外部模板，则优先使用当前 ISO9001 内审 Skill 中的 `templates/iso9001-internal-audit-checklist.xlsx`，并按检查表条款目录整理资料包；输出必须包含检查表文件和资料包压缩包；若资料来自页面，需要先导出为文件后再归档到对应目录；若提供模板链接，则以用户模板优先。\n较好的例子：\n其他：",
+        "en-US": "Examples:\nCurrent workflow / SOP / template: if no external template is provided, first use `templates/iso9001-internal-audit-checklist.xlsx` from the current ISO9001 internal-audit skill, then organize the evidence package by the checklist clause structure; outputs must include the checklist file and an evidence-package zip; if evidence comes from pages, export those pages into files before archiving them; if a template link is provided, prioritize the user template.\nStrong examples:\nOther:"
       },
       "defaultDescription": {
-        "zh-CN": "基于现有体系文件和记录，整理一套可直接提交、审核或归档的 ISO9001 资料包。\n\n适合配置成质量经理按审核范围快速整理体系资料、识别缺口并给出补件清单的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n1. 基本信息：客户 / 审核范围 / 版本 / 编制日期\n2. 体系文件清单：质量手册、程序文件、作业指导书、记录表单目录\n3. 运行记录：内审、管理评审、纠正预防措施、培训、校准、供应商管理等证明材料\n4. 缺口与待补项：缺失文件、过期记录、责任人、预计补齐时间\n5. 交付说明：资料路径、命名规则、是否可直接外发 / 审核\n\n输入（每次执行都需要提供给Skill的信息）：本次要出具的审核范围、客户 / 工厂 / 项目名称，以及时间范围。",
-        "en-US": "Prepare an ISO9001 package from the current quality-system documents and records so it can be submitted, audited, or archived.\n\nBest used as a Skill that helps a QA manager assemble system evidence for a specific audit scope, spot gaps, and list follow-up actions.\n\nIf the user provides a template link, follow the user template first. Otherwise, use this built-in template:\n1. Basic information: customer, audit scope, revision, prepared date\n2. System document list: quality manual, procedures, work instructions, and record index\n3. Evidence records: internal audit, management review, CAPA, training, calibration, supplier management, and similar proof\n4. Gaps and follow-up items: missing files, expired records, owners, and target dates\n5. Delivery notes: package path, naming rules, and whether it is ready for external submission or audit\n\nInput (information required every run): the audit scope, customer, plant or project name, and time window for this package."
+        "zh-CN": "基于现有体系文件和记录，整理一套用于 ISO9001 内审的检查表和资料包。\n\n适合配置成质量经理按审核范围快速整理内审资料、识别缺口并给出补件清单的助手。\n\n如果用户填写了模板链接，则优先采用用户模板；未填写时，默认按以下模板整理：\n默认使用当前 ISO9001 内审 Skill 自带的 Excel 检查表模板 `templates/iso9001-internal-audit-checklist.xlsx`，该模板资产在仓库目录 `skills/use-cases/iso9001-package-preparation/` 中维护。\n内审检查表目录默认参考 `ISO9001：内审检查表.xlsx` 的条款结构，例如 4.1、4.2、4.3、4.4、5.1.1、9.2、9.3、10.2、10.3。\n输出内容：\n1. 内审检查表文件：基于内置 Excel 检查表模板填写本次内审记录\n2. 内审资料包压缩包：按检查表目录整理内审参考文件、体系文件、过程记录和导出后的页面文件\n资料包整理要求：\n1. 目录和内审检查表目录保持一致\n2. 如果资料来自页面，页面内容需要先导出为文件，再放入对应目录\n3. 每个目录下优先放入与该条款直接对应的程序文件、记录表单、报告、截图或导出件\n4. 缺失项要在检查表或资料包说明中明确标识\n\n输入（每次执行都需要提供给Skill的信息）：本次内审的审核范围、客户 / 工厂 / 项目名称，以及时间范围。",
+        "en-US": "Prepare an ISO9001 internal-audit checklist and evidence package from the current quality-system documents and records.\n\nBest used as a Skill that helps a QA manager assemble internal-audit evidence for a specific audit scope, spot gaps, and list follow-up actions.\n\nIf the user provides a template link, follow the user template first. Otherwise, use this built-in template:\nUse the Excel checklist template `templates/iso9001-internal-audit-checklist.xlsx` that ships with the current ISO9001 internal-audit skill; that repository-owned template asset is maintained in `skills/use-cases/iso9001-package-preparation/`.\nUse the checklist clause structure as the default evidence-package directory structure, for example 4.1, 4.2, 4.3, 4.4, 5.1.1, 9.2, 9.3, 10.2, and 10.3.\nOutputs:\n1. Internal-audit checklist file: fill the built-in Excel checklist template with the current audit record\n2. Internal-audit evidence-package zip: organize audit reference files, system documents, process records, and exported page files by the checklist directory structure\nPackage requirements:\n1. Keep the package directory structure aligned with the checklist directory structure\n2. If evidence comes from pages, export the page content into files before placing them into the matching directory\n3. In each directory, prioritize procedures, records, reports, screenshots, and exported files that directly support the clause\n4. Mark missing items clearly in the checklist or package notes\n\nInput (information required every run): the internal-audit scope, customer, plant or project name, and time window."
       },
       "defaultInfoSources": {
         "zh-CN": "",
@@ -1112,8 +1117,8 @@
         {
           "id": "iso9001-scope-source",
           "label": {
-            "zh-CN": "从哪里获取本次 ISO9001 资料包对应的审核范围和要求？",
-            "en-US": "Where can AI get the audit scope and requirements for this ISO9001 package?"
+            "zh-CN": "从哪里获取本次 ISO9001 内审对应的审核范围和要求？",
+            "en-US": "Where can AI get the audit scope and requirements for this ISO9001 internal audit?"
           },
           "placeholder": {
             "zh-CN": "例如：审核通知、客户要求或认证范围说明",
@@ -1124,36 +1129,36 @@
         {
           "id": "iso9001-material-source",
           "label": {
-            "zh-CN": "从哪里获取当前体系文件和过程记录？",
-            "en-US": "Where can AI find the current system documents and process records?"
+            "zh-CN": "从哪里获取当前内审对应的体系文件、过程记录和页面材料？",
+            "en-US": "Where can AI find the system documents, process records, and page materials for this internal audit?"
           },
           "placeholder": {
-            "zh-CN": "例如：体系文件目录、表单库或记录归档目录",
-            "en-US": "Example: document index, form library, or records archive"
+            "zh-CN": "例如：体系文件目录、表单库、记录归档目录或需要导出的系统页面",
+            "en-US": "Example: document index, form library, records archive, or system pages that need export"
           },
           "required": true
         },
         {
           "id": "iso9001-template-source",
           "label": {
-            "zh-CN": "如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 资料包模板？",
-            "en-US": "If the built-in template should be overridden, where can AI find the user-provided ISO9001 package template?"
+            "zh-CN": "如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？",
+            "en-US": "If the built-in template should be overridden, where can AI find the user-provided ISO9001 internal-audit checklist template?"
           },
           "placeholder": {
-            "zh-CN": "可留空；留空时使用内置模板，例如：客户模板链接或公司标准模板 Wiki",
-            "en-US": "Optional. Leave blank to use the built-in template. Example: customer template link or company standard template wiki"
+            "zh-CN": "可留空；留空时使用内置 Excel 检查表模板，例如：客户模板链接或公司标准模板 Wiki",
+            "en-US": "Optional. Leave blank to use the built-in Excel checklist template. Example: customer template link or company standard template wiki"
           },
           "required": false
         },
         {
           "id": "iso9001-history-package-source",
           "label": {
-            "zh-CN": "如果要参考历史资料包，从哪里获取历史 ISO9001 资料？",
-            "en-US": "If historical packages should be referenced, where can AI find previous ISO9001 materials?"
+            "zh-CN": "如果要参考历史内审资料包，从哪里获取历史 ISO9001 内审资料？",
+            "en-US": "If historical internal-audit packages should be referenced, where can AI find previous ISO9001 internal-audit materials?"
           },
           "placeholder": {
-            "zh-CN": "可留空；例如：去年的外审资料包或历史提交目录",
-            "en-US": "Optional. Example: last year's audit package or historical submission folder"
+            "zh-CN": "可留空；例如：去年的内审资料包或历史提交目录",
+            "en-US": "Optional. Example: last year's internal-audit package or historical submission folder"
           },
           "required": false
         },
