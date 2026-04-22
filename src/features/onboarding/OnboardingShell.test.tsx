@@ -2519,6 +2519,23 @@ describe('OnboardingShell', () => {
     )
   })
 
+  it('shows official brand logos inside the agent selection cards', async () => {
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '安装到 AI 工具' }))
+
+    expect(await waitForInstallModule()).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'WorkBuddy logo' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Codex logo' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('codex-app-icon')
+    )
+    expect(screen.getByRole('img', { name: 'Claude Code logo' })).toBeInTheDocument()
+  })
+
   it('opens the official product link with the Tauri opener plugin', async () => {
     const user = userEvent.setup()
 

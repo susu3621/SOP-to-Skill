@@ -4,11 +4,20 @@ import type { MouseEvent } from 'react'
 import { getOnboardingSupportedAgentOptions } from '../../../content/workbuddy'
 import { getOnboardingCopy, onboardingCopy } from '../copy'
 import type { Locale } from '../../../types'
+import workbuddyLogo from '../../../assets/agent-logos/workbuddy-logo.svg'
+import claudeCodeLogo from '../../../assets/agent-logos/claude-code-logo.svg'
+import codexLogo from '../../../assets/agent-logos/codex-app-icon.svg'
 
 interface AgentSelectionStepProps {
   locale: Locale
   selectedAgentIds: string[]
   onToggleAgent: (agentId: string) => void
+}
+
+const agentBrandLogos: Record<string, string> = {
+  workbuddy: workbuddyLogo,
+  'claude-code': claudeCodeLogo,
+  codex: codexLogo,
 }
 
 export function AgentSelectionStep({
@@ -43,6 +52,7 @@ export function AgentSelectionStep({
       <label>{getOnboardingCopy(locale, onboardingCopy.selectAgentApps)}</label>
       <div className="options options--cards">
         {agents.map((agent) => {
+          const brandLogo = agentBrandLogos[agent.id]
           const websiteUrl = agent.website_url
 
           return (
@@ -56,9 +66,21 @@ export function AgentSelectionStep({
               />
               <div className="field-option__content">
                 <div className="field-option__header">
-                  <label className="field-option__title" htmlFor={`agent-${agent.id}`}>
-                    {agent.name}
-                  </label>
+                  <div className="field-option__title-row">
+                    {brandLogo ? (
+                      <span className="field-option__brand-mark" data-agent={agent.id}>
+                        <img
+                          alt={`${agent.name} logo`}
+                          className="field-option__brand-mark-image"
+                          data-agent={agent.id}
+                          src={brandLogo}
+                        />
+                      </span>
+                    ) : null}
+                    <label className="field-option__title" htmlFor={`agent-${agent.id}`}>
+                      {agent.name}
+                    </label>
+                  </div>
                   {websiteUrl && (
                     <a
                       aria-label={`${agent.name} ${officialSiteLabel}`}
