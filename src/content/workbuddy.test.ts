@@ -226,10 +226,10 @@ describe('workbuddy agent apps', () => {
 
   it('assigns quality-management use cases plus generic logging, planning, and weekly report defaults to qa-manager', () => {
     expect(sharedConfig.roles['qa-manager']?.useCases).toEqual([
+      '8D报告出具',
+      'ISO9001内审检查表与资料包出具',
       '质量异常汇总与闭环跟进',
       '客诉售后问题分析与回复草稿',
-      'ISO9001内审检查表与资料包出具',
-      '8D报告出具',
       '变更评审里的质量影响检查',
       '质量周报',
       '供应商质量问题跟踪',
@@ -241,10 +241,10 @@ describe('workbuddy agent apps', () => {
     const qaDefaults = createDefaultRoleUseCaseContents('qa-manager')
 
     expect(qaDefaults.map((useCase) => useCase.use_case_name)).toEqual([
+      '8D报告出具',
+      'ISO9001内审检查表与资料包出具',
       '质量异常汇总与闭环跟进',
       '客诉售后问题分析与回复草稿',
-      'ISO9001内审检查表与资料包出具',
-      '8D报告出具',
       '变更评审里的质量影响检查',
       '质量周报',
       '供应商质量问题跟踪',

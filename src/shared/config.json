@@ -102,10 +102,10 @@
         "en-US": "Focuses on quality risks, testing closure, and process discipline."
       },
       "useCases": [
+        "8D报告出具",
+        "ISO9001内审检查表与资料包出具",
         "质量异常汇总与闭环跟进",
         "客诉售后问题分析与回复草稿",
-        "ISO9001内审检查表与资料包出具",
-        "8D报告出具",
         "变更评审里的质量影响检查",
         "质量周报",
         "供应商质量问题跟踪",
