@@ -15,6 +15,10 @@ function loadBuildDesktopLocal() {
       baseDir: string
       platformDir: string
     }
+    getTauriBuildInvocation: (platform?: string) => {
+      command: string
+      args: string[]
+    }
     runBuildDesktopLocal: (input: {
       targetPlatform: 'macos' | 'windows'
       system?: {
@@ -88,6 +92,20 @@ describe('local desktop build mode', () => {
         },
       }),
     ).rejects.toThrow(/NSIS/i)
+  })
+
+  it('wraps the Windows Tauri build in cmd.exe instead of spawning npm.cmd directly', () => {
+    const { getTauriBuildInvocation } = loadBuildDesktopLocal()
+
+    expect(getTauriBuildInvocation('win32')).toEqual({
+      command: 'cmd.exe',
+      args: ['/d', '/s', '/c', 'npm run tauri:build'],
+    })
+
+    expect(getTauriBuildInvocation('darwin')).toEqual({
+      command: 'npm',
+      args: ['run', 'tauri:build'],
+    })
   })
 
   it('runs the macOS happy path and copies the dmg into artifacts/desktop/local/macos', async () => {

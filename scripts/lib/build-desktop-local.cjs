@@ -63,6 +63,20 @@ function findNewestInstaller(bundleDir, extension) {
   return candidates[0].fullPath;
 }
 
+function getTauriBuildInvocation(platform = process.platform) {
+  if (platform === 'win32') {
+    return {
+      command: 'cmd.exe',
+      args: ['/d', '/s', '/c', 'npm run tauri:build'],
+    };
+  }
+
+  return {
+    command: 'npm',
+    args: ['run', 'tauri:build'],
+  };
+}
+
 async function runBuildDesktopLocal({ targetPlatform, system = createNodeSystem() }) {
   const expectedRuntimePlatform = getExpectedRuntimePlatform(targetPlatform);
   const runtimePlatform = system.getPlatform();
@@ -148,8 +162,8 @@ function createNodeSystem() {
       return path.resolve(__dirname, '..', '..');
     },
     runTauriBuild(repoRoot) {
-      const command = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-      const result = childProcess.spawnSync(command, ['run', 'tauri:build'], {
+      const { command, args } = getTauriBuildInvocation(process.platform);
+      const result = childProcess.spawnSync(command, args, {
         cwd: repoRoot,
         stdio: 'inherit',
       });
@@ -180,5 +194,6 @@ function createNodeSystem() {
 module.exports = {
   buildLocalArtifactLayout,
   createNodeSystem,
+  getTauriBuildInvocation,
   runBuildDesktopLocal,
 };
