@@ -2,7 +2,7 @@
 > 把公司的 SOP、模板和系统配置，整理成可安装到 AI 工具里的 Skill
 
 <div align="center">
-  <img src="src-tauri/icons/icon.png" alt="SOP to Skill Logo" width="120" height="120">
+  <img src="src-tauri/icons/app-icon.svg" alt="SOP to Skill Logo" width="120" height="120">
 
   <h3>给非工程团队的 AI Skill 配置台</h3>
   <p>通过引导式配置，把岗位工作、公司 IT 工具和 SOP 绑定起来，再同步到 Codex、Claude Code 或 WorkBuddy。</p>

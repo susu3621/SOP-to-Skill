@@ -2,7 +2,7 @@
 > Turn company SOPs, templates, and system setup into installable AI skills
 
 <div align="center">
-  <img src="src-tauri/icons/icon.png" alt="SOP to Skill Logo" width="120" height="120">
+  <img src="src-tauri/icons/app-icon.svg" alt="SOP to Skill Logo" width="120" height="120">
 
   <h3>An AI Skill configuration desk for non-engineering teams</h3>
   <p>Use guided setup to connect role-based work, company IT tools, and SOP rules, then sync the result into Codex, Claude Code, or WorkBuddy.</p>
