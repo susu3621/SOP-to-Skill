@@ -1760,6 +1760,23 @@ textarea {
   white-space: pre-wrap;
 }
 
+.onboarding-use-case-preview-markdown {
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 16px;
+  background: rgba(235, 246, 243, 0.62);
+  color: rgba(22, 48, 41, 0.88);
+  font-size: 0.94rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  font-family:
+    'JetBrains Mono',
+    'SFMono-Regular',
+    ui-monospace,
+    monospace;
+}
+
 .onboarding-use-case-preview-question-list {
   display: grid;
   gap: 12px;

@@ -4,6 +4,10 @@ const {
   getOnboardingGeneratedSkillIds,
 } = require('./onboarding-skill-set.cjs');
 
+const EIGHT_D_USE_CASE_DIR = 'eight-d-report-preparation';
+const EIGHT_D_TEMPLATE_RELATIVE_PATH = path.join('templates', '8d-report.docx');
+const DOCUMENT_TEMPLATE_SKILL_ID = 'document-template';
+
 function resolveExplicitSkillVariant(options) {
   const explicitVariant = options?.variant;
 
@@ -19,14 +23,14 @@ function resolveExplicitSkillVariant(options) {
 }
 
 function buildEightDDocumentTemplateGuidance(cfg, useCaseDir) {
-  if (useCaseDir !== 'eight-d-report-preparation' || !cfg.baseSkills.includes('document-template')) {
+  if (useCaseDir !== EIGHT_D_USE_CASE_DIR || !cfg.baseSkills.includes(DOCUMENT_TEMPLATE_SKILL_ID)) {
     return '';
   }
 
   return `## 默认模板出具流程
 
-- 默认情况下，调用 \`document-template\` 基础技能来生成正式 8D 报告。
-- 如果用户没有提供外部模板链接，默认使用 \`document-template\` 技能内置模板 \`templates/8d-report.docx\`。
+- 默认情况下，使用当前 8D Skill 目录中的 \`templates/8d-report.docx\` 作为模板，并调用 \`document-template\` 基础技能来生成正式 8D 报告。
+- 如果用户没有提供外部模板链接，优先使用当前 8D Skill 自带模板；如果当前 8D Skill 中还没有模板，先按 8D 报告结构补齐或构建模板。
 - 先整理成结构化 JSON，再进行模板校验和文档渲染。
 - 建议 JSON 至少包含以下结构：
 
@@ -56,6 +60,32 @@ function buildEightDDocumentTemplateGuidance(cfg, useCaseDir) {
 - 如果用户提供了自定义模板，优先改用用户模板，但仍保持“先结构化 JSON、再模板渲染”的流程。
 
 `;
+}
+
+function buildEightDSeedFiles(useCaseDir, skillOutputDir) {
+  if (useCaseDir !== EIGHT_D_USE_CASE_DIR) {
+    return [];
+  }
+
+  const sourcePath = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    'skills',
+    DOCUMENT_TEMPLATE_SKILL_ID,
+    EIGHT_D_TEMPLATE_RELATIVE_PATH
+  );
+
+  if (!fs.existsSync(sourcePath)) {
+    return [];
+  }
+
+  return [
+    {
+      sourcePath,
+      targetPath: path.join(skillOutputDir, EIGHT_D_TEMPLATE_RELATIVE_PATH),
+    },
+  ];
 }
 
 function getSkillOutputDetails(cfg, sharedConfig, options) {
@@ -141,6 +171,7 @@ ${documentTemplateGuidance}${includeLocalOnlyGuidance ? `## 测试环境说明
 `;
 
   return {
+    seedFiles: buildEightDSeedFiles(useCaseDir, skillOutputDir),
     skillConfig,
     skillJsonPath: path.join(skillOutputDir, 'skill.json'),
     skillMdPath: path.join(skillOutputDir, 'SKILL.md'),
@@ -164,6 +195,10 @@ function writeSkillArtifacts(result) {
   fs.mkdirSync(path.dirname(result.skillJsonPath), { recursive: true });
   fs.writeFileSync(result.skillJsonPath, JSON.stringify(result.skillConfig, null, 2));
   fs.writeFileSync(result.skillMdPath, result.skillMD);
+  for (const file of result.seedFiles || []) {
+    fs.mkdirSync(path.dirname(file.targetPath), { recursive: true });
+    fs.copyFileSync(file.sourcePath, file.targetPath);
+  }
 }
 
 module.exports = {

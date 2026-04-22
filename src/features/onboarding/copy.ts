@@ -487,6 +487,10 @@ export const onboardingCopy = {
     'zh-CN': '当前内容预览',
     'en-US': 'Current content preview',
   },
+  previewMarkdownTitle: {
+    'zh-CN': '将生成的 SKILL.md',
+    'en-US': 'Generated SKILL.md',
+  },
   previewBuiltInTemplateTitle: {
     'zh-CN': '当前内置模板',
     'en-US': 'Current built-in template',
@@ -494,6 +498,14 @@ export const onboardingCopy = {
   closePreview: {
     'zh-CN': '关闭预览',
     'en-US': 'Close preview',
+  },
+  previewLoading: {
+    'zh-CN': '正在生成预览…',
+    'en-US': 'Generating preview…',
+  },
+  previewLoadFailed: {
+    'zh-CN': '预览生成失败：',
+    'en-US': 'Failed to generate preview:',
   },
   previewEmptyValue: {
     'zh-CN': '未填写',

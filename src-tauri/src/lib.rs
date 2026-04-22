@@ -124,6 +124,7 @@ pub fn run() {
             commands::onboarding::check_onboarding_skill_environment,
             commands::onboarding::install_onboarding_skill_environment,
             commands::onboarding::get_onboarding_install_preview,
+            commands::onboarding::preview_onboarding_generated_skill_markdown,
             commands::onboarding::stage_onboarding_generated_packages,
             commands::onboarding::sync_onboarding_installation,
             // Config commands

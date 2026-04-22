@@ -587,6 +587,7 @@ export function OnboardingShell({
     syncing,
     syncResult,
     startSync,
+    previewGeneratedSkillMarkdown,
     removeLinuxDevice,
     removeSvnRepository,
     runManualConnectionTest,
@@ -1389,6 +1390,7 @@ export function OnboardingShell({
                           feedback={activeUseCaseScope ? saveFeedbacks[activeUseCaseScope] : null}
                         />
                         <UseCaseConfigStep
+                          loadPreviewMarkdown={previewGeneratedSkillMarkdown}
                           locale={locale}
                           useCases={[activeUseCase]}
                           onAddQuestion={addUseCaseQuestion}

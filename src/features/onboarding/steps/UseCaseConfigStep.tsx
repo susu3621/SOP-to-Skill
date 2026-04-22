@@ -1,15 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { Locale, OnboardingEditableUseCaseRecord } from '../../../types'
 import { getOnboardingUseCaseOptionById } from '../../../content/workbuddy'
 import { getOnboardingCopy, onboardingCopy } from '../copy'
-import {
-  getBuiltInTemplateValue,
-  usesBuiltInTemplateFallback,
-} from '../useCaseTemplate'
 
 interface UseCaseConfigStepProps {
   locale: Locale
   useCases: OnboardingEditableUseCaseRecord[]
+  loadPreviewMarkdown: (useCase: OnboardingEditableUseCaseRecord) => Promise<string>
   onUpdateDescription: (useCaseId: string, value: string) => void
   onUpdateQuestionLabel: (useCaseId: string, questionId: string, value: string) => void
   onUpdateQuestionAnswer: (useCaseId: string, questionId: string, value: string) => void
@@ -38,39 +35,24 @@ function getPreviewValue(value: string, locale: Locale) {
     : getOnboardingCopy(locale, onboardingCopy.previewEmptyValue)
 }
 
-function getPreviewQuestionAnswer(
-  questionId: string,
-  value: string,
-  locale: Locale,
-  description: string
-) {
-  if (value.trim().length > 0) {
-    return value
-  }
-
-  if (usesBuiltInTemplateFallback(questionId, value, description)) {
-    return getOnboardingCopy(locale, onboardingCopy.previewUsesBuiltInTemplate)
-  }
-
-  return getOnboardingCopy(locale, onboardingCopy.previewEmptyValue)
-}
-
 interface UseCasePreviewDialogProps {
   locale: Locale
-  useCase: OnboardingEditableUseCaseRecord
   displayName: string
+  error: string | null
+  loading: boolean
+  markdown: string
   onClose: () => void
 }
 
 function UseCasePreviewDialog({
   locale,
-  useCase,
   displayName,
+  error,
+  loading,
+  markdown,
   onClose,
 }: UseCasePreviewDialogProps) {
   const dialogTitle = `${displayName} ${getOnboardingCopy(locale, onboardingCopy.previewDialogTitle)}`
-  const questions = useCase.questions ?? []
-  const builtInTemplateValue = getBuiltInTemplateValue(useCase.description)
 
   return (
     <>
@@ -95,49 +77,18 @@ function UseCasePreviewDialog({
         <div className="onboarding-use-case-preview-dialog__content">
           <section className="onboarding-use-case-preview-section">
             <p className="onboarding-use-case-section__title">
-              {getOnboardingCopy(locale, onboardingCopy.useCaseSummary)}
+              {getOnboardingCopy(locale, onboardingCopy.previewMarkdownTitle)}
             </p>
-            <p className="onboarding-use-case-preview-section__body">
-              {getPreviewValue(useCase.description, locale)}
-            </p>
-          </section>
-
-          {builtInTemplateValue ? (
-            <section className="onboarding-use-case-preview-section">
-              <p className="onboarding-use-case-section__title">
-                {getOnboardingCopy(locale, onboardingCopy.previewBuiltInTemplateTitle)}
-              </p>
-              <p className="onboarding-use-case-preview-section__body">{builtInTemplateValue}</p>
-            </section>
-          ) : null}
-
-          <section className="onboarding-use-case-preview-section">
-            <p className="onboarding-use-case-section__title">
-              {getOnboardingCopy(locale, onboardingCopy.useCaseQuestionsTitle)}
-            </p>
-
-            {questions.length > 0 ? (
-              <div className="onboarding-use-case-preview-question-list">
-                {questions.map((question) => (
-                  <article className="onboarding-use-case-preview-question-card" key={question.id}>
-                    <p className="onboarding-use-case-preview-question-card__label">
-                      {question.locked ? question.label : question.label.trim() || question.id}
-                    </p>
-                    <p className="onboarding-use-case-preview-question-card__answer">
-                      {getPreviewQuestionAnswer(
-                        question.id,
-                        question.answer,
-                        locale,
-                        useCase.description
-                      )}
-                    </p>
-                  </article>
-                ))}
-              </div>
-            ) : (
+            {loading ? (
               <p className="onboarding-use-case-preview-section__body">
-                {getOnboardingCopy(locale, onboardingCopy.none)}
+                {getOnboardingCopy(locale, onboardingCopy.previewLoading)}
               </p>
+            ) : error ? (
+              <p className="error">{error}</p>
+            ) : (
+              <pre className="onboarding-use-case-preview-markdown">
+                {getPreviewValue(markdown, locale)}
+              </pre>
             )}
           </section>
         </div>
@@ -148,6 +99,7 @@ function UseCasePreviewDialog({
 
 export function UseCaseConfigStep({
   locale,
+  loadPreviewMarkdown,
   useCases,
   onUpdateDescription,
   onUpdateQuestionLabel,
@@ -156,11 +108,57 @@ export function UseCaseConfigStep({
   onRemoveQuestion,
 }: UseCaseConfigStepProps) {
   const [previewUseCaseId, setPreviewUseCaseId] = useState<string | null>(null)
+  const [previewMarkdown, setPreviewMarkdown] = useState('')
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewError, setPreviewError] = useState<string | null>(null)
   const previewUseCase = useCases.find((useCase) => useCase.use_case_id === previewUseCaseId) ?? null
   const previewDisplayName = previewUseCase
     ? getOnboardingUseCaseOptionById(previewUseCase.use_case_id, locale)?.name ??
       previewUseCase.use_case_name
     : ''
+
+  useEffect(() => {
+    if (!previewUseCase) {
+      setPreviewMarkdown('')
+      setPreviewLoading(false)
+      setPreviewError(null)
+      return
+    }
+
+    let active = true
+    setPreviewLoading(true)
+    setPreviewError(null)
+    setPreviewMarkdown('')
+
+    void loadPreviewMarkdown(previewUseCase)
+      .then((markdown) => {
+        if (!active) {
+          return
+        }
+
+        setPreviewMarkdown(markdown)
+      })
+      .catch((error) => {
+        if (!active) {
+          return
+        }
+
+        setPreviewError(
+          `${getOnboardingCopy(locale, onboardingCopy.previewLoadFailed)} ${String(error)}`
+        )
+      })
+      .finally(() => {
+        if (!active) {
+          return
+        }
+
+        setPreviewLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [loadPreviewMarkdown, locale, previewUseCase])
 
   return (
     <>
@@ -322,9 +320,11 @@ export function UseCaseConfigStep({
 
       {previewUseCase ? (
         <UseCasePreviewDialog
+          error={previewError}
           locale={locale}
-          useCase={previewUseCase}
           displayName={previewDisplayName}
+          loading={previewLoading}
+          markdown={previewMarkdown}
           onClose={() => setPreviewUseCaseId(null)}
         />
       ) : null}

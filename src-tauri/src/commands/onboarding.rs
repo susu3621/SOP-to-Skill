@@ -5,7 +5,8 @@ use crate::models::{
 };
 use crate::onboarding::{
     generator::{
-        stage_generated_use_case_skill_packages, StageOnboardingPackageInput,
+        render_generated_skill_markdown, stage_generated_use_case_skill_packages,
+        StageOnboardingPackageInput,
         StagedOnboardingPackages,
     },
     state::{
@@ -2313,6 +2314,22 @@ pub fn stage_onboarding_generated_packages(
         Err(error) => SkillResult::Error {
             error: error.to_string(),
         },
+    }
+}
+
+#[tauri::command]
+pub fn preview_onboarding_generated_skill_markdown(
+    input: StageOnboardingPackageInput,
+    include_test_guidance: Option<bool>,
+) -> SkillResult<String> {
+    let production_skill_id = format!("{}-{}", input.role_id, input.use_case_directory);
+
+    SkillResult::Success {
+        success: render_generated_skill_markdown(
+            &input,
+            &production_skill_id,
+            include_test_guidance.unwrap_or(false),
+        ),
     }
 }
 

@@ -2379,6 +2379,35 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     }
   }, [dirty.any, installedSkills, locale, persistState, savedState, state])
 
+  const previewGeneratedSkillMarkdown = useCallback(
+    async (useCase: OnboardingEditableUseCaseRecord) => {
+      const matchingUseCase = onboardingUseCases.find(
+        (configuredUseCase) => configuredUseCase.id === useCase.use_case_id
+      )
+
+      const result = await invoke<SkillResult<string>>(
+        'preview_onboarding_generated_skill_markdown',
+        {
+          input: {
+            role_id: state.selected_role_id,
+            role_name: getRoleNameById(state.selected_role_id),
+            selected_agent_ids: state.selected_agent_ids,
+            selected_base_skill_ids: state.selected_base_skill_ids,
+            use_case: useCase,
+            use_case_directory: matchingUseCase?.directory ?? useCase.use_case_id,
+          },
+        }
+      )
+
+      if (typeof result.success === 'string') {
+        return result.success
+      }
+
+      throw new Error(result.error ?? getOnboardingCopy(locale, onboardingCopy.previewLoadFailed))
+    },
+    [locale, state.selected_agent_ids, state.selected_base_skill_ids, state.selected_role_id]
+  )
+
   return {
     completion,
     connectionTests,
@@ -2407,6 +2436,7 @@ export function useOnboarding(installedSkills: InstalledSkillInfo[], locale: Loc
     syncing,
     syncResult,
     startSync,
+    previewGeneratedSkillMarkdown,
     removeLinuxDevice,
     removeSvnRepository,
     toggleAgent,
