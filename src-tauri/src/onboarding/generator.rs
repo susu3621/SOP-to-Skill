@@ -181,7 +181,48 @@ const BUILT_IN_TEMPLATE_START_MARKERS: &[&str] = &[
 const BUILT_IN_TEMPLATE_END_MARKERS: &[&str] = &[
     "\n\n输入（每次执行都需要提供给Skill的信息）：",
     "\n\nInput (information required every run):",
+    "\n\n运行时输入：",
+    "\n\nRuntime input:",
 ];
+
+const LEGACY_RUNTIME_INPUT_PREFIX_ZH: &str = "输入（每次执行都需要提供给Skill的信息）：";
+const LEGACY_RUNTIME_INPUT_PREFIX_EN: &str = "Input (information required every run): ";
+const NORMALIZED_RUNTIME_INPUT_PREFIX_ZH: &str = "运行时输入：调用 Skill 时需要用户提供";
+const NORMALIZED_RUNTIME_INPUT_SUFFIX_ZH: &str =
+    "；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。";
+const NORMALIZED_RUNTIME_INPUT_PREFIX_EN: &str = "Runtime input: ask the user for ";
+const NORMALIZED_RUNTIME_INPUT_SUFFIX_EN: &str =
+    " when the Skill is invoked; if anything is missing, ask follow-up questions before proceeding. Do not fill this during Skill design.";
+
+fn trim_trailing_sentence_punctuation(value: &str) -> &str {
+    value.trim_end_matches(|character| {
+        matches!(character, '。' | '．' | '.' | '!' | '?' | '？')
+    })
+}
+
+fn normalize_runtime_input_guidance(description: &str) -> String {
+    description
+        .lines()
+        .map(|line| {
+            if let Some(subject) = line.strip_prefix(LEGACY_RUNTIME_INPUT_PREFIX_ZH) {
+                let subject = trim_trailing_sentence_punctuation(subject.trim());
+                return format!(
+                    "{NORMALIZED_RUNTIME_INPUT_PREFIX_ZH}{subject}{NORMALIZED_RUNTIME_INPUT_SUFFIX_ZH}"
+                );
+            }
+
+            if let Some(subject) = line.strip_prefix(LEGACY_RUNTIME_INPUT_PREFIX_EN) {
+                let subject = trim_trailing_sentence_punctuation(subject.trim());
+                return format!(
+                    "{NORMALIZED_RUNTIME_INPUT_PREFIX_EN}{subject}{NORMALIZED_RUNTIME_INPUT_SUFFIX_EN}"
+                );
+            }
+
+            line.to_string()
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 
 fn find_built_in_template_section(description: &str) -> Option<(usize, usize, usize)> {
     for start_marker in BUILT_IN_TEMPLATE_START_MARKERS {
@@ -413,8 +454,9 @@ pub fn render_generated_skill_markdown(
         input.selected_agent_ids.join("、")
     };
 
-    let sanitized_description = strip_built_in_template_content(&input.use_case.description);
-    let built_in_template_value = extract_built_in_template_value(&input.use_case.description);
+    let normalized_description = normalize_runtime_input_guidance(&input.use_case.description);
+    let sanitized_description = strip_built_in_template_content(&normalized_description);
+    let built_in_template_value = extract_built_in_template_value(&normalized_description);
 
     let mut body = format!(
         "---\nname: {skill_id}\ndescription: {role_name} - {use_case_name}\n---\n\n# {skill_id}\n\n## 配置信息\n\n- **岗位**: {role_name}\n- **用例**: {use_case_name}\n- **Agent**: {agent_ids}\n- **基础技能**: {base_skill_ids}\n\n## 用例说明\n\n{description}\n\n",
@@ -460,7 +502,7 @@ pub fn render_generated_skill_markdown(
 
     if include_test_guidance {
         body.push_str(
-            "## 测试环境说明\n\n- 将产生的结果存储到 `/tmp/skills-for-no-engineer`\n- 不要实际进行发送\n- 最终结果不要进行更新执行，而是打印出来。\n",
+            "## 测试环境说明\n\n- 将产生的结果存储到 `sop-to-skill` 数据目录\n- 不要实际进行发送\n- 最终结果不要进行更新执行，而是打印出来。\n",
         );
     }
 
@@ -570,7 +612,7 @@ mod tests {
         assert!(result.test.source_dir.join("SKILL.md").exists());
         assert!(fs::read_to_string(result.test.source_dir.join("SKILL.md"))
             .expect("test skill md")
-            .contains("/tmp/skills-for-no-engineer"));
+            .contains("`sop-to-skill` 数据目录"));
     }
 
     #[test]
@@ -713,7 +755,10 @@ mod tests {
         assert!(production_markdown.contains("## 用例说明"));
         assert!(production_markdown.contains("汇总项目状态、风险和下周动作，形成标准化周报输出。"));
         assert!(!production_markdown.contains("默认按以下模板整理"));
-        assert!(production_markdown.contains("输入（每次执行都需要提供给Skill的信息）：本周进展、风险、里程碑状态和下周计划。"));
+        assert!(production_markdown.contains(
+            "运行时输入：调用 Skill 时需要用户提供本周进展、风险、里程碑状态和下周计划；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。"
+        ));
+        assert!(!production_markdown.contains("输入（每次执行都需要提供给Skill的信息）："));
         assert!(production_markdown.contains("- **从哪里获取周报 SOP？**: 1. 本周进展：关键交付、完成情况、里程碑状态"));
         assert!(production_markdown.contains("4. 需要支持：待决策事项、资源需求、升级提醒"));
     }
@@ -898,6 +943,10 @@ mod tests {
         assert!(production_markdown.contains(
             "- **如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？**: 留空时默认使用当前 Skill 目录中的 `templates/iso9001-internal-audit-checklist.xlsx`"
         ));
+        assert!(production_markdown.contains(
+            "运行时输入：调用 Skill 时需要用户提供本次内审的审核范围、客户 / 工厂 / 项目名称，以及时间范围；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。"
+        ));
+        assert!(!production_markdown.contains("输入（每次执行都需要提供给Skill的信息）："));
         assert!(!production_markdown.contains(
             "- **如果要覆盖内置模板，从哪里获取用户指定的 ISO9001 内审检查表模板？**: 默认使用当前 ISO9001 内审 Skill 自带的 Excel 检查表模板"
         ));

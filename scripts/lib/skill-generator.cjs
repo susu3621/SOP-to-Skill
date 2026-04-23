@@ -237,7 +237,7 @@ ${cfg.reportRules || '未设置'}
 
 ${documentTemplateGuidance}${includeLocalOnlyGuidance ? `## 测试环境说明
 
-- 将产生的结果存储到 \`/tmp/skills-for-no-engineer\`
+- 将产生的结果存储到 \`sop-to-skill\` 数据目录
 - 不要实际进行发送
 - 最终结果不要进行更新执行，而是打印出来。
 

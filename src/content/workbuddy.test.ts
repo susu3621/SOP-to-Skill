@@ -29,6 +29,20 @@ function getLocalizedConfigValue(value: unknown, locale: 'zh-CN' | 'en-US') {
   return ''
 }
 
+function normalizeLegacyRuntimeInputText(value: string) {
+  return value
+    .replace(
+      /输入（每次执行都需要提供给Skill的信息）：([^\n]+)/g,
+      (_, subject: string) =>
+        `运行时输入：调用 Skill 时需要用户提供${subject.replace(/[。．.!?？]+$/u, '')}；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。`
+    )
+    .replace(
+      /Input \(information required every run\): ([^\n]+)/g,
+      (_, subject: string) =>
+        `Runtime input: ask the user for ${subject.replace(/[。．.!?？]+$/u, '')} when the Skill is invoked; if anything is missing, ask follow-up questions before proceeding. Do not fill this during Skill design.`
+    )
+}
+
 describe('workbuddy agent apps', () => {
   it('does not expose Antigravity as a selectable app', () => {
     expect(sharedConfig.agentApps).not.toHaveProperty('antigravity')
@@ -269,12 +283,12 @@ describe('workbuddy agent apps', () => {
     expect(isoPackage?.structured_questions).toEqual([
       expect.objectContaining({
         id: 'iso9001-scope-source',
-        label: '从哪里获取本次 ISO9001 内审对应的审核范围和要求？',
+        label: '通常从哪些 IT 系统、页面或文档获取 ISO9001 内审的审核范围和要求？',
         required: true,
       }),
       expect.objectContaining({
         id: 'iso9001-material-source',
-        label: '从哪里获取当前内审对应的体系文件、过程记录和页面材料？',
+        label: '通常从哪些 IT 系统、页面或文档获取 ISO9001 内审相关的体系文件、过程记录和页面材料？',
         required: true,
       }),
       expect.objectContaining({
@@ -297,7 +311,7 @@ describe('workbuddy agent apps', () => {
     expect(eightDReport?.structured_questions).toEqual([
       expect.objectContaining({
         id: 'eight-d-issue-source',
-        label: '从哪里获取本次 8D 的问题记录和影响范围？',
+        label: '通常从哪些 IT 系统、页面或文档获取 8D 所需的问题记录和影响范围？',
         required: true,
       }),
       expect.objectContaining({
@@ -584,6 +598,10 @@ describe('workbuddy agent apps', () => {
     expect(defaults.every((useCase) => useCase.info_sources === '')).toBe(true)
     expect(defaults.every((useCase) => useCase.rules === '')).toBe(true)
     expect(requirementAssessmentOption?.description_prompt).toContain(
+      '运行时输入：调用 Skill 时需要用户提供需要评估的需求名字'
+    )
+    expect(requirementAssessmentOption?.description_prompt).toContain('先追问补齐')
+    expect(requirementAssessmentOption?.description_prompt).not.toContain(
       '输入（每次执行都需要提供给Skill的信息）：'
     )
     expect(requirementAssessmentOption?.description_prompt).not.toContain('输出（Skill输出的结果）：')
@@ -592,13 +610,30 @@ describe('workbuddy agent apps', () => {
     expect(requirementAssessment?.description).toContain(
       '如果用户填写了公司 SOP / 模板链接，则优先采用用户提供的内容'
     )
-    expect(requirementAssessment?.description).toContain(
-      '输入（每次执行都需要提供给Skill的信息）：需要评估的需求名字'
-    )
+    expect(requirementAssessment?.description).toContain('运行时输入：调用 Skill 时需要用户提供需要评估的需求名字')
+    expect(requirementAssessment?.description).toContain('先追问补齐')
+    expect(requirementAssessment?.description).not.toContain('输入（每次执行都需要提供给Skill的信息）：')
     expect(requirementAssessment?.description).not.toContain('其他相关信息由 AI 自己从系统中查找。')
     expect(requirementAssessment?.description).not.toContain('输出（Skill输出的结果）：')
     expect(requirementAssessment?.description).not.toContain('客户原始需求、销售澄清记录')
     expect(requirementAssessment?.description).not.toContain('范围边界和待确认问题')
+    expect(requirementAssessmentOption?.structured_questions).toEqual([
+      expect.objectContaining({
+        id: 'information-source',
+        label: '通常从哪些 IT 系统、页面或文档获取需求评估需要的信息？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'workflow-sop',
+        label: '通常从哪些 IT 系统、页面或文档获取需求评估的 SOP、模板或流程说明？',
+        required: true,
+      }),
+      expect.objectContaining({
+        id: 'other',
+        label: '其他',
+        required: false,
+      }),
+    ])
     expect(requirementAssessmentOption?.info_sources_prompt).toContain('技术模块清单')
     expect(requirementAssessmentOption?.rules_prompt).toContain('例如：\n当前流程 / SOP / 模板：')
     expect(requirementAssessmentOption?.rules_prompt).toContain('较好的例子：')
@@ -634,7 +669,9 @@ describe('workbuddy agent apps', () => {
     expect(normalized.find((useCase) => useCase.use_case_id === 'weekly-report')).toEqual(
       expect.objectContaining({
         description_locked: true,
-        description: getLocalizedConfigValue(sharedConfig.useCases['项目周报']?.defaultDescription, 'zh-CN'),
+        description: normalizeLegacyRuntimeInputText(
+          getLocalizedConfigValue(sharedConfig.useCases['项目周报']?.defaultDescription, 'zh-CN')
+        ),
         info_sources: '保留自定义来源',
         rules: '保留自定义流程',
         questions: expect.arrayContaining([
@@ -651,21 +688,25 @@ describe('workbuddy agent apps', () => {
     )
   })
 
-  it('uses updated default input wording for daily log, planning, and issue tracking', () => {
+  it('uses runtime input wording for daily log, planning, and issue tracking', () => {
     const defaults = createDefaultRoleUseCaseContents('project-manager')
     const dailyLog = defaults.find((useCase) => useCase.use_case_id === 'daily-log')
     const planning = defaults.find((useCase) => useCase.use_case_id === 'planning')
     const issueTracking = defaults.find((useCase) => useCase.use_case_id === 'issue-tracking')
 
-    expect(dailyLog?.description).toContain('输入（每次执行都需要提供给Skill的信息）：具体哪一天。')
+    expect(dailyLog?.description).toContain('运行时输入：调用 Skill 时需要用户提供具体哪一天')
+    expect(dailyLog?.description).toContain('先追问补齐')
+    expect(dailyLog?.description).not.toContain('输入（每次执行都需要提供给Skill的信息）：')
     expect(dailyLog?.description).not.toContain('会议纪要、聊天记录和问题管理系统变化')
     expect(dailyLog?.description).not.toContain('输出（Skill输出的结果）：')
-    expect(planning?.description).toContain('输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。')
+    expect(planning?.description).toContain('运行时输入：调用 Skill 时需要用户提供计划的时间及范围')
+    expect(planning?.description).toContain('先追问补齐')
+    expect(planning?.description).not.toContain('输入（每次执行都需要提供给Skill的信息）：')
     expect(planning?.description).not.toContain('项目里程碑、任务拆解和跨团队依赖')
     expect(planning?.description).not.toContain('输出（Skill输出的结果）：')
-    expect(issueTracking?.description).toContain(
-      '输入（每次执行都需要提供给Skill的信息）：要跟踪的问题，或者项目。'
-    )
+    expect(issueTracking?.description).toContain('运行时输入：调用 Skill 时需要用户提供要跟踪的问题，或者项目')
+    expect(issueTracking?.description).toContain('先追问补齐')
+    expect(issueTracking?.description).not.toContain('输入（每次执行都需要提供给Skill的信息）：')
     expect(issueTracking?.description).not.toContain('问题管理系统中的缺陷、测试反馈和会议行动项')
     expect(issueTracking?.description).not.toContain('输出（Skill输出的结果）：')
   })
@@ -678,7 +719,9 @@ describe('workbuddy agent apps', () => {
     expect(sharedConfig.useCases['记录日志']).toHaveProperty('defaultInfoSources')
     expect(sharedConfig.useCases['记录日志']).toHaveProperty('defaultRules')
     expect(dailyLog?.description).toBe(
-      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultDescription, 'zh-CN')
+      normalizeLegacyRuntimeInputText(
+        getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultDescription, 'zh-CN')
+      )
     )
     expect(dailyLog?.info_sources).toBe(
       getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultInfoSources, 'zh-CN')
@@ -700,13 +743,17 @@ describe('workbuddy agent apps', () => {
       getLocalizedConfigValue(sharedConfig.useCases['需求评估']?.name, 'en-US')
     )
     expect(requirementAssessment?.description).toBe(
-      getLocalizedConfigValue(sharedConfig.useCases['需求评估']?.defaultDescription, 'en-US')
+      normalizeLegacyRuntimeInputText(
+        getLocalizedConfigValue(sharedConfig.useCases['需求评估']?.defaultDescription, 'en-US')
+      )
     )
     expect(dailyLog?.use_case_name).toBe(
       getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.name, 'en-US')
     )
     expect(dailyLog?.description).toBe(
-      getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultDescription, 'en-US')
+      normalizeLegacyRuntimeInputText(
+        getLocalizedConfigValue(sharedConfig.useCases['记录日志']?.defaultDescription, 'en-US')
+      )
     )
   })
 

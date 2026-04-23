@@ -121,6 +121,69 @@ function readConfigText(value: ConfigText | undefined, locale: Locale = 'zh-CN')
   return value[locale] ?? value['zh-CN'] ?? value['en-US'] ?? ''
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function trimTrailingSentencePunctuation(value: string) {
+  return value.trim().replace(/[。．.!?？]+$/u, '')
+}
+
+function normalizeRuntimeInputText(value: string, locale: Locale = 'zh-CN') {
+  if (!value.trim()) {
+    return value
+  }
+
+  const legacyPrefix =
+    locale === 'en-US'
+      ? 'Input (information required every run): '
+      : '输入（每次执行都需要提供给Skill的信息）：'
+  const normalizedPrefix =
+    locale === 'en-US'
+      ? 'Runtime input: ask the user for '
+      : '运行时输入：调用 Skill 时需要用户提供'
+  const normalizedSuffix =
+    locale === 'en-US'
+      ? ' when the Skill is invoked; if anything is missing, ask follow-up questions before proceeding. Do not fill this during Skill design.'
+      : '；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。'
+  const pattern = new RegExp(`${escapeRegExp(legacyPrefix)}([^\\n]+)`, 'g')
+
+  return value.replace(pattern, (_, subject: string) => {
+    return `${normalizedPrefix}${trimTrailingSentencePunctuation(subject)}${normalizedSuffix}`
+  })
+}
+
+function normalizeStructuredQuestionLabel(
+  questionId: string,
+  label: string,
+  locale: Locale = 'zh-CN'
+) {
+  const overrides: Partial<Record<Locale, Record<string, string>>> = {
+    'zh-CN': {
+      'iso9001-scope-source': '通常从哪些 IT 系统、页面或文档获取 ISO9001 内审的审核范围和要求？',
+      'iso9001-material-source':
+        '通常从哪些 IT 系统、页面或文档获取 ISO9001 内审相关的体系文件、过程记录和页面材料？',
+      'eight-d-issue-source': '通常从哪些 IT 系统、页面或文档获取 8D 所需的问题记录和影响范围？',
+      'change-request-source': '通常从哪些 IT 系统、页面或文档获取待评审的变更申请？',
+      'quality-issue-source': '通常从哪些 IT 系统、页面或文档获取质量问题 / 异常清单？',
+    },
+    'en-US': {
+      'iso9001-scope-source':
+        'Which IT systems, pages, or documents usually contain the audit scope and requirements for ISO9001 internal audits?',
+      'iso9001-material-source':
+        'Which IT systems, pages, or documents usually contain the system documents, process records, and page materials for ISO9001 internal audits?',
+      'eight-d-issue-source':
+        'Which IT systems, pages, or documents usually contain the issue record and impact scope needed for 8D reports?',
+      'change-request-source':
+        'Which IT systems, pages, or documents usually contain the change request under review?',
+      'quality-issue-source':
+        'Which IT systems, pages, or documents usually contain the quality issue or exception list?',
+    },
+  }
+
+  return overrides[locale]?.[questionId] ?? label
+}
+
 function readConfigTextVariants(value: ConfigText | undefined): string[] {
   if (!value) {
     return []
@@ -340,7 +403,7 @@ function buildQuestionDefinition(
 ): OnboardingUseCaseQuestionDefinition {
   return {
     id: question.id,
-    label: readConfigText(question.label, locale),
+    label: normalizeStructuredQuestionLabel(question.id, readConfigText(question.label, locale), locale),
     placeholder: readConfigText(question.placeholder, locale),
     required: question.required ?? true,
   }
@@ -357,8 +420,8 @@ function buildFallbackStructuredQuestions(
       id: 'information-source',
       label:
         locale === 'zh-CN'
-          ? `从哪里获取${localizedName}需要的信息？`
-          : `Where can AI find the information needed for ${localizedName}?`,
+          ? `通常从哪些 IT 系统、页面或文档获取${localizedName}需要的信息？`
+          : `Which IT systems, pages, or documents usually contain the information needed for ${localizedName}?`,
       placeholder: readConfigText(useCase.infoSourcesPrompt, locale),
       required: true,
       legacyField: 'info_sources',
@@ -367,8 +430,8 @@ function buildFallbackStructuredQuestions(
       id: 'workflow-sop',
       label:
         locale === 'zh-CN'
-          ? `从哪里获取${localizedName}的 SOP？`
-          : `Where can AI find the SOP for ${localizedName}?`,
+          ? `通常从哪些 IT 系统、页面或文档获取${localizedName}的 SOP、模板或流程说明？`
+          : `Which IT systems, pages, or documents usually contain the SOPs, templates, or workflow notes for ${localizedName}?`,
       placeholder: readConfigText(useCase.rulesPrompt, locale),
       required: true,
       legacyField: 'rules',
@@ -423,12 +486,12 @@ function buildOnboardingUseCaseOption(
     name: readConfigText(useCase.name, locale),
     directory: getUseCaseDirectoryByName(useCaseName),
     description: readConfigText(useCase.description, locale),
-    system_description: readConfigText(
-      useCase.defaultDescription ?? useCase.description,
+    system_description: normalizeRuntimeInputText(
+      readConfigText(useCase.defaultDescription ?? useCase.description, locale),
       locale
     ),
     guidance: (useCase.guidance ?? []).map((value) => readConfigText(value, locale)),
-    description_prompt: readConfigText(useCase.descriptionPrompt, locale),
+    description_prompt: normalizeRuntimeInputText(readConfigText(useCase.descriptionPrompt, locale), locale),
     info_sources_prompt: readConfigText(useCase.infoSourcesPrompt, locale),
     rules_prompt: readConfigText(useCase.rulesPrompt, locale),
     structured_questions: structuredQuestions.map(({ legacyField, ...question }) => question),
@@ -617,10 +680,10 @@ function getLocalizedUseCaseConfigById(useCaseId: string, locale: Locale = 'zh-C
     name: readConfigText(useCase.name, locale),
     description: readConfigText(useCase.description, locale),
     guidance: (useCase.guidance ?? []).map((value) => readConfigText(value, locale)),
-    descriptionPrompt: readConfigText(useCase.descriptionPrompt, locale),
+    descriptionPrompt: normalizeRuntimeInputText(readConfigText(useCase.descriptionPrompt, locale), locale),
     infoSourcesPrompt: readConfigText(useCase.infoSourcesPrompt, locale),
     rulesPrompt: readConfigText(useCase.rulesPrompt, locale),
-    defaultDescription: readConfigText(useCase.defaultDescription, locale),
+    defaultDescription: normalizeRuntimeInputText(readConfigText(useCase.defaultDescription, locale), locale),
     defaultInfoSources: readConfigText(useCase.defaultInfoSources, locale),
     defaultRules: readConfigText(useCase.defaultRules, locale),
     structuredQuestions: buildStructuredQuestionsForOption(useCase, locale),

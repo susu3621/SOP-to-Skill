@@ -13,7 +13,7 @@ function buildUseCases(locale) {
         use_case_id: 'daily-log',
         use_case_name: 'Daily Log',
         description:
-          'Capture daily progress, meeting conclusions, and blockers in a traceable project log.\n\nInput (information required every run): the specific date.',
+          'Capture daily progress, meeting conclusions, and blockers in a traceable project log.\n\nRuntime input: ask the user for the specific date when the Skill is invoked; if anything is missing, ask follow-up questions before proceeding. Do not fill this during Skill design.',
         info_sources:
           'Current workflow / SOP / template:\nhttps://company.example/sop/daily-log\n\nGood examples:\nhttps://company.example/examples/daily-log\n\nOther:\nhttps://company.example/wiki/project-log',
         rules: 'Write the log in the shared daily format, grouped by progress, blockers, and next steps.',
@@ -23,7 +23,7 @@ function buildUseCases(locale) {
         use_case_id: 'planning',
         use_case_name: 'Planning',
         description:
-          'Create or update project plans so milestones, owners, and dependencies stay aligned.\n\nInput (information required every run): the planning time range and scope.',
+          'Create or update project plans so milestones, owners, and dependencies stay aligned.\n\nRuntime input: ask the user for the planning time range and scope when the Skill is invoked; if anything is missing, ask follow-up questions before proceeding. Do not fill this during Skill design.',
         info_sources:
           'Current workflow / SOP / template:\nhttps://company.example/sop/planning\n\nGood examples:\nhttps://company.example/examples/planning\n\nOther:\nhttps://company.example/wiki/roadmap',
         rules: 'Keep the output concise and include milestone owners, due dates, and external dependencies.',
@@ -33,7 +33,7 @@ function buildUseCases(locale) {
         use_case_id: 'weekly-report',
         use_case_name: 'Weekly Report',
         description:
-          'Summarize project status, major risks, and decisions for the weekly stakeholder update.\n\nInput (information required every run): the reporting week or project.',
+          'Summarize project status, major risks, and decisions for the weekly stakeholder update.\n\nRuntime input: ask the user for the reporting week or project when the Skill is invoked; if anything is missing, ask follow-up questions before proceeding. Do not fill this during Skill design.',
         info_sources:
           'Current workflow / SOP / template:\nhttps://company.example/sop/weekly-report\n\nGood examples:\nhttps://company.example/examples/weekly-report\n\nOther:\nhttps://company.example/wiki/reporting',
         rules: 'List risks first, then milestones, and finish with required support.',
@@ -47,7 +47,7 @@ function buildUseCases(locale) {
       use_case_id: 'daily-log',
       use_case_name: '记录日志',
       description:
-        '记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。\n\n输入（每次执行都需要提供给Skill的信息）：具体哪一天。',
+        '记录每日推进动作、会议结论和阻塞项，形成可追溯的项目日志。\n\n运行时输入：调用 Skill 时需要用户提供具体哪一天；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。',
       info_sources:
         '当前流程 / SOP / 模板：\nhttps://company.example/sop/daily-log\n\n较好的例子：\nhttps://company.example/examples/daily-log\n\n其他：\nhttps://company.example/wiki/project-log',
       rules: '按共享日志模板输出，分成进展、阻塞和下一步三部分。',
@@ -57,7 +57,7 @@ function buildUseCases(locale) {
       use_case_id: 'planning',
       use_case_name: '记录计划',
       description:
-        '制定和更新项目计划，保证里程碑、负责人和依赖关系保持一致。\n\n输入（每次执行都需要提供给Skill的信息）：计划的时间及范围。',
+        '制定和更新项目计划，保证里程碑、负责人和依赖关系保持一致。\n\n运行时输入：调用 Skill 时需要用户提供计划的时间及范围；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。',
       info_sources:
         '当前流程 / SOP / 模板：\nhttps://company.example/sop/planning\n\n较好的例子：\nhttps://company.example/examples/planning\n\n其他：\nhttps://company.example/wiki/roadmap',
       rules: '输出保持简洁，包含里程碑负责人、截止时间和外部依赖。',
@@ -67,7 +67,7 @@ function buildUseCases(locale) {
       use_case_id: 'weekly-report',
       use_case_name: '项目周报',
       description:
-        '汇总项目状态、主要风险和关键决策，形成每周的对外同步内容。\n\n输入（每次执行都需要提供给Skill的信息）：周报对应的时间范围或项目。',
+        '汇总项目状态、主要风险和关键决策，形成每周的对外同步内容。\n\n运行时输入：调用 Skill 时需要用户提供周报对应的时间范围或项目；如果用户未提供完整信息，先追问补齐，不需要在设计 Skill 时填写。',
       info_sources:
         '当前流程 / SOP / 模板：\nhttps://company.example/sop/weekly-report\n\n较好的例子：\nhttps://company.example/examples/weekly-report\n\n其他：\nhttps://company.example/wiki/reporting',
       rules: '优先列出风险，再列里程碑进展，最后补充需要协调的事项。',

@@ -187,7 +187,7 @@ describe('generateSkillArtifacts', () => {
     expect(productionResult.useCaseDir).toBe('project-manager-weekly-report')
     expect(testResult.useCaseDir).toBe('test-project-manager-weekly-report')
     expect(testResult.skillMD).toContain('## 测试环境说明')
-    expect(testResult.skillMD).toContain('/tmp/skills-for-no-engineer')
+    expect(testResult.skillMD).toContain('`sop-to-skill` 数据目录')
     expect(testResult.skillMD).toContain('不要实际进行发送')
     expect(testResult.skillMD).toContain('最终结果不要进行更新执行，而是打印出来。')
     expect(productionResult.skillMD).not.toContain('## 测试环境说明')
@@ -258,7 +258,7 @@ describe('generateSkillArtifacts', () => {
 
     expect(result.useCaseDir).toBe('project-manager-weekly-report')
     expect(result.skillMD).toContain('## 测试环境说明')
-    expect(result.skillMD).toContain('/tmp/skills-for-no-engineer')
+    expect(result.skillMD).toContain('`sop-to-skill` 数据目录')
   })
 
   it('rejects contradictory explicit production and local-only flags', () => {

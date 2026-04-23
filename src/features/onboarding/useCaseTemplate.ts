@@ -9,6 +9,8 @@ const builtInTemplateStartMarkers = [
 const builtInTemplateEndMarkers = [
   '\n\n输入（每次执行都需要提供给Skill的信息）：',
   '\n\nInput (information required every run):',
+  '\n\n运行时输入：',
+  '\n\nRuntime input:',
 ]
 
 export function getBuiltInTemplateValue(description: string) {
