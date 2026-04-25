@@ -189,6 +189,10 @@ const ONBOARDING_MANAGED_ENV_KEYS: &[&str] = &[
     "CONFLUENCE_URL",
     "CONFLUENCE_USERNAME",
     "CONFLUENCE_PASSWORD",
+    "LOCAL_FILESYSTEM_PATH",
+    "SERVER_FILESYSTEM_IP",
+    "SERVER_FILESYSTEM_USERNAME",
+    "SERVER_FILESYSTEM_PASSWORD",
     "GERRIT_AUTH_MODE",
     "GERRIT_URL",
     "GERRIT_USERNAME",
@@ -217,6 +221,18 @@ const ONBOARDING_CONNECTION_SERVICES: &[OnboardingConnectionServiceConfig] = &[
     OnboardingConnectionServiceConfig {
         service_id: "confluence",
         required_field_ids: &["confluenceUrl", "confluenceUsername", "confluencePassword"],
+    },
+    OnboardingConnectionServiceConfig {
+        service_id: "local-filesystem",
+        required_field_ids: &["localFilesystemPath"],
+    },
+    OnboardingConnectionServiceConfig {
+        service_id: "server-filesystem",
+        required_field_ids: &[
+            "serverFilesystemIp",
+            "serverFilesystemUsername",
+            "serverFilesystemPassword",
+        ],
     },
     OnboardingConnectionServiceConfig {
         service_id: "jira",
@@ -277,11 +293,25 @@ fn build_onboarding_environment_requirements(
     credential_values: &HashMap<String, String>,
 ) -> Result<Vec<OnboardingEnvironmentRequirementSpec>, String> {
     match service_id {
-        "confluence" | "jira" | "mail" => Ok(vec![OnboardingEnvironmentRequirementSpec {
-            id: "python3".to_string(),
-            label: "Python 3".to_string(),
-            required: true,
-        }]),
+        "confluence" | "jira" | "mail" | "local-filesystem" => {
+            Ok(vec![OnboardingEnvironmentRequirementSpec {
+                id: "python3".to_string(),
+                label: "Python 3".to_string(),
+                required: true,
+            }])
+        }
+        "server-filesystem" => Ok(vec![
+            OnboardingEnvironmentRequirementSpec {
+                id: "python3".to_string(),
+                label: "Python 3".to_string(),
+                required: true,
+            },
+            OnboardingEnvironmentRequirementSpec {
+                id: "paramiko".to_string(),
+                label: "Paramiko".to_string(),
+                required: true,
+            },
+        ]),
         "svn" => Ok(vec![
             OnboardingEnvironmentRequirementSpec {
                 id: "python3".to_string(),
@@ -1523,6 +1553,24 @@ fn build_connection_test_env_entries(
                 require_non_empty_credential_value(credential_values, "confluencePassword")?,
             ),
         ]),
+        "local-filesystem" => Ok(vec![(
+            "LOCAL_FILESYSTEM_PATH".to_string(),
+            require_non_empty_credential_value(credential_values, "localFilesystemPath")?,
+        )]),
+        "server-filesystem" => Ok(vec![
+            (
+                "SERVER_FILESYSTEM_IP".to_string(),
+                require_non_empty_credential_value(credential_values, "serverFilesystemIp")?,
+            ),
+            (
+                "SERVER_FILESYSTEM_USERNAME".to_string(),
+                require_non_empty_credential_value(credential_values, "serverFilesystemUsername")?,
+            ),
+            (
+                "SERVER_FILESYSTEM_PASSWORD".to_string(),
+                require_non_empty_credential_value(credential_values, "serverFilesystemPassword")?,
+            ),
+        ]),
         "jira" => Ok(vec![
             (
                 "JIRA_URL".to_string(),
@@ -1930,6 +1978,8 @@ fn service_label(service_id: &str) -> &str {
         "gerrit" => "Gerrit",
         "jira" => "Jira",
         "linux" => "Linux",
+        "local-filesystem" => "Local Filesystem",
+        "server-filesystem" => "Server Filesystem",
         "svn" => "SVN",
         "mail" => "Mail",
         _ => "Service",
@@ -3018,6 +3068,28 @@ mod tests {
     }
 
     #[test]
+    fn onboarding_environment_builds_filesystem_requirements() {
+        let local_requirements =
+            build_onboarding_environment_requirements("local-filesystem", &HashMap::new())
+                .expect("local filesystem requirements");
+        let server_requirements =
+            build_onboarding_environment_requirements("server-filesystem", &HashMap::new())
+                .expect("server filesystem requirements");
+
+        let local_ids = local_requirements
+            .iter()
+            .map(|requirement| requirement.id.as_str())
+            .collect::<Vec<_>>();
+        let server_ids = server_requirements
+            .iter()
+            .map(|requirement| requirement.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(local_ids, vec!["python3"]);
+        assert_eq!(server_ids, vec!["python3", "paramiko"]);
+    }
+
+    #[test]
     fn onboarding_environment_builds_windows_install_steps_for_svn() {
         let steps = build_onboarding_environment_install_steps(
             OnboardingEnvironmentPlatform::Windows,
@@ -3083,6 +3155,48 @@ mod tests {
         )));
         assert!(entries.contains(&("SVN_USERNAME".to_string(), "svn.user".to_string())));
         assert!(entries.contains(&("SVN_PASSWORD".to_string(), "svn-secret".to_string())));
+    }
+
+    #[test]
+    fn onboarding_connection_test_builds_filesystem_env_entries() {
+        let local_entries = build_connection_test_env_entries(
+            "local-filesystem",
+            &HashMap::from([(
+                "localFilesystemPath".to_string(),
+                "/Users/shared/wiki".to_string(),
+            )]),
+        )
+        .expect("local filesystem env entries");
+        let server_entries = build_connection_test_env_entries(
+            "server-filesystem",
+            &HashMap::from([
+                ("serverFilesystemIp".to_string(), "192.168.9.30".to_string()),
+                ("serverFilesystemUsername".to_string(), "wiki".to_string()),
+                (
+                    "serverFilesystemPassword".to_string(),
+                    "server-secret".to_string(),
+                ),
+            ]),
+        )
+        .expect("server filesystem env entries");
+
+        assert_eq!(
+            local_entries,
+            vec![(
+                "LOCAL_FILESYSTEM_PATH".to_string(),
+                "/Users/shared/wiki".to_string()
+            )]
+        );
+        assert!(server_entries.contains(&(
+            "SERVER_FILESYSTEM_IP".to_string(),
+            "192.168.9.30".to_string()
+        )));
+        assert!(server_entries
+            .contains(&("SERVER_FILESYSTEM_USERNAME".to_string(), "wiki".to_string())));
+        assert!(server_entries.contains(&(
+            "SERVER_FILESYSTEM_PASSWORD".to_string(),
+            "server-secret".to_string()
+        )));
     }
 
     #[test]
@@ -3943,6 +4057,8 @@ mod tests {
             selected_role_id: "".to_string(),
             selected_base_skill_ids: vec![
                 "confluence".to_string(),
+                "local-filesystem".to_string(),
+                "server-filesystem".to_string(),
                 "jira".to_string(),
                 "mail".to_string(),
             ],
@@ -3965,6 +4081,16 @@ mod tests {
                 ),
                 ("confluenceUsername".to_string(), "wiki.user".to_string()),
                 ("confluencePassword".to_string(), "wiki-secret".to_string()),
+                (
+                    "localFilesystemPath".to_string(),
+                    "/Users/shared/wiki".to_string(),
+                ),
+                ("serverFilesystemIp".to_string(), "192.168.9.30".to_string()),
+                ("serverFilesystemUsername".to_string(), "wiki".to_string()),
+                (
+                    "serverFilesystemPassword".to_string(),
+                    "server-secret".to_string(),
+                ),
                 (
                     "jiraUrl".to_string(),
                     "https://jira.example.com".to_string(),
@@ -4009,6 +4135,8 @@ mod tests {
             selected_role_id: "project-manager".to_string(),
             selected_base_skill_ids: vec![
                 "confluence".to_string(),
+                "local-filesystem".to_string(),
+                "server-filesystem".to_string(),
                 "jira".to_string(),
                 "mail".to_string(),
             ],
@@ -4023,6 +4151,16 @@ mod tests {
                 ),
                 ("confluenceUsername".to_string(), "wiki.user".to_string()),
                 ("confluencePassword".to_string(), "wiki-secret".to_string()),
+                (
+                    "localFilesystemPath".to_string(),
+                    "/Users/shared/wiki".to_string(),
+                ),
+                ("serverFilesystemIp".to_string(), "192.168.9.30".to_string()),
+                ("serverFilesystemUsername".to_string(), "wiki".to_string()),
+                (
+                    "serverFilesystemPassword".to_string(),
+                    "server-secret".to_string(),
+                ),
                 (
                     "jiraUrl".to_string(),
                     "https://jira.example.com".to_string(),
@@ -4043,6 +4181,10 @@ mod tests {
         assert!(content.contains("CONFLUENCE_URL=\"https://wiki.example.com\""));
         assert!(content.contains("CONFLUENCE_USERNAME=\"wiki.user\""));
         assert!(content.contains("CONFLUENCE_PASSWORD=\"wiki-secret\""));
+        assert!(content.contains("LOCAL_FILESYSTEM_PATH=\"/Users/shared/wiki\""));
+        assert!(content.contains("SERVER_FILESYSTEM_IP=\"192.168.9.30\""));
+        assert!(content.contains("SERVER_FILESYSTEM_USERNAME=\"wiki\""));
+        assert!(content.contains("SERVER_FILESYSTEM_PASSWORD=\"server-secret\""));
         assert!(content.contains("JIRA_URL=\"https://jira.example.com\""));
         assert!(content.contains("JIRA_USERNAME=\"jira.user\""));
         assert!(content.contains("JIRA_PASSWORD=\"jira-secret\""));

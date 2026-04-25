@@ -9,6 +9,22 @@
       "contentHash": "sha256:f0bd0c3fe1dfd4bef03006365b85a5988582327c59f40b4953b1ebb5eb89d910"
     },
     {
+      "id": "local-filesystem",
+      "path": "skills/local-filesystem",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "category": "wiki",
+      "contentHash": "sha256:d19f2428e01f1692856e143c729ea45f53f71d0717025ea51e1adf19dec0aa87"
+    },
+    {
+      "id": "server-filesystem",
+      "path": "skills/server-filesystem",
+      "version": "1.0.0",
+      "targets": ["claude-code", "codex", "workbuddy"],
+      "category": "wiki",
+      "contentHash": "sha256:97e62ff5e2adf512f1910fb05e0f03f2acf60afcee904680d589fba67e569be6"
+    },
+    {
       "id": "jira",
       "path": "skills/jira",
       "version": "1.0.2",

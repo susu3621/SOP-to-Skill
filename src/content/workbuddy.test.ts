@@ -50,9 +50,11 @@ describe('workbuddy agent apps', () => {
     expect(workbuddyAgentApps.map((app) => app.label['zh-CN'])).not.toContain('Antigravity')
   })
 
-  it('exposes Confluence, Jira, Gerrit, SVN, Linux, and Tencent Exmail as base skills', () => {
+  it('exposes Confluence, filesystem wiki options, Jira, Gerrit, SVN, Linux, and Tencent Exmail as base skills', () => {
     expect(Object.keys(sharedConfig.baseSkills)).toEqual([
       'confluence',
+      'local-filesystem',
+      'server-filesystem',
       'jira',
       'document-template',
       'gerrit',
@@ -62,6 +64,8 @@ describe('workbuddy agent apps', () => {
     ])
     expect(workbuddyBaseSkills.map((skill) => skill.value)).toEqual([
       'confluence',
+      'local-filesystem',
+      'server-filesystem',
       'jira',
       'document-template',
       'gerrit',
@@ -71,6 +75,8 @@ describe('workbuddy agent apps', () => {
     ])
     expect(workbuddyBaseSkills.map((skill) => skill.label['zh-CN'])).toEqual([
       'Confluence',
+      '本地文件系统',
+      '服务器文件系统',
       'Jira',
       '文档模板',
       'Gerrit',
@@ -90,7 +96,7 @@ describe('workbuddy agent apps', () => {
       '通信系统',
     ])
     expect(onboardingBaseSkillGroups.map((group) => group.skills.map((skill) => skill.id))).toEqual([
-      ['confluence'],
+      ['confluence', 'local-filesystem', 'server-filesystem'],
       ['jira'],
       ['document-template'],
       ['gerrit', 'svn'],
@@ -126,6 +132,8 @@ describe('workbuddy agent apps', () => {
   it('exposes flat credential fields for existing tools while Linux stays as a structured device editor', () => {
     const allCredentialFields = getCredentialFields([
       'confluence',
+      'local-filesystem',
+      'server-filesystem',
       'jira',
       'gerrit',
       'svn',
@@ -137,6 +145,10 @@ describe('workbuddy agent apps', () => {
       'confluenceUrl',
       'confluenceUsername',
       'confluencePassword',
+      'localFilesystemPath',
+      'serverFilesystemIp',
+      'serverFilesystemUsername',
+      'serverFilesystemPassword',
       'jiraUrl',
       'jiraUsername',
       'jiraPassword',
@@ -154,6 +166,12 @@ describe('workbuddy agent apps', () => {
       'mailPassword',
     ])
     expect(sharedConfig.baseSkills.confluence?.credentials).toHaveProperty('confluenceUrl')
+    expect(sharedConfig.baseSkills['local-filesystem']?.credentials).toHaveProperty(
+      'localFilesystemPath'
+    )
+    expect(sharedConfig.baseSkills['server-filesystem']?.credentials).toHaveProperty(
+      'serverFilesystemIp'
+    )
     expect(sharedConfig.baseSkills.jira?.credentials).toHaveProperty('jiraUrl')
     expect(sharedConfig.baseSkills.gerrit?.credentials).toHaveProperty('gerritAuthMode')
     expect(sharedConfig.baseSkills.svn?.credentials).toHaveProperty('svnUrl')
@@ -204,6 +222,29 @@ describe('workbuddy agent apps', () => {
     expect(svnGroup?.editor_type).toBe('svn-repositories')
     expect(svnGroup?.fields).toEqual([])
     expect(svnGroup?.required_field_ids).toEqual([])
+  })
+
+  it('exposes filesystem wiki credential groups with only the required configured fields', () => {
+    const [localGroup, serverGroup] = getCredentialGroups([
+      'local-filesystem',
+      'server-filesystem',
+    ])
+
+    expect(localGroup?.service_name).toBe('本地文件系统')
+    expect(localGroup?.fields.map((field) => field.id)).toEqual(['localFilesystemPath'])
+    expect(localGroup?.required_field_ids).toEqual(['localFilesystemPath'])
+
+    expect(serverGroup?.service_name).toBe('服务器文件系统')
+    expect(serverGroup?.fields.map((field) => field.id)).toEqual([
+      'serverFilesystemIp',
+      'serverFilesystemUsername',
+      'serverFilesystemPassword',
+    ])
+    expect(serverGroup?.required_field_ids).toEqual([
+      'serverFilesystemIp',
+      'serverFilesystemUsername',
+      'serverFilesystemPassword',
+    ])
   })
 
   it('exposes Linux as a structured onboarding credential group without flat fields', () => {

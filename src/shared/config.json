@@ -198,6 +198,78 @@
         }
       }
     },
+    "local-filesystem": {
+      "name": {
+        "zh-CN": "本地文件系统",
+        "en-US": "Local Filesystem"
+      },
+      "description": {
+        "zh-CN": "读取并写入本机目录中的 SOP、项目文档和会议纪要",
+        "en-US": "Read and write SOPs, project docs, and meeting notes from a local directory."
+      },
+      "credentials": {
+        "localFilesystemPath": {
+          "label": {
+            "zh-CN": "本地文件路径",
+            "en-US": "Local Filesystem Path"
+          },
+          "placeholder": {
+            "zh-CN": "/Users/shared/wiki",
+            "en-US": "/Users/shared/wiki"
+          },
+          "type": "text",
+          "required": true
+        }
+      }
+    },
+    "server-filesystem": {
+      "name": {
+        "zh-CN": "服务器文件系统",
+        "en-US": "Server Filesystem"
+      },
+      "description": {
+        "zh-CN": "通过服务器 IP、用户名和密码读取并写入服务器上的文档目录",
+        "en-US": "Read and write server-side document directories using server IP, username, and password."
+      },
+      "credentials": {
+        "serverFilesystemIp": {
+          "label": {
+            "zh-CN": "服务器 IP",
+            "en-US": "Server IP"
+          },
+          "placeholder": {
+            "zh-CN": "192.168.1.10",
+            "en-US": "192.168.1.10"
+          },
+          "type": "text",
+          "required": true
+        },
+        "serverFilesystemUsername": {
+          "label": {
+            "zh-CN": "服务器用户名",
+            "en-US": "Server Username"
+          },
+          "placeholder": {
+            "zh-CN": "wiki",
+            "en-US": "wiki"
+          },
+          "type": "text",
+          "required": true
+        },
+        "serverFilesystemPassword": {
+          "label": {
+            "zh-CN": "服务器密码",
+            "en-US": "Server Password"
+          },
+          "placeholder": {
+            "zh-CN": "输入服务器密码",
+            "en-US": "Enter the server password"
+          },
+          "type": "password",
+          "required": true
+        }
+      }
+    },
     "jira": {
       "name": {
         "zh-CN": "Jira",

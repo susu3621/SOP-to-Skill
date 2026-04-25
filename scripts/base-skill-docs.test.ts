@@ -23,6 +23,14 @@ describe('base skill documentation contract', () => {
       expectedSnippets: ['python3', 'scripts/requirements.txt', 'CONFLUENCE_*'],
     },
     {
+      id: 'local-filesystem',
+      expectedSnippets: ['python3', 'LOCAL_FILESYSTEM_PATH'],
+    },
+    {
+      id: 'server-filesystem',
+      expectedSnippets: ['python3', 'paramiko', 'SERVER_FILESYSTEM_IP'],
+    },
+    {
       id: 'jira',
       expectedSnippets: ['python3', 'scripts/requirements.txt', 'JIRA_URL'],
     },

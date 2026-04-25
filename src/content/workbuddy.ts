@@ -559,7 +559,7 @@ const onboardingBaseSkillGroupDefinitions = [
       'zh-CN': '集中放 SOP、项目文档和会议纪要，方便 AI 读取和写入稳定资料。',
       'en-US': 'Store SOPs, project docs, and meeting notes in one place so AI can read and write stable references.',
     },
-    skill_ids: ['confluence'],
+    skill_ids: ['confluence', 'local-filesystem', 'server-filesystem'],
   },
   {
     id: 'issue-management',
