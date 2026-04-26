@@ -754,7 +754,7 @@ describe('build desktop all workflow dispatch', () => {
     expect(verifyScript).toContain("test -f scripts/install-sop-to-skill.ps1")
   })
 
-  it('keeps release metadata aligned to the v0.4.0 rollout', () => {
+  it('keeps release metadata aligned to the v0.5.0 rollout', () => {
     const tauriConfig = JSON.parse(
       fs.readFileSync(path.join(process.cwd(), 'src-tauri/tauri.conf.json'), 'utf8'),
     ) as {
@@ -766,8 +766,8 @@ describe('build desktop all workflow dispatch', () => {
       'utf8',
     )
 
-    expect(tauriConfig.version).toBe('0.4.0')
-    expect(cargoToml).toContain('version = "0.4.0"')
+    expect(tauriConfig.version).toBe('0.5.0')
+    expect(cargoToml).toContain('version = "0.5.0"')
     expect(releaseConfig).toContain(
       'https://github.com/susu3621/SOP-to-Skill/releases/latest/download/latest.json',
     )

@@ -28,7 +28,7 @@ rg -n 'actions/setup-node@v6' .github/workflows/deploy-pages.yml
 ! rg -n 'actions/checkout@v4' .github/workflows
 ! rg -n 'actions/setup-node@v4' .github/workflows
 rg -n 'tauri-apps/tauri-action@v0\.6\.2' .github/workflows/build-desktop.yml
-rg -n 'actions/upload-artifact@v4' .github/workflows/build-desktop.yml
+rg -n 'actions/upload-artifact@v7' .github/workflows/build-desktop.yml
 ! rg -n 'actions/download-artifact@v4' .github/workflows/build-desktop.yml
 rg -n 'bundle/dmg/sop-to-skill-.*\.dmg' .github/workflows/build-desktop.yml
 rg -n 'target/release/sop-to-skill\.exe' .github/workflows/build-desktop.yml
