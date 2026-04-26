@@ -217,7 +217,7 @@
             "zh-CN": "/Users/shared/wiki",
             "en-US": "/Users/shared/wiki"
           },
-          "type": "text",
+          "type": "path",
           "required": true
         }
       }

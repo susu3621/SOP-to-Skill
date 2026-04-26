@@ -22,7 +22,7 @@ export interface WizardOption {
 
 export interface WizardField {
   id: string
-  type: 'single-select' | 'multi-select' | 'text' | 'url' | 'textarea' | 'password'
+  type: 'single-select' | 'multi-select' | 'text' | 'url' | 'textarea' | 'password' | 'path'
   label: LocalizedText
   placeholder?: LocalizedText
   required: boolean

@@ -7,6 +7,7 @@ import type {
   OnboardingLinuxDeviceRecord,
   OnboardingSvnRepositoryRecord,
 } from '../../../types'
+import { DirectoryPickerInput } from '../../../components/DirectoryPickerInput'
 import { getOnboardingCopy, onboardingCopy } from '../copy'
 
 interface CredentialsStepProps {
@@ -535,6 +536,16 @@ export function CredentialsStep({
                               </option>
                             ))}
                           </select>
+                        ) : field.type === 'path' ? (
+                          <DirectoryPickerInput
+                            id={field.id}
+                            locale={locale}
+                            value={credentialValues[field.id] ?? ''}
+                            placeholder={
+                              field.placeholder?.[locale] ?? field.placeholder?.['zh-CN'] ?? ''
+                            }
+                            onChange={(value) => onUpdateCredential(field.id, value)}
+                          />
                         ) : (
                           <input
                             id={field.id}

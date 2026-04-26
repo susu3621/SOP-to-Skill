@@ -204,6 +204,13 @@ const fixtures = vi.hoisted(() => {
     exportCurrentLogResult: {
       success: '/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log',
     } as { success?: string; error?: string },
+    selectedDirectory: '/Users/shared/wiki',
+    targetApps: [] as Array<{
+      id: string
+      name: string
+      description: string
+      status: string
+    }>,
     preferredLocale: 'zh-CN' as 'zh-CN' | 'en-US',
     onboardingGuides: {
       'onboarding-home': { completed: true },
@@ -236,7 +243,7 @@ vi.mock('@tauri-apps/api/core', () => ({
       case 'list_installed':
         return { success: fixtures.runtime.installed }
       case 'get_target_apps':
-        return []
+        return fixtures.runtime.targetApps
       case 'uninstall_skill':
         fixtures.runtime.uninstallSkillCalls.push({
           skillId: payload?.skillId,
@@ -285,6 +292,8 @@ vi.mock('@tauri-apps/api/core', () => ({
           return { error: fixtures.runtime.exportCurrentLogResult.error }
         }
         return { success: fixtures.runtime.exportCurrentLogResult.success }
+      case 'select_directory':
+        return fixtures.runtime.selectedDirectory
       case 'get_config':
         return {
           success: {
@@ -414,6 +423,8 @@ describe('onboarding shell smoke coverage', () => {
     fixtures.runtime.exportCurrentLogResult = {
       success: '/Users/juns/Desktop/sop-to-skill-log-2026-04-13-153000.log',
     }
+    fixtures.runtime.selectedDirectory = '/Users/shared/wiki'
+    fixtures.runtime.targetApps = []
     fixtures.runtime.preferredLocale = 'zh-CN'
     fixtures.runtime.onboardingGuides = {
       'onboarding-home': { completed: true },
@@ -1039,6 +1050,70 @@ describe('onboarding shell smoke coverage', () => {
       expect(screen.getByText('未安装')).toBeInTheDocument()
     })
     expect(screen.getByRole('button', { name: '安装' })).toBeInTheDocument()
+  })
+
+  it('lets users choose a folder for path variables in the install wizard', async () => {
+    fixtures.runtime.targetApps = [
+      {
+        id: 'codex',
+        name: 'Codex',
+        description: 'Install into Codex',
+        status: 'available',
+      },
+    ]
+    fixtures.runtime.skills = [
+      {
+        id: 'local-filesystem',
+        name: {
+          'zh-CN': '本地文件系统',
+          'en-US': 'Local Filesystem',
+        },
+        description: {
+          'zh-CN': '读取并写入本机目录中的 SOP、项目文档和会议纪要',
+          'en-US': 'Read and write SOPs, project docs, and meeting notes.',
+        },
+        version: '1.0.0',
+        category: 'host-ops',
+        author: null,
+        targets: ['codex'],
+        variables: [
+          {
+            id: 'localFilesystemPath',
+            label: {
+              'zh-CN': '本地文件路径',
+              'en-US': 'Local Filesystem Path',
+            },
+            var_type: 'path',
+            required: true,
+            placeholder: {
+              'zh-CN': '/Users/shared/wiki',
+              'en-US': '/Users/shared/wiki',
+            },
+            options: [],
+          },
+        ],
+        is_installed: false,
+        installed_version: null,
+        update_status: 'not-installed',
+        can_install: true,
+      },
+    ]
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    await waitForOnboardingHome()
+    await openSkillManagementFromMoreMenu(user)
+    await user.click(screen.getByText('本地文件系统'))
+    await user.click(screen.getByRole('button', { name: '安装' }))
+    await user.click(screen.getByRole('button', { name: '下一步' }))
+
+    const pathInput = screen.getByLabelText('本地文件路径')
+    expect(pathInput).toHaveAttribute('readonly')
+
+    await user.click(screen.getByRole('button', { name: '选择文件夹' }))
+
+    expect(pathInput).toHaveValue('/Users/shared/wiki')
   })
 
   it('shows the hidden sop-to-skill data directory path on the update page', async () => {

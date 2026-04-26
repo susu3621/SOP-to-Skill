@@ -57,6 +57,23 @@ fn export_current_log_with_dialog(app: &AppHandle) -> Result<String, String> {
     Ok(destination_path.to_string_lossy().to_string())
 }
 
+fn select_directory_with_dialog(app: &AppHandle) -> Result<Option<String>, String> {
+    let Some(directory) = app
+        .dialog()
+        .file()
+        .set_title("Choose folder")
+        .blocking_pick_folder()
+    else {
+        return Ok(None);
+    };
+
+    let directory_path = directory
+        .into_path()
+        .map_err(|error| format!("Failed to resolve selected folder: {error}"))?;
+
+    Ok(Some(directory_path.to_string_lossy().to_string()))
+}
+
 fn normalize_external_url(url: &str) -> Result<String, String> {
     let normalized = url.trim();
 
@@ -226,6 +243,14 @@ pub async fn export_current_log(app: AppHandle) -> SkillResult<String> {
         Err(error) => SkillResult::Error {
             error: format!("Failed to export log file: {error}"),
         },
+    }
+}
+
+#[tauri::command]
+pub async fn select_directory(app: AppHandle) -> Result<Option<String>, String> {
+    match tokio::task::spawn_blocking(move || select_directory_with_dialog(&app)).await {
+        Ok(result) => result,
+        Err(error) => Err(format!("Failed to select folder: {error}")),
     }
 }
 

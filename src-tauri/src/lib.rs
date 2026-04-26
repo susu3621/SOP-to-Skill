@@ -134,6 +134,7 @@ pub fn run() {
             commands::config::open_data_directory,
             commands::config::open_external_url,
             commands::config::export_current_log,
+            commands::config::select_directory,
             // Update commands
             update::app::get_app_build_info,
             update::app::check_app_update,

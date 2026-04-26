@@ -25,7 +25,7 @@ type ConfigText = string | LocalizedText
 interface CredentialFieldConfig {
   label: ConfigText
   placeholder?: ConfigText
-  type: 'text' | 'password' | 'single-select'
+  type: 'text' | 'password' | 'single-select' | 'path'
   required: boolean
   options?: Array<{
     value: string

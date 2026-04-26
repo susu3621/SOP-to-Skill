@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { OnboardingShell, type OnboardingShellView } from './features/onboarding/OnboardingShell'
+import { DirectoryPickerInput } from './components/DirectoryPickerInput'
 import { pageCopy, getCopy } from './content/copy'
 import { useLocale, useSkills } from './hooks/useSkills'
 import { useUpdates } from './hooks/useUpdates'
@@ -698,14 +699,38 @@ function App() {
                                           </label>
                                         ))}
                                       </div>
+                                    ) : variable.var_type === 'path' ? (
+                                      <DirectoryPickerInput
+                                        id={variable.id}
+                                        locale={locale}
+                                        value={
+                                          wizardState.variables[variable.id] ??
+                                          variable.default ??
+                                          ''
+                                        }
+                                        placeholder={
+                                          variable.placeholder?.[locale] ||
+                                          variable.placeholder?.['zh-CN'] ||
+                                          ''
+                                        }
+                                        onChange={(value) =>
+                                          updateInstallVariable(variable.id, value)
+                                        }
+                                      />
                                     ) : (
                                       <input
                                         id={variable.id}
                                         type={variable.var_type === 'number' ? 'number' : 'text'}
                                         value={
-                                          wizardState.variables[variable.id] || variable.default || ''
+                                          wizardState.variables[variable.id] ??
+                                          variable.default ??
+                                          ''
                                         }
-                                        placeholder={variable.placeholder?.[locale] || variable.placeholder?.['zh-CN'] || ''}
+                                        placeholder={
+                                          variable.placeholder?.[locale] ||
+                                          variable.placeholder?.['zh-CN'] ||
+                                          ''
+                                        }
                                         onChange={(event) =>
                                           updateInstallVariable(variable.id, event.target.value)
                                         }

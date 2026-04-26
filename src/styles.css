@@ -510,6 +510,34 @@ textarea {
   font-size: 0.9rem;
 }
 
+.directory-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.directory-picker > input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(22, 48, 41, 0.16);
+  background: rgba(255, 255, 255, 0.8);
+  color: #163029;
+  font-size: 0.9rem;
+}
+
+.directory-picker__button {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .directory-picker {
+    grid-template-columns: 1fr;
+  }
+}
+
 .field > textarea {
   width: 100%;
   min-height: 100px;

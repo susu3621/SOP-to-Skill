@@ -235,6 +235,7 @@ const mockControls = vi.hoisted(() => ({
       log_line: string | null
     }>
   >,
+  selectedDirectory: '/Users/shared/wiki',
   installed: [] as InstalledSkillInfo[],
   eventHandlers: new Map<string, (event: { payload: unknown }) => void>(),
 }))
@@ -270,6 +271,7 @@ beforeEach(() => {
   mockControls.environmentCheckSequences = {}
   mockControls.environmentInstallResults = {}
   mockControls.environmentInstallProgressEvents = {}
+  mockControls.selectedDirectory = '/Users/shared/wiki'
   mockControls.installed = []
   mockControls.eventHandlers.clear()
   invokeMock.mockReset()
@@ -320,6 +322,8 @@ beforeEach(() => {
         }
       case 'get_app_build_info':
         return { currentVersion: '0.2.0', displayVersion: 'dd40e57' }
+      case 'select_directory':
+        return mockControls.selectedDirectory
       case 'get_onboarding_state':
         return { success: currentState }
       case 'set_onboarding_state':
@@ -1118,6 +1122,28 @@ describe('OnboardingShell', () => {
     expect(screen.queryByText('账号凭证')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Confluence URL')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Jira URL')).not.toBeInTheDocument()
+  })
+
+  it('lets users choose a local filesystem folder instead of typing the path', async () => {
+    mockControls.stateOverride = {
+      ...fixtures.onboardingState,
+      selected_base_skill_ids: ['local-filesystem'],
+      selected_install_skill_ids: ['local-filesystem'],
+      credential_values: {},
+    }
+    const user = userEvent.setup()
+
+    render(<App />)
+
+    expect(await waitForOnboardingHome()).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '选择公司 IT 工具' }))
+
+    const pathInput = screen.getByLabelText('本地文件路径')
+    expect(pathInput).toHaveAttribute('readonly')
+
+    await user.click(screen.getByRole('button', { name: '选择文件夹' }))
+
+    expect(pathInput).toHaveValue('/Users/shared/wiki')
   })
 
   it('switches Gerrit credential fields when auth mode changes', async () => {
