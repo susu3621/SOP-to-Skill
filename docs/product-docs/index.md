@@ -28,6 +28,7 @@ lastUpdated: false
 <li>启动应用后，先配置基础工具和账号信息，再配置岗位与使用场景。</li>
 <li>选择要同步的 AI 工具，把生成的 Skill 安装进去并开始使用。</li>
 </ol>
+<p><a href="./quality-skill-folder-picker">查看：用文件夹选择构建质量 Skill</a></p>
 </section>
 
 <section class="docs-home-section">
