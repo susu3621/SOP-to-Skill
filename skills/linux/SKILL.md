@@ -28,10 +28,9 @@ python3 -c "import paramiko; print(paramiko.__version__)"
 
 ## Missing Environment Handling
 
-1. If `python3`, `paramiko`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
-2. If a required tool is missing, ask the user for confirmation before installing anything.
-3. After the user confirms, install the missing dependency automatically with the machine's package manager or `pip`.
-4. Re-run the environment checks and `python3 {{script_dir}}/test_connection.py` before remote login, file edits, or command execution.
+Check only dependencies needed by the requested operation. Reuse available authorized tools for equivalent reads or conversions when the bundled probe is unnecessary. A missing optional probe or renderer does not block independent work.
+
+If a required dependency has no suitable alternative, report the exact blocked step. Install within the user's existing environment/setup authorization; ask only when installation requires additional scope. Do not install unrelated tools or substitute credentials. Verify the chosen workflow before claiming completion.
 
 ## Runtime Inputs
 

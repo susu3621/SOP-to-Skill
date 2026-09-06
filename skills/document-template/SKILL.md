@@ -20,7 +20,7 @@ This skill provides two script entrypoints:
 - npm packages from `package.json`, including `docxtemplater` and `pizzip`
 - Optional for PDF output: `libreoffice` or `soffice`
 
-Check before running document-template scripts:
+Check Node/npm before using the bundled scripts. Check LibreOffice only for PDF output:
 
 ```bash
 node --version
@@ -38,7 +38,7 @@ Use the OS-appropriate method below when PDF output is required and `libreoffice
 brew install --cask libreoffice
 ```
 
-If `brew` is unavailable, stop and report that Homebrew is missing instead of switching to a GUI installer.
+If `brew` is unavailable, use an already available authorized conversion path or report only the blocked PDF step; DOCX rendering can continue.
 
 ### Windows
 
@@ -47,14 +47,13 @@ winget search LibreOffice
 winget install --id TheDocumentFoundation.LibreOffice -e
 ```
 
-If `winget` is unavailable, stop and report that Windows Package Manager is missing instead of switching to a GUI installer.
+If `winget` is unavailable, use an already available authorized conversion path or report only the blocked PDF step; DOCX rendering can continue.
 
 ## Missing Environment Handling
 
-1. If `node`, `npm`, `libreoffice`, or another required executable is missing, stop and summarize exactly which tools are unavailable.
-2. If a required tool is missing, ask the user for confirmation before installing anything.
-3. After the user confirms, install the missing dependency automatically with the machine's package manager, the command-line LibreOffice method above, or `npm install --prefix {{skill_dir}}`.
-4. Re-run the environment checks and the validation script before rendering a final document.
+Check only dependencies needed by the requested operation. Reuse available authorized tools for equivalent reads or conversions when the bundled probe is unnecessary. A missing optional probe or renderer does not block independent work.
+
+If a required dependency has no suitable alternative, report the exact blocked step. Install within the user's existing environment/setup authorization; ask only when installation requires additional scope. Do not install unrelated tools or substitute credentials. Verify the chosen workflow before claiming completion.
 
 ## Core Workflows
 

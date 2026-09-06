@@ -1,5 +1,9 @@
-# Codex
-.agents/
+# Codex: track only repository-owned guidance and the Brain development skill.
+.agents/*
+!.agents/AGENTS.md
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/personal-information-flow-project-management/
 .superpowers/
 
 # Dependencies

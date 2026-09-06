@@ -1,0 +1,6 @@
+interface:
+  display_name: "Brain·项目管理"
+  short_description: "Feedback, annual plans, todos, and pending-counts APIs."
+  default_prompt: "Use $personal-information-flow-project-management for the requested Brain operation, checking live state and reading back any authorized changes."
+policy:
+  allow_implicit_invocation: true

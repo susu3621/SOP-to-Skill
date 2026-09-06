@@ -1,0 +1,33 @@
+{
+  "name": "personal-information-flow-project-management",
+  "displayName": "Brain·项目管理",
+  "description": "Read and update live Brain requests, plans, and todos; use for numbered development requests and status readback.",
+  "version": "1.1.0",
+  "author": "juns",
+  "homepage": "https://personal.junslan.com",
+  "license": "UNLICENSED",
+  "tags": [
+    "openapi",
+    "api",
+    "brain",
+    "feedback",
+    "annual-plans",
+    "todos",
+    "pending-counts"
+  ],
+  "category": "integration",
+  "requires": {
+    "bins": [
+      "bash",
+      "curl",
+      "jq"
+    ]
+  },
+  "emoji": "🔌",
+  "examples": [
+    "./pif_openapi.sh '.paths | with_entries(select((.key|startswith(\"/api/projects\")) or (.key|startswith(\"/api/annual-plans\"))))'",
+    "./pif_request.sh POST /api/projects/requests '{\"type\":\"Improvement\",\"description\":\"改进移动端反馈提交流程\",\"page_url\":\"https://example.test/feedback\",\"project_id\":12,\"due_at\":\"2026-04-05T09:15:00+08:00\"}'",
+    "./pif_request.sh GET /api/pending-counts",
+    "./pif_request.sh GET /api/todos"
+  ]
+}
